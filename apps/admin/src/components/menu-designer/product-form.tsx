@@ -24,7 +24,7 @@ import { useMenuDesignerStore } from '@/store/menu-designer.store';
 const productFormSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   description: z.string().optional(),
-  price: z.number().min(0, 'El precio debe ser mayor o igual a 0'),
+  price: z.number({ error: 'Ingresa un precio válido' }).min(0, 'El precio debe ser mayor o igual a 0'),
   isAvailable: z.boolean(),
   imageUrl: z.string().optional(),
 });
@@ -96,6 +96,7 @@ export function ProductForm({ product, categoryId, menuId, onClose }: ProductFor
 
   const onDelete = async () => {
     if (!confirm(`¿Eliminar "${product?.name}"?`)) return;
+    if (!product?.id) return;
     try {
       await deleteProduct.mutateAsync();
       clearSelection();
@@ -106,8 +107,10 @@ export function ProductForm({ product, categoryId, menuId, onClose }: ProductFor
   };
 
   const onToggleAvailability = async () => {
+    if (!product?.id) return;
     try {
       await toggleAvailability.mutateAsync();
+      setValue('isAvailable', !watch('isAvailable'), { shouldDirty: true });
     } catch {
       // error
     }
@@ -245,7 +248,7 @@ export function ProductForm({ product, categoryId, menuId, onClose }: ProductFor
                 </p>
               </div>
               <Switch
-                checked={product.isAvailable}
+                checked={watch('isAvailable')}
                 onCheckedChange={onToggleAvailability}
                 disabled={toggleAvailability.isPending}
                 className="data-[state=checked]:bg-brand-500"

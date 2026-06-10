@@ -84,7 +84,6 @@ function CategoryPreview({ category }: { category: Category }) {
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-brand-900 truncate">{product.name}</p>
-              <p className="text-[10px] text-gray-500">{formatPrice(product.price)}</p>
             </div>
             <span className="text-xs font-bold text-brand-500 flex-shrink-0">
               {formatPrice(product.price)}
