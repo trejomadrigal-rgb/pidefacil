@@ -14,7 +14,7 @@
       "outputs": ["coverage/**"]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^lint"]
     },
     "clean": {
       "cache": false
