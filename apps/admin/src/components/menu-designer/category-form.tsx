@@ -47,7 +47,7 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
   const updateCategory = useUpdateCategory(category.id);
   const deleteCategory = useDeleteCategory(category.id);
   const reorderProducts = useReorderProducts();
-  const { clearSelection, selectProduct } = useMenuDesignerStore();
+  const { clearSelection } = useMenuDesignerStore();
 
   const { data: products = [] } = useProducts(category.id);
 
@@ -187,7 +187,6 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
                     <div
                       className="flex items-center gap-3 py-3 pr-3 border-b border-gray-100 last:border-0 cursor-pointer"
                       onClick={() => {
-                        selectProduct(product.id);
                         onEditProduct(product);
                       }}
                     >

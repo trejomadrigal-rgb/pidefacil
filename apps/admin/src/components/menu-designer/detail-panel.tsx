@@ -37,8 +37,9 @@ export function DetailPanel() {
 
   const handleProductClose = () => {
     // Return to the category view by clearing product selection only
-    if (selectedCategoryId) {
-      selectCategory(selectedCategoryId);
+    const currentCategoryId = useMenuDesignerStore.getState().selectedCategoryId;
+    if (currentCategoryId) {
+      selectCategory(currentCategoryId);
     } else {
       clearSelection();
     }
@@ -57,7 +58,6 @@ export function DetailPanel() {
         <ProductForm
           product={isEditingProduct ? selectedProduct : undefined}
           categoryId={selectedCategory.id}
-          menuId={selectedMenuId!}
           onClose={handleProductClose}
         />
       ) : showCategory && selectedCategory ? (

@@ -33,11 +33,10 @@ type ProductFormValues = z.infer<typeof productFormSchema>;
 interface ProductFormProps {
   product?: Product; // undefined = create mode
   categoryId: string;
-  menuId: string;
   onClose: () => void; // called after successful create/delete to clear selection
 }
 
-export function ProductForm({ product, categoryId, menuId, onClose }: ProductFormProps) {
+export function ProductForm({ product, categoryId, onClose }: ProductFormProps) {
   const isEditing = !!product;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
