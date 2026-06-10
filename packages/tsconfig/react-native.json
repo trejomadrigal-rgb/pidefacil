@@ -8,6 +8,8 @@
     "moduleResolution": "bundler",
     "jsx": "react-native",
     "allowJs": true,
-    "noEmit": true
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "isolatedModules": true
   }
 }
