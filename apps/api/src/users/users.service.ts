@@ -1,5 +1,6 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -64,7 +65,7 @@ export class UsersService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { status: 'INACTIVE' },
+      data: { status: UserStatus.INACTIVE },
     });
   }
 }

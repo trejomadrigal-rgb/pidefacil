@@ -22,6 +22,7 @@ export class UsersController {
   }
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   createUser(@CurrentUser() user: CurrentUserPayload, @Body() dto: CreateUserDto) {
     return this.usersService.createUser(user.businessId, dto);
   }
