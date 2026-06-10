@@ -109,10 +109,9 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
             Eliminar
           </Button>
           <Button
-            type="button"
+            type="submit"
             size="sm"
             className="h-8 text-xs bg-brand-500 hover:bg-brand-700 text-white rounded-lg"
-            onClick={handleSubmit(onSave)}
             disabled={!isDirty || isSubmitting}
           >
             Guardar
@@ -139,6 +138,7 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
             <div>
               <Label className="text-xs font-semibold text-gray-600 mb-1.5 block">Estado</Label>
               <Select
+                key={category.id}
                 defaultValue={category.status}
                 onValueChange={(v) =>
                   setValue('status', v as CategoryFormValues['status'], { shouldDirty: true })

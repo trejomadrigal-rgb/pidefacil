@@ -142,6 +142,7 @@ export function MenuForm({ menu }: MenuFormProps) {
           <div>
             <Label className="text-xs font-semibold text-gray-600 mb-1.5 block">Tipo</Label>
             <Select
+              key={menu.id}
               defaultValue={menu.type}
               onValueChange={(v) =>
                 setValue('type', v as MenuFormValues['type'], { shouldDirty: true })
