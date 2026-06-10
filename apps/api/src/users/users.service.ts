@@ -40,7 +40,10 @@ export class UsersService {
   }
 
   async updateUser(businessId: string, userId: string, dto: UpdateUserDto) {
-    const user = await this.prisma.user.findFirst({ where: { id: userId, businessId } });
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, businessId },
+      select: { id: true, email: true },
+    });
     if (!user) throw new UserNotFoundException();
 
     if (dto.email && dto.email !== user.email) {
@@ -50,7 +53,12 @@ export class UsersService {
 
     return this.prisma.user.update({
       where: { id: userId },
-      data: dto,
+      data: {
+        ...(dto.name   !== undefined && { name:   dto.name }),
+        ...(dto.email  !== undefined && { email:  dto.email }),
+        ...(dto.role   !== undefined && { role:   dto.role }),
+        ...(dto.status !== undefined && { status: dto.status }),
+      },
       select: { id: true, name: true, email: true, role: true, status: true, updatedAt: true },
     });
   }
