@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { CreateBusinessDto } from './dto/create-business.dto';
@@ -43,20 +44,29 @@ export class BusinessService {
 
     const passwordHash = await bcrypt.hash(dto.ownerPassword, 10);
 
-    return this.prisma.$transaction(async (tx) => {
-      const business = await tx.business.create({
-        data: { name: dto.businessName, slug: dto.slug, phone: dto.phone },
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const business = await tx.business.create({
+          data: { name: dto.businessName, slug: dto.slug, phone: dto.phone },
+        });
+        const user = await tx.user.create({
+          data: {
+            businessId: business.id,
+            name: dto.ownerName,
+            email: dto.ownerEmail,
+            passwordHash,
+            role: 'OWNER',
+          },
+        });
+        return { business, owner: { id: user.id, email: user.email, role: user.role } };
       });
-      const user = await tx.user.create({
-        data: {
-          businessId: business.id,
-          name: dto.ownerName,
-          email: dto.ownerEmail,
-          passwordHash,
-          role: 'OWNER',
-        },
-      });
-      return { business, owner: { id: user.id, email: user.email, role: user.role } };
-    });
+    } catch (e: unknown) {
+      if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
+        const target = ((e.meta as Record<string, unknown>)?.target as string[]) ?? [];
+        if (target.some((f) => f.includes('slug'))) throw new DuplicateSlugException();
+        if (target.some((f) => f.includes('email'))) throw new DuplicateEmailException();
+      }
+      throw e;
+    }
   }
 }
