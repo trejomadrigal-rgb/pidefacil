@@ -8,6 +8,7 @@ import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { BusinessModule } from './business/business.module';
 import { UsersModule } from './users/users.module';
+import { PublicModule } from './public/public.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -37,6 +38,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AuthModule,
     BusinessModule,
     UsersModule,
+    PublicModule,
   ],
   controllers: [AppController],
   providers: [
