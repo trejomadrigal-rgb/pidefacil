@@ -26,6 +26,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
         NODE_ENV: Joi.string()
           .valid('development', 'production', 'test')
           .default('development'),
+        MINIO_ENDPOINT: Joi.string().default('http://localhost:9000'),
+        MINIO_ACCESS_KEY: Joi.string().default('minioadmin'),
+        MINIO_SECRET_KEY: Joi.string().default('minioadmin'),
+        MINIO_BUCKET: Joi.string().default('pidefacil'),
       }),
     }),
     PrismaModule,
