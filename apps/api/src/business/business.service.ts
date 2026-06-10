@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PublicService } from '../public/public.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { BusinessNotFoundException } from '../common/exceptions/business-not-found.exception';
@@ -10,7 +11,10 @@ import { DuplicateEmailException } from '../common/exceptions/duplicate-email.ex
 
 @Injectable()
 export class BusinessService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private publicService: PublicService,
+  ) {}
 
   async getMyBusiness(businessId: string) {
     const business = await this.prisma.business.findUnique({
@@ -28,10 +32,13 @@ export class BusinessService {
       if (existing) throw new DuplicateSlugException();
     }
 
-    return this.prisma.business.update({
+    const business = await this.prisma.business.update({
       where: { id: businessId },
       data: dto,
     });
+
+    await this.publicService.invalidateCache(business.slug);
+    return business;
   }
 
   async createBusiness(dto: CreateBusinessDto) {
