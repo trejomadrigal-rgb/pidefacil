@@ -133,7 +133,6 @@ model Business {
   whatsAppTemplates WhatsAppTemplate[]
   auditLogs         AuditLog[]
 
-  @@index([slug])
 }
 
 model User {
@@ -151,6 +150,7 @@ model User {
   refreshTokens RefreshToken[]
   deviceTokens  DeviceToken[]
   auditLogs     AuditLog[]
+  notifications Notification[]
 
   @@index([businessId])
   @@index([businessId, status])
@@ -167,7 +167,6 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
-  @@index([tokenHash])
 }
 
 // ─── Modelos preparados para fases futuras ───────────────────────────────────
@@ -352,7 +351,8 @@ model Notification {
   isRead     Boolean          @default(false)
   createdAt  DateTime         @default(now())
 
-  business Business @relation(fields: [businessId], references: [id])
+  business Business  @relation(fields: [businessId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
 
   @@index([businessId])
   @@index([businessId, isRead])
@@ -409,8 +409,6 @@ model Subscription {
 
   business Business @relation(fields: [businessId], references: [id])
   plan     Plan     @relation(fields: [planId], references: [id])
-
-  @@index([businessId])
 }
 
 model DeviceToken {
