@@ -17,6 +17,15 @@ importers:
 
   packages/tsconfig: {}
 
+  packages/types:
+    devDependencies:
+      '@pidefacil/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
 packages:
 
   '@turbo/darwin-64@2.9.17':
