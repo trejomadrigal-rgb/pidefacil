@@ -34,6 +34,11 @@ describe('Users (integration)', () => {
   afterAll(async () => { await app.close(); });
 
   beforeEach(async () => {
+    await prisma.extra.deleteMany();
+    await prisma.variant.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.category.deleteMany();
+    await prisma.menu.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
     await prisma.business.deleteMany();
