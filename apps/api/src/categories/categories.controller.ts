@@ -16,6 +16,7 @@ import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { ReorderCategoriesDto } from './dto/reorder-categories.dto';
 
 @Controller('categories')
 @Roles(Role.OWNER, Role.ADMIN)
@@ -34,6 +35,12 @@ export class CategoriesController {
   @HttpCode(HttpStatus.CREATED)
   create(@CurrentUser() user: CurrentUserPayload, @Body() dto: CreateCategoryDto) {
     return this.categoriesService.create(user.businessId, dto);
+  }
+
+  @Patch('reorder')
+  @HttpCode(HttpStatus.OK)
+  reorder(@CurrentUser() user: CurrentUserPayload, @Body() dto: ReorderCategoriesDto) {
+    return this.categoriesService.reorder(user.businessId, dto.items);
   }
 
   @Patch(':id')

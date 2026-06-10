@@ -144,4 +144,40 @@ describe('Categories (integration)', () => {
         .expect(404);
     });
   });
+
+  describe('PATCH /categories/reorder', () => {
+    it('actualiza sortOrder en bulk', async () => {
+      // crear menú y dos categorías
+      const menuRes = await request(app.getHttpServer())
+        .post('/menus')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ name: 'Menú Reorder', type: 'FIXED' });
+      const menuId = menuRes.body.id;
+
+      const cat1 = await request(app.getHttpServer())
+        .post('/categories')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ name: 'Cat A', menuId, sortOrder: 0 });
+      const cat2 = await request(app.getHttpServer())
+        .post('/categories')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ name: 'Cat B', menuId, sortOrder: 1 });
+
+      const res = await request(app.getHttpServer())
+        .patch('/categories/reorder')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ items: [
+          { id: cat1.body.id, sortOrder: 10 },
+          { id: cat2.body.id, sortOrder: 5 },
+        ]});
+
+      expect(res.status).toBe(200);
+
+      const list = await request(app.getHttpServer())
+        .get(`/categories?menuId=${menuId}`)
+        .set('Authorization', `Bearer ${ownerToken}`);
+      expect(list.body[0].id).toBe(cat2.body.id); // sortOrder 5 primero
+      expect(list.body[1].id).toBe(cat1.body.id); // sortOrder 10 segundo
+    });
+  });
 });

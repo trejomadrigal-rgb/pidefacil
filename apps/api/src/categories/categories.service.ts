@@ -52,6 +52,18 @@ export class CategoriesService {
     await this.invalidateCache(businessId);
   }
 
+  async reorder(businessId: string, items: { id: string; sortOrder: number }[]): Promise<void> {
+    await this.prisma.$transaction(
+      items.map(({ id, sortOrder }) =>
+        this.prisma.category.update({
+          where: { id, businessId },
+          data: { sortOrder },
+        }),
+      ),
+    );
+    await this.invalidateCache(businessId);
+  }
+
   private async findOneOrFail(businessId: string, id: string) {
     const cat = await this.prisma.category.findFirst({ where: { id, businessId } });
     if (!cat) throw new CategoryNotFoundException();
