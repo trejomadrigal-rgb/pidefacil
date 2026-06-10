@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { BusinessModule } from './business/business.module';
+import { UsersModule } from './users/users.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -31,6 +32,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     RedisModule,
     AuthModule,
     BusinessModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [
