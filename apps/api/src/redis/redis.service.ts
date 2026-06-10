@@ -1,15 +1,17 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RedisService.name);
   private client!: Redis;
 
   constructor(private config: ConfigService) {}
 
   async onModuleInit() {
     this.client = new Redis(this.config.getOrThrow<string>('REDIS_URL'));
+    this.client.on('error', (err) => this.logger.error('Redis error', err));
   }
 
   async onModuleDestroy() {
@@ -17,7 +19,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-    if (ttlSeconds) {
+    if (ttlSeconds != null && ttlSeconds > 0) {
       await this.client.set(key, value, 'EX', ttlSeconds);
     } else {
       await this.client.set(key, value);
@@ -32,6 +34,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (keys.length > 0) await this.client.del(...keys);
   }
 
+  // TODO: replace with SCAN-based iteration for production use with large keyspaces
   async keys(pattern: string): Promise<string[]> {
     return this.client.keys(pattern);
   }
