@@ -95,7 +95,10 @@ export function MenuForm({ menu }: MenuFormProps) {
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-400">Menú seleccionado</p>
+          <p className="text-xs text-gray-400">
+            Mis Menús <span className="mx-1">/</span>
+            <span className="text-brand-500">{menu.name}</span>
+          </p>
           <h2 className="font-jakarta font-bold text-brand-900 text-sm mt-0.5">{menu.name}</h2>
         </div>
         <div className="flex items-center gap-2">
