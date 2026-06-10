@@ -36,12 +36,17 @@ export function TreePanel() {
   const { data: categories = [] } = useCategories(selectedMenuId ?? undefined);
   const reorderCategories = useReorderCategories();
 
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } =
     useForm<CreateMenuForm>({ resolver: zodResolver(createMenuSchema), defaultValues: { type: 'FIXED' } });
 
   const onCreateMenu = async (values: CreateMenuForm) => {
-    await createMenu.mutateAsync(values);
-    setCreateOpen(false);
+    try {
+      await createMenu.mutateAsync(values);
+      reset();
+      setCreateOpen(false);
+    } catch {
+      // mutation error handled by createMenu.error
+    }
   };
 
   const handleCategoryReorder = (newItems: Category[]) => {
@@ -132,7 +137,7 @@ export function TreePanel() {
       </div>
 
       {/* Create Menu Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={(open) => { if (!open) reset(); setCreateOpen(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuevo Menú</DialogTitle>

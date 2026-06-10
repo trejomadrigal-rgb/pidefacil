@@ -36,6 +36,7 @@ export function SortableItem({ id, children, className }: SortableItemProps) {
       {...attributes}
     >
       <button
+        type="button"
         className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing p-1 flex-shrink-0"
         {...listeners}
       >

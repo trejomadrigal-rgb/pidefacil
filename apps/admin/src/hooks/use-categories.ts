@@ -18,6 +18,7 @@ export function useCategories(menuId?: string) {
       const { data } = await api.get(`/categories${params}`);
       return data;
     },
+    enabled: !!menuId,
   });
 }
 
