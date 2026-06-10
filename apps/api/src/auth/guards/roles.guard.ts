@@ -19,6 +19,6 @@ export class RolesGuard implements CanActivate {
     const user: CurrentUserPayload | undefined = request.user;
     if (!user) return false;
 
-    return requiredRoles.includes(user.role as Role);
+    return requiredRoles.includes(user.role);
   }
 }
