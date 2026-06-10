@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { BusinessModule } from './business/business.module';
 import { UsersModule } from './users/users.module';
 import { PublicModule } from './public/public.module';
+import { MenusModule } from './menus/menus.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -39,6 +40,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     BusinessModule,
     UsersModule,
     PublicModule,
+    MenusModule,
   ],
   controllers: [AppController],
   providers: [
