@@ -187,4 +187,37 @@ describe('Products (integration)', () => {
       expect(variants).toHaveLength(0);
     });
   });
+
+  it('PATCH /products/reorder — actualiza sortOrder en bulk', async () => {
+    const catRes = await request(app.getHttpServer())
+      .post('/categories')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Cat Reorder' });
+    const catReorderId = catRes.body.id;
+
+    const p1 = await request(app.getHttpServer())
+      .post('/products')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Prod A', price: 10, categoryId: catReorderId, sortOrder: 0 });
+    const p2 = await request(app.getHttpServer())
+      .post('/products')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Prod B', price: 20, categoryId: catReorderId, sortOrder: 1 });
+
+    const res = await request(app.getHttpServer())
+      .patch('/products/reorder')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ items: [
+        { id: p1.body.id, sortOrder: 99 },
+        { id: p2.body.id, sortOrder: 2 },
+      ]});
+
+    expect(res.status).toBe(200);
+
+    const list = await request(app.getHttpServer())
+      .get(`/products?categoryId=${catReorderId}`)
+      .set('Authorization', `Bearer ${ownerToken}`);
+    expect(list.body[0].id).toBe(p2.body.id); // sortOrder 2 primero
+    expect(list.body[1].id).toBe(p1.body.id); // sortOrder 99 segundo
+  });
 });

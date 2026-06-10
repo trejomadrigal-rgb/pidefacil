@@ -94,6 +94,18 @@ export class ProductsService {
     return updated;
   }
 
+  async reorder(businessId: string, items: { id: string; sortOrder: number }[]): Promise<void> {
+    await this.prisma.$transaction(
+      items.map(({ id, sortOrder }) =>
+        this.prisma.product.update({
+          where: { id, businessId },
+          data: { sortOrder },
+        }),
+      ),
+    );
+    await this.invalidateCache(businessId);
+  }
+
   async remove(businessId: string, id: string) {
     await this.findOneOrFail(businessId, id);
     await this.prisma.$transaction(async (tx) => {

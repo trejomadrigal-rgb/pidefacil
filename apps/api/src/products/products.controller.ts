@@ -18,6 +18,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { CreateExtraDto } from './dto/create-extra.dto';
+import { ReorderProductsDto } from './dto/reorder-products.dto';
 
 @Controller('products')
 @Roles(Role.OWNER, Role.ADMIN)
@@ -37,6 +38,12 @@ export class ProductsController {
   @HttpCode(HttpStatus.CREATED)
   create(@CurrentUser() user: CurrentUserPayload, @Body() dto: CreateProductDto) {
     return this.productsService.create(user.businessId, dto);
+  }
+
+  @Patch('reorder')
+  @HttpCode(HttpStatus.OK)
+  reorder(@CurrentUser() user: CurrentUserPayload, @Body() dto: ReorderProductsDto) {
+    return this.productsService.reorder(user.businessId, dto.items);
   }
 
   @Patch(':id')
