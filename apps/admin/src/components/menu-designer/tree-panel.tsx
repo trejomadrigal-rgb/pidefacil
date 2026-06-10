@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SortableList } from './sortable-list';
 import { useMenus, useCreateMenu, type Menu } from '@/hooks/use-menus';
-import { useCategories, useReorderCategories, type Category } from '@/hooks/use-categories';
+import { useCategories, useCreateCategory, useReorderCategories, type Category } from '@/hooks/use-categories';
 import { useMenuDesignerStore } from '@/store/menu-designer.store';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +21,11 @@ const createMenuSchema = z.object({
 });
 type CreateMenuForm = z.infer<typeof createMenuSchema>;
 
+const createCategorySchema = z.object({
+  name: z.string().min(2, 'Mínimo 2 caracteres'),
+});
+type CreateCategoryForm = z.infer<typeof createCategorySchema>;
+
 const STATUS_BADGE: Record<string, string> = {
   PUBLISHED: 'bg-green-500',
   DRAFT: 'bg-gray-400',
@@ -28,8 +33,10 @@ const STATUS_BADGE: Record<string, string> = {
 
 export function TreePanel() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const { data: menus = [], isLoading } = useMenus();
   const createMenu = useCreateMenu();
+  const createCategory = useCreateCategory();
   const { selectedMenuId, selectedCategoryId, selectMenu, selectCategory, togglePreview } =
     useMenuDesignerStore();
 
@@ -39,6 +46,13 @@ export function TreePanel() {
   const { register, handleSubmit, setValue, reset, formState: { errors, isSubmitting } } =
     useForm<CreateMenuForm>({ resolver: zodResolver(createMenuSchema), defaultValues: { type: 'FIXED' } });
 
+  const {
+    register: registerCategory,
+    handleSubmit: handleSubmitCategory,
+    reset: resetCategory,
+    formState: { errors: categoryErrors, isSubmitting: isCategorySubmitting },
+  } = useForm<CreateCategoryForm>({ resolver: zodResolver(createCategorySchema) });
+
   const onCreateMenu = async (values: CreateMenuForm) => {
     try {
       await createMenu.mutateAsync(values);
@@ -46,6 +60,17 @@ export function TreePanel() {
       setCreateOpen(false);
     } catch {
       // mutation error handled by createMenu.error
+    }
+  };
+
+  const onCreateCategory = async (values: CreateCategoryForm) => {
+    if (!selectedMenuId) return;
+    try {
+      await createCategory.mutateAsync({ name: values.name, menuId: selectedMenuId });
+      resetCategory();
+      setCreateCategoryOpen(false);
+    } catch {
+      // mutation error handled by createCategory.error
     }
   };
 
@@ -113,7 +138,7 @@ export function TreePanel() {
                     className="pl-6"
                   />
                   <button
-                    onClick={() => {}}
+                    onClick={() => setCreateCategoryOpen(true)}
                     className="pl-8 text-[11px] text-brand-500 hover:text-brand-700 mt-1"
                   >
                     + Categoría
@@ -161,6 +186,39 @@ export function TreePanel() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
               <Button type="submit" disabled={isSubmitting} className="bg-brand-500 hover:bg-brand-700 text-white">
+                Crear
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Category Dialog */}
+      <Dialog open={createCategoryOpen} onOpenChange={(open) => { if (!open) resetCategory(); setCreateCategoryOpen(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva Categoría</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCategory(onCreateCategory)} className="space-y-4">
+            <div>
+              <Input
+                placeholder="Nombre de la categoría"
+                {...registerCategory('name')}
+                className="h-11 rounded-xl"
+              />
+              {categoryErrors.name && (
+                <p className="text-xs text-red-500 mt-1">{categoryErrors.name.message}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateCategoryOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isCategorySubmitting}
+                className="bg-brand-500 hover:bg-brand-700 text-white"
+              >
                 Crear
               </Button>
             </DialogFooter>
