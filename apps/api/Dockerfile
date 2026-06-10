@@ -10,8 +10,8 @@ COPY packages/ ./packages/
 # Copy only the api app
 COPY apps/api/ ./apps/api/
 
-# Install all dependencies
-RUN pnpm install --frozen-lockfile
+# Install all dependencies (ignore NODE_ENV to always include devDeps in build stage)
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # Build the api
 RUN pnpm build --filter @pidefacil/api

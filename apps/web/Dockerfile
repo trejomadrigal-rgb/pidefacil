@@ -10,8 +10,8 @@ COPY packages/ ./packages/
 # Copy only the web app
 COPY apps/web/ ./apps/web/
 
-# Install all dependencies
-RUN pnpm install --frozen-lockfile
+# Install all dependencies (ignore NODE_ENV to always include devDeps in build stage)
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # Build the web app
 ENV NEXT_TELEMETRY_DISABLED=1
