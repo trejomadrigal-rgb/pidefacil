@@ -12,6 +12,7 @@ import { PublicModule } from './public/public.module';
 import { MenusModule } from './menus/menus.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
+import { FilesModule } from './files/files.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -45,6 +46,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     MenusModule,
     CategoriesModule,
     ProductsModule,
+    FilesModule,
   ],
   controllers: [AppController],
   providers: [
