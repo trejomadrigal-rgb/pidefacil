@@ -1,0 +1,426 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  ADMIN
+  OPERATOR
+  KITCHEN
+  MENU_DESIGNER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BusinessStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum MenuType {
+  FIXED
+  DAILY
+  WEEKLY
+  SPECIAL
+}
+
+enum MenuStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OrderStatus {
+  NEW
+  UNDER_REVIEW
+  WAITING_CONFIRMATION
+  CONFIRMED
+  IN_PREPARATION
+  READY
+  DELIVERED
+  FINISHED
+  REJECTED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum TrustLevel {
+  NEW
+  FREQUENT
+  TRUSTED
+  RISK
+  BLOCKED
+}
+
+enum NotificationType {
+  NEW_PREORDER
+  ORDER_READY
+  ORDER_CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  CONFIRM
+  CANCEL
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum Platform {
+  ANDROID
+  IOS
+  WEB
+}
+
+// ─── Modelos activos en Phase 1 ──────────────────────────────────────────────
+
+model Business {
+  id        String         @id @default(cuid())
+  name      String
+  slug      String         @unique
+  phone     String
+  whatsapp  String?
+  logoUrl   String?
+  coverUrl  String?
+  address   String?
+  timezone  String         @default("America/Mexico_City")
+  status    BusinessStatus @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  users             User[]
+  menus             Menu[]
+  categories        Category[]
+  products          Product[]
+  orders            Order[]
+  customers         Customer[]
+  subscription      Subscription?
+  notifications     Notification[]
+  whatsAppTemplates WhatsAppTemplate[]
+  auditLogs         AuditLog[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  businessId   String
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(OPERATOR)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  business      Business       @relation(fields: [businessId], references: [id])
+  refreshTokens RefreshToken[]
+  deviceTokens  DeviceToken[]
+  auditLogs     AuditLog[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// ─── Modelos preparados para fases futuras ───────────────────────────────────
+
+model Customer {
+  id          String     @id @default(cuid())
+  businessId  String
+  name        String
+  phone       String
+  totalOrders Int        @default(0)
+  trustLevel  TrustLevel @default(NEW)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  business  Business  @relation(fields: [businessId], references: [id])
+  addresses Address[]
+  orders    Order[]
+
+  @@index([businessId])
+  @@index([businessId, phone])
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  customerId String
+  label      String
+  street     String
+  number     String
+  references String?
+  latitude   Float?
+  longitude  Float?
+  isDefault  Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+}
+
+model Menu {
+  id          String     @id @default(cuid())
+  businessId  String
+  name        String
+  type        MenuType   @default(FIXED)
+  status      MenuStatus @default(DRAFT)
+  startDate   DateTime?
+  endDate     DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  business   Business   @relation(fields: [businessId], references: [id])
+  categories Category[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+}
+
+model Category {
+  id         String         @id @default(cuid())
+  businessId String
+  menuId     String?
+  name       String
+  sortOrder  Int            @default(0)
+  status     CategoryStatus @default(ACTIVE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id])
+  menu     Menu?     @relation(fields: [menuId], references: [id])
+  products Product[]
+
+  @@index([businessId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  businessId  String
+  categoryId  String
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  imageUrl    String?
+  isAvailable Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business   Business    @relation(fields: [businessId], references: [id])
+  category   Category    @relation(fields: [categoryId], references: [id])
+  variants   Variant[]
+  extras     Extra[]
+  orderItems OrderItem[]
+
+  @@index([businessId])
+  @@index([businessId, categoryId])
+  @@index([businessId, isAvailable])
+}
+
+model Variant {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  price     Decimal? @db.Decimal(10, 2)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+model Extra {
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  price     Decimal @db.Decimal(10, 2)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  businessId  String
+  customerId  String?
+  orderNumber String
+  status      OrderStatus @default(NEW)
+  subtotal    Decimal     @db.Decimal(10, 2)
+  discount    Decimal     @default(0) @db.Decimal(10, 2)
+  deliveryFee Decimal     @default(0) @db.Decimal(10, 2)
+  total       Decimal     @db.Decimal(10, 2)
+  notes       String?
+  scheduledAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  business Business    @relation(fields: [businessId], references: [id])
+  customer Customer?   @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  payment  Payment?
+
+  @@unique([businessId, orderNumber])
+  @@index([businessId])
+  @@index([businessId, status])
+  @@index([businessId, createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  notes     String?
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  orderId   String        @unique
+  method    PaymentMethod
+  status    PaymentStatus @default(PENDING)
+  amount    Decimal       @db.Decimal(10, 2)
+  paidAt    DateTime?
+  reference String?
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  businessId String
+  userId     String?
+  type       NotificationType
+  title      String
+  message    String
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, isRead])
+}
+
+model WhatsAppTemplate {
+  id         String @id @default(cuid())
+  businessId String
+  name       String
+  type       String
+  message    String
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  businessId String
+  userId     String?
+  entity     String
+  entityId   String
+  action     AuditAction
+  oldValues  Json?
+  newValues  Json?
+  createdAt  DateTime    @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, entity, entityId])
+}
+
+model Plan {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  monthlyPrice Decimal @db.Decimal(10, 2)
+  maxUsers     Int
+  maxProducts  Int
+  maxBranches  Int
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id         String             @id @default(cuid())
+  businessId String             @unique
+  planId     String
+  startDate  DateTime
+  endDate    DateTime?
+  status     SubscriptionStatus @default(TRIAL)
+
+  business Business @relation(fields: [businessId], references: [id])
+  plan     Plan     @relation(fields: [planId], references: [id])
+
+  @@index([businessId])
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  Platform
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
