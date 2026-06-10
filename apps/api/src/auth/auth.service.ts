@@ -99,22 +99,26 @@ export class AuthService {
   async refresh(refreshToken: string) {
     const tokenHash = this.hashToken(refreshToken);
 
+    // Fast-path: Redis check
     const inRedis = await this.redis.get(`rt:${tokenHash}`);
     if (!inRedis) throw new TokenExpiredException();
 
-    const dbToken = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
-      include: { user: { include: { business: true } } },
+    // Atomic: lookup + revoke in one transaction
+    const dbToken = await this.prisma.$transaction(async (tx) => {
+      const token = await tx.refreshToken.findUnique({
+        where: { tokenHash },
+        include: { user: { include: { business: true } } },
+      });
+      if (!token || token.isRevoked || token.expiresAt < new Date()) {
+        throw new TokenExpiredException();
+      }
+      await tx.refreshToken.update({
+        where: { id: token.id },
+        data: { isRevoked: true },
+      });
+      return token;
     });
 
-    if (!dbToken || dbToken.isRevoked || dbToken.expiresAt < new Date()) {
-      throw new TokenExpiredException();
-    }
-
-    await this.prisma.refreshToken.update({
-      where: { id: dbToken.id },
-      data: { isRevoked: true },
-    });
     await this.redis.del(`rt:${tokenHash}`);
 
     const { user } = dbToken;
