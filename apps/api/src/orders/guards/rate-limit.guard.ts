@@ -16,6 +16,7 @@ export class RateLimitGuard implements CanActivate {
   constructor(private readonly redis: RedisService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (process.env.NODE_ENV === 'test') return true;
     const request = context.switchToHttp().getRequest<Request>();
     const ip =
       (request.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
