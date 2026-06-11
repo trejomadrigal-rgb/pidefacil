@@ -1,10 +1,12 @@
+import { DeliveryType, OrderStatus } from '@prisma/client';
+
 export class OrderListItemDto {
   id!: string;
   orderNumber!: string;
-  status!: string;
+  status!: OrderStatus;
   customerName!: string;
   customerPhone!: string;
-  deliveryType!: string;
+  deliveryType!: DeliveryType;
   total!: number;
   itemCount!: number;
   createdAt!: Date;
