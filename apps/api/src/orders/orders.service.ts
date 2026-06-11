@@ -17,6 +17,8 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   FINISHED:             [],
   REJECTED:             [],
   CANCELLED:            [],
+  // TODO: WAITING_CONFIRMATION is a dead state — no inbound transitions exist yet.
+  // Define transitions or remove from enum once business rules are validated post-pilot.
   WAITING_CONFIRMATION: [],
 };
 

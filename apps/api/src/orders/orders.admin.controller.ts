@@ -6,6 +6,8 @@ import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user
 import { OrdersService } from './orders.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
+// TODO(post-pilot): restrict @Patch(':id/status') to OWNER/ADMIN/OPERATOR only —
+// KITCHEN should be read-only (no CANCEL/REJECT). Requires per-method @Roles override.
 @Controller('orders')
 @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR, Role.KITCHEN)
 export class OrdersAdminController {
