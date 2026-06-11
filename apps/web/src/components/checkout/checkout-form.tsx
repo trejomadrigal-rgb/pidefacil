@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,8 @@ import { z } from 'zod';
 import { useCartStore } from '@/store/cart.store';
 import { createOrder } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+
+const PROFILE_KEY = 'pidefacil_guest_profile';
 
 const schema = z
   .object({
@@ -19,6 +21,7 @@ const schema = z
     street: z.string().optional(),
     references: z.string().optional(),
     notes: z.string().optional(),
+    deliveryNotes: z.string().max(300).optional(),
   })
   .refine(
     (data) => {
@@ -47,6 +50,7 @@ export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormPr
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -54,6 +58,25 @@ export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormPr
   });
 
   const deliveryType = watch('deliveryType');
+
+  // Pre-fill from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (raw) {
+        const profile = JSON.parse(raw) as {
+          name?: string;
+          phone?: string;
+          deliveryNotes?: string;
+        };
+        if (profile.name) setValue('name', profile.name);
+        if (profile.phone) setValue('phone', profile.phone);
+        if (profile.deliveryNotes) setValue('deliveryNotes', profile.deliveryNotes);
+      }
+    } catch {
+      // ignore malformed data
+    }
+  }, [setValue]);
 
   const onSubmit = async (values: FormValues) => {
     setErrorMsg('');
@@ -67,6 +90,7 @@ export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormPr
             ? { street: values.street, references: values.references }
             : undefined,
         notes: values.notes,
+        deliveryNotes: values.deliveryNotes || undefined,
         items: items.map((i) => ({
           productId: i.productId,
           variantId: i.variantId,
@@ -75,6 +99,11 @@ export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormPr
           notes: i.notes,
         })),
       });
+      // Persist customer profile for next visit
+      localStorage.setItem(
+        PROFILE_KEY,
+        JSON.stringify({ name: values.name, phone: values.phone, deliveryNotes: values.deliveryNotes }),
+      );
       clearCart();
       router.push(
         `/${slug}/pedido-enviado?folio=${result.orderNumber}&phone=${values.phone}&businessPhone=${encodeURIComponent(businessPhone ?? '')}`,
@@ -198,6 +227,13 @@ export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormPr
               {...register('references')}
               placeholder="Referencias (opcional)"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-500"
+            />
+            <textarea
+              {...register('deliveryNotes')}
+              placeholder="Indicaciones para tu entrega (opcional) — Ej: Edificio Azul, preguntar en recepción del 3er piso"
+              rows={2}
+              maxLength={300}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-brand-500"
             />
           </div>
         )}

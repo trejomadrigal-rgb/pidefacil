@@ -60,6 +60,7 @@ export interface CreateOrderPayload {
   deliveryType: 'PICKUP' | 'DELIVERY';
   address?: { street: string; references?: string };
   notes?: string;
+  deliveryNotes?: string;
   items: CreateOrderItem[];
 }
 
