@@ -104,6 +104,8 @@ export class OrdersService {
       (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.FINISHED) &&
       order.customerId
     ) {
+      // Increment is atomic; concurrent DELIVERED writes both increment safely.
+      // Both then write the same trustLevel (idempotent) — acceptable for MVP.
       const updated = await this.prisma.customer.update({
         where: { id: order.customerId },
         data: { totalOrders: { increment: 1 } },

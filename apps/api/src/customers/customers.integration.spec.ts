@@ -365,7 +365,8 @@ describe('CustomersModule (integration)', () => {
         await request(app.getHttpServer())
           .patch(`/orders/${orderId}/status`)
           .set('Authorization', `Bearer ${ownerToken2}`)
-          .send({ status });
+          .send({ status })
+          .expect(200);
       }
     };
 
@@ -406,6 +407,21 @@ describe('CustomersModule (integration)', () => {
         where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
       });
       expect(customer!.trustLevel).toBe('RISK');
+    });
+
+    it('no sube trust level si está en BLOCKED', async () => {
+      const orderId = await placeOrder();
+      await prisma.customer.update({
+        where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
+        data: { trustLevel: 'BLOCKED', totalOrders: 2 },
+      });
+
+      await advanceToDelivered(orderId);
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
+      });
+      expect(customer!.trustLevel).toBe('BLOCKED');
     });
   });
 });
