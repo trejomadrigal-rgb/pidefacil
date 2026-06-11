@@ -119,7 +119,8 @@ describe('OrdersModule (integration)', () => {
         ownerName: 'Dueño Test',
         email: `owner-${suffix}@test.com`,
         password: 'Password123!',
-      });
+      })
+      .expect(201);
     ownerToken = registerRes.body.access_token;
     authBusinessId = registerRes.body.business.id;
 
@@ -369,12 +370,12 @@ describe('OrdersModule (integration)', () => {
       expect(leaked).toBeUndefined();
     });
 
-    it('no retorna pedidos DELIVERED/CANCELLED/REJECTED', async () => {
+    it('no retorna pedidos en estado terminal (DELIVERED)', async () => {
       // Create a DELIVERED order directly in DB
       const deliveredOrder = await prisma.order.create({
         data: {
           businessId: authBusinessId,
-          orderNumber: '999',
+          orderNumber: `delivered-${Date.now()}`,
           status: 'DELIVERED',
           subtotal: 25,
           total: 25,

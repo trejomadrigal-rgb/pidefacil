@@ -4,8 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusDto } from './dto/order-status.dto';
 import { OrderListItemDto } from './dto/order-list-item.dto';
-import { OrderDetailDto } from './dto/order-detail.dto';
 
+// Used by updateStatus() — defined here so it's available when Task 4 adds that method
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   NEW:                  [OrderStatus.UNDER_REVIEW, OrderStatus.REJECTED, OrderStatus.CANCELLED],
   UNDER_REVIEW:         [OrderStatus.CONFIRMED, OrderStatus.REJECTED, OrderStatus.CANCELLED],
@@ -33,7 +33,7 @@ export class OrdersService {
       where: {
         businessId,
         createdAt: { gte: startOfDay },
-        status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED] },
+        status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.WAITING_CONFIRMATION] },
       },
       include: { _count: { select: { items: true } } },
       orderBy: { createdAt: 'desc' },
