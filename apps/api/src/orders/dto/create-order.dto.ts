@@ -5,7 +5,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   MinLength,
   ValidateNested,
@@ -13,16 +12,16 @@ import {
 import { DeliveryType } from '@prisma/client';
 
 export class OrderItemDto {
-  @IsUUID()
+  @IsString()
   productId!: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   variantId?: string;
 
   @IsOptional()
   @IsArray()
-  @IsUUID('all', { each: true })
+  @IsString({ each: true })
   extraIds?: string[];
 
   @IsInt()
@@ -55,7 +54,7 @@ export class AddressDto {
 }
 
 export class CreateOrderDto {
-  @IsUUID()
+  @IsString()
   businessId!: string;
 
   @ValidateNested()
