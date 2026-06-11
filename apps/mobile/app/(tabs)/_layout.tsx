@@ -26,6 +26,10 @@ export default function TabsLayout() {
         options={{ title: 'Pedidos', tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} /> }}
       />
       <Tabs.Screen
+        name="clientes"
+        options={{ title: 'Clientes', tabBarIcon: ({ focused }) => <TabIcon emoji="👥" focused={focused} /> }}
+      />
+      <Tabs.Screen
         name="perfil"
         options={{ title: 'Perfil', tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} /> }}
       />
