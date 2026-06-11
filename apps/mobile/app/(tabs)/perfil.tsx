@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth-store';
 import { clearTokens, getItem } from '../../src/lib/secure-storage';
 import { logoutApi } from '../../src/api/auth';
+import { disconnectSocket } from '../../src/lib/socket';
 
 const ROLE_LABELS: Record<string, string> = {
   OWNER: 'Propietario',
@@ -24,10 +25,12 @@ export default function PerfilScreen() {
       if (refreshToken) await logoutApi(refreshToken);
       await clearTokens();
       clearAuth();
+      disconnectSocket();
       router.replace('/login');
     } catch {
       await clearTokens();
       clearAuth();
+      disconnectSocket();
       router.replace('/login');
     }
   }, [router, clearAuth]);

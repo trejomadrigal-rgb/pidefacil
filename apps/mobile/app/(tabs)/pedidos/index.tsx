@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOrders } from '../../../src/hooks/use-orders';
-import { getSocket } from '../../../src/lib/socket';
+import { getSocket, disconnectSocket } from '../../../src/lib/socket';
 import { useAuthStore } from '../../../src/store/auth-store';
 import { clearTokens, getItem } from '../../../src/lib/secure-storage';
 import { logoutApi } from '../../../src/api/auth';
@@ -103,6 +103,7 @@ export default function PedidosScreen() {
     } catch { /* best-effort */ }
     await clearTokens();
     clearAuth();
+    disconnectSocket();
     router.replace('/login');
   }, [router, clearAuth]);
 
