@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusDto } from './dto/order-status.dto';
 import { OrderListItemDto } from './dto/order-list-item.dto';
+import { OrderDetailDto } from './dto/order-detail.dto';
 
 // Used by updateStatus() — defined here so it's available when Task 4 adds that method
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -50,6 +51,34 @@ export class OrdersService {
       itemCount: o._count.items,
       createdAt: o.createdAt,
     }));
+  }
+
+  async findOne(id: string, businessId: string): Promise<OrderDetailDto> {
+    const order = await this.prisma.order.findFirst({
+      where: { id, businessId },
+      include: { items: { include: { product: { select: { name: true } } } } },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      deliveryType: order.deliveryType,
+      deliveryAddress: order.deliveryAddress,
+      notes: order.notes,
+      subtotal: Number(order.subtotal),
+      total: Number(order.total),
+      createdAt: order.createdAt,
+      items: order.items.map((i) => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        subtotal: Number(i.subtotal),
+        notes: i.notes,
+      })),
+    };
   }
 
   async create(dto: CreateOrderDto) {

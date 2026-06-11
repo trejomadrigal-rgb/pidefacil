@@ -399,4 +399,74 @@ describe('OrdersModule (integration)', () => {
       await request(app.getHttpServer()).get('/orders').expect(401);
     });
   });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // GET /orders/:id (authenticated)
+  // ────────────────────────────────────────────────────────────────────────
+  describe('GET /orders/:id', () => {
+    let testOrderId: string;
+
+    beforeAll(async () => {
+      // Create directly via Prisma to avoid hitting the HTTP rate limit
+      // (the suite already makes 10 POST /public/orders calls before this point)
+      const order = await prisma.order.create({
+        data: {
+          businessId: authBusinessId,
+          orderNumber: `detail-${Date.now()}`,
+          status: 'NEW',
+          customerName: 'Detalle Test',
+          customerPhone: '5551234567',
+          deliveryType: 'PICKUP',
+          subtotal: 50,
+          total: 50,
+          items: {
+            create: [
+              {
+                productId: authProductId,
+                quantity: 2,
+                price: 25,
+                subtotal: 50,
+              },
+            ],
+          },
+        },
+      });
+      testOrderId = order.id;
+      authOrderIds.push(testOrderId);
+    }, 15000);
+
+    it('retorna detalle completo del pedido con items', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/orders/${testOrderId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.id).toBe(testOrderId);
+      expect(res.body.status).toBe('NEW');
+      expect(res.body.customerName).toBe('Detalle Test');
+      expect(res.body.customerPhone).toBe('5551234567');
+      expect(res.body.deliveryType).toBe('PICKUP');
+      expect(res.body.deliveryAddress).toBeNull();
+      expect(typeof res.body.subtotal).toBe('number');
+      expect(typeof res.body.total).toBe('number');
+      expect(res.body.createdAt).toBeDefined();
+      expect(Array.isArray(res.body.items)).toBe(true);
+      expect(res.body.items.length).toBe(1);
+      expect(res.body.items[0].name).toBe('Taco Auth');
+      expect(res.body.items[0].quantity).toBe(2);
+      expect(typeof res.body.items[0].subtotal).toBe('number');
+    });
+
+    it('retorna 404 si el pedido pertenece a otro negocio', async () => {
+      // createdOrderIds[0] belongs to businessId (the other seeded business)
+      await request(app.getHttpServer())
+        .get(`/orders/${createdOrderIds[0]}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(404);
+    });
+
+    it('retorna 401 sin JWT', async () => {
+      await request(app.getHttpServer()).get(`/orders/${testOrderId}`).expect(401);
+    });
+  });
 });
