@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,12 +49,22 @@ export default function OrderDetailScreen() {
     ]);
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = useCallback(async () => {
     const digits = order.customerPhone.replace(/\D/g, '');
     const phone = digits.length === 10 ? `52${digits}` : digits;
     const text = encodeURIComponent(`Hola, sobre tu pedido #${order.orderNumber} de PideFacil`);
-    Linking.openURL(`https://wa.me/${phone}?text=${text}`);
-  };
+    const url = `https://wa.me/${phone}?text=${text}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        Alert.alert('WhatsApp no disponible', 'No se encontró WhatsApp en este dispositivo.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp.');
+    }
+  }, [order.customerPhone, order.orderNumber]);
 
   return (
     <ScrollView

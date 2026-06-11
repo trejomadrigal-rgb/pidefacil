@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const BASE_URL = 'http://2.24.201.108:3000';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://2.24.201.108:3000';
 
 export interface AuthResponse {
   access_token: string;
