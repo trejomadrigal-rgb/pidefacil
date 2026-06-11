@@ -27,8 +27,9 @@ COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
 RUN pnpm install --frozen-lockfile --prod
 
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma && node apps/api/dist/main"]
