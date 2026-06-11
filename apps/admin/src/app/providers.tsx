@@ -27,7 +27,7 @@ function SocketProvider() {
     const s = connectSocket(accessToken);
 
     const handler = (data: NewOrderEvent) => {
-      toast(`Nuevo pedido #${data.orderNumber}`, {
+      toast(`📋 Nuevo pedido #${data.orderNumber}`, {
         description: `${data.customerName} · $${data.total}`,
         duration: 8000,
         action: {
