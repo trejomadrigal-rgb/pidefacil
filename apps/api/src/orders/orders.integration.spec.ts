@@ -21,6 +21,12 @@ describe('OrdersModule (integration)', () => {
   // Track all created order / orderItem IDs for cleanup
   const createdOrderIds: string[] = [];
 
+  // Auth variables for authenticated endpoint tests
+  let ownerToken: string;
+  let authBusinessId: string;
+  let authProductId: string;
+  const authOrderIds: string[] = [];
+
   const suffix = Date.now();
 
   beforeAll(async () => {
@@ -102,6 +108,44 @@ describe('OrdersModule (integration)', () => {
       },
     });
     otherProductId = otherProduct.id;
+
+    // ── Auth setup: register owner to get JWT for authenticated tests ──
+    const registerRes = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        businessName: `Fonda Auth Test ${suffix}`,
+        slug: `fonda-auth-${suffix}`,
+        phone: '5550001111',
+        ownerName: 'Dueño Test',
+        email: `owner-${suffix}@test.com`,
+        password: 'Password123!',
+      });
+    ownerToken = registerRes.body.access_token;
+    authBusinessId = registerRes.body.business.id;
+
+    // Create menu + category + product for authBusiness
+    const authMenu = await prisma.menu.create({
+      data: { businessId: authBusinessId, name: 'Menú Auth', type: 'FIXED' },
+    });
+    const authCategory = await prisma.category.create({
+      data: {
+        businessId: authBusinessId,
+        menuId: authMenu.id,
+        name: 'Categoría Auth',
+        status: 'ACTIVE',
+        sortOrder: 0,
+      },
+    });
+    const authProduct = await prisma.product.create({
+      data: {
+        businessId: authBusinessId,
+        categoryId: authCategory.id,
+        name: 'Taco Auth',
+        price: 25,
+        isAvailable: true,
+      },
+    });
+    authProductId = authProduct.id;
   }, 30000);
 
   afterAll(async () => {
@@ -114,6 +158,16 @@ describe('OrdersModule (integration)', () => {
     await prisma.category.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.menu.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.business.deleteMany({ where: { id: { in: [businessId, otherBusinessId] } } });
+
+    // Clean up auth business data
+    await prisma.orderItem.deleteMany({ where: { orderId: { in: authOrderIds } } });
+    await prisma.order.deleteMany({ where: { id: { in: authOrderIds } } });
+    await prisma.product.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.category.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.menu.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.refreshToken.deleteMany({ where: { user: { businessId: authBusinessId } } });
+    await prisma.user.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.business.deleteMany({ where: { id: authBusinessId } });
 
     await app.close();
   }, 30000);
@@ -259,6 +313,89 @@ describe('OrdersModule (integration)', () => {
       await request(app.getHttpServer())
         .get(`/public/business/slug-no-existe-${suffix}/orders/${testOrderNumber}`)
         .expect(404);
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // GET /orders (authenticated)
+  // ────────────────────────────────────────────────────────────────────────
+  describe('GET /orders', () => {
+    let activeOrderId: string;
+
+    beforeAll(async () => {
+      // Create one active order for authBusiness
+      const res = await request(app.getHttpServer())
+        .post('/public/orders')
+        .send({
+          businessId: authBusinessId,
+          customer: { name: 'Cliente Test', phone: '5559998877' },
+          deliveryType: 'PICKUP',
+          items: [{ productId: authProductId, quantity: 1 }],
+        })
+        .expect(201);
+      activeOrderId = res.body.id;
+      authOrderIds.push(activeOrderId);
+    }, 15000);
+
+    it('retorna pedidos activos de hoy del negocio autenticado', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/orders')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(Array.isArray(res.body)).toBe(true);
+      const order = res.body.find((o: { id: string }) => o.id === activeOrderId);
+      expect(order).toBeDefined();
+      expect(order.status).toBe('NEW');
+      expect(order.customerName).toBe('Cliente Test');
+      expect(order.deliveryType).toBe('PICKUP');
+      expect(typeof order.total).toBe('number');
+      expect(typeof order.itemCount).toBe('number');
+      expect(order.itemCount).toBe(1);
+      expect(order.orderNumber).toBeDefined();
+      expect(order.createdAt).toBeDefined();
+    });
+
+    it('no retorna pedidos de otro negocio (aislamiento multi-tenant)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/orders')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      // businessId belongs to the "Fonda Pedidos Test" — not authBusiness
+      const leaked = res.body.find((o: { id: string }) =>
+        createdOrderIds.includes(o.id) && !authOrderIds.includes(o.id),
+      );
+      expect(leaked).toBeUndefined();
+    });
+
+    it('no retorna pedidos DELIVERED/CANCELLED/REJECTED', async () => {
+      // Create a DELIVERED order directly in DB
+      const deliveredOrder = await prisma.order.create({
+        data: {
+          businessId: authBusinessId,
+          orderNumber: '999',
+          status: 'DELIVERED',
+          subtotal: 25,
+          total: 25,
+          customerName: 'Entregado Test',
+          customerPhone: '5550000000',
+          deliveryType: 'PICKUP',
+        },
+      });
+      authOrderIds.push(deliveredOrder.id);
+
+      const res = await request(app.getHttpServer())
+        .get('/orders')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const found = res.body.find((o: { id: string }) => o.id === deliveredOrder.id);
+      expect(found).toBeUndefined();
+    });
+
+    it('retorna 401 sin JWT', async () => {
+      await request(app.getHttpServer()).get('/orders').expect(401);
     });
   });
 });

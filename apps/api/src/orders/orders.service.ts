@@ -1,16 +1,56 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusDto } from './dto/order-status.dto';
-import { Prisma } from '@prisma/client';
+import { OrderListItemDto } from './dto/order-list-item.dto';
+import { OrderDetailDto } from './dto/order-detail.dto';
+
+const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
+  NEW:                  [OrderStatus.UNDER_REVIEW, OrderStatus.REJECTED, OrderStatus.CANCELLED],
+  UNDER_REVIEW:         [OrderStatus.CONFIRMED, OrderStatus.REJECTED, OrderStatus.CANCELLED],
+  CONFIRMED:            [OrderStatus.IN_PREPARATION, OrderStatus.CANCELLED],
+  IN_PREPARATION:       [OrderStatus.READY],
+  READY:                [OrderStatus.DELIVERED],
+  DELIVERED:            [],
+  FINISHED:             [],
+  REJECTED:             [],
+  CANCELLED:            [],
+  WAITING_CONFIRMATION: [],
+};
 
 @Injectable()
 export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async findActive(businessId: string): Promise<OrderListItemDto[]> {
+    // UTC midnight — aceptable para MVP. Pedidos 00:00-06:00 hora México
+    // aparecen en el "día siguiente" UTC. Corregir post-piloto con timezone.
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        businessId,
+        createdAt: { gte: startOfDay },
+        status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED] },
+      },
+      include: { _count: { select: { items: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return orders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      customerName: o.customerName,
+      customerPhone: o.customerPhone,
+      deliveryType: o.deliveryType,
+      total: Number(o.total),
+      itemCount: o._count.items,
+      createdAt: o.createdAt,
+    }));
+  }
 
   async create(dto: CreateOrderDto) {
     const business = await this.prisma.business.findUnique({
