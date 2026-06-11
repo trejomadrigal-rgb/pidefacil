@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   ScrollView, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOrders } from '../../../src/hooks/use-orders';
 import { useAuthStore } from '../../../src/store/auth-store';
 import { clearTokens, getItem } from '../../../src/lib/secure-storage';
@@ -59,12 +60,25 @@ export default function PedidosScreen() {
   const router = useRouter();
   const { businessName, clearAuth } = useAuthStore();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const { data: orders = [], isLoading, isRefetching, refetch } = useOrders();
+  const { data: orders = [], isLoading, isRefetching, refetch, isError } = useOrders();
 
-  const sorted = [...orders].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  const sorted = useMemo(
+    () => [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [orders],
   );
-  const filtered = activeFilter ? sorted.filter((o) => o.status === activeFilter) : sorted;
+  const filtered = useMemo(
+    () => (activeFilter ? sorted.filter((o) => o.status === activeFilter) : sorted),
+    [sorted, activeFilter],
+  );
+
+  const insets = useSafeAreaInsets();
+
+  const renderItem = useCallback(
+    ({ item }: { item: OrderListItem }) => (
+      <OrderCard order={item} onPress={() => router.push(`/(tabs)/pedidos/${item.id}`)} />
+    ),
+    [router],
+  );
 
   const handleLogout = useCallback(async () => {
     try {
@@ -79,7 +93,10 @@ export default function PedidosScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-brand-900 pt-14 pb-4 px-4 flex-row items-center justify-between">
+      <View
+        className="bg-brand-900 pb-4 px-4 flex-row items-center justify-between"
+        style={{ paddingTop: insets.top + 8 }}
+      >
         <Text className="text-white font-bold text-lg" numberOfLines={1}>
           {businessName || 'Pedidos'}
         </Text>
@@ -117,13 +134,17 @@ export default function PedidosScreen() {
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color="#FF6B35" size="large" />
         </View>
+      ) : isError ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="text-red-500 text-base text-center font-medium">
+            Error al cargar pedidos. Desliza hacia abajo para reintentar.
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <OrderCard order={item} onPress={() => router.push(`/(tabs)/pedidos/${item.id}`)} />
-          )}
+          renderItem={renderItem}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#FF6B35" />
           }
