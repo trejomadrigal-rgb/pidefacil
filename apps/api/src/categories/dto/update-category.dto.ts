@@ -9,6 +9,10 @@ export class UpdateCategoryDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  menuId?: string;
+
+  @IsOptional()
   @IsEnum(CategoryStatus)
   status?: CategoryStatus;
 
