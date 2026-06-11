@@ -35,4 +35,4 @@ COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 RUN pnpm install --frozen-lockfile --prod
 
 EXPOSE 3000
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma && node apps/api/dist/main"]
+CMD ["sh", "-c", "apps/api/node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma && node apps/api/dist/main"]
