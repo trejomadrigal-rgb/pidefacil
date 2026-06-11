@@ -34,6 +34,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (keys.length > 0) await this.client.del(...keys);
   }
 
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
+
+  async expire(key: string, seconds: number): Promise<void> {
+    await this.client.expire(key, seconds);
+  }
+
   // TODO: replace with SCAN-based iteration for production use with large keyspaces
   async keys(pattern: string): Promise<string[]> {
     return this.client.keys(pattern);
