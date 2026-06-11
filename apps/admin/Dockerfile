@@ -13,10 +13,6 @@ COPY apps/admin/ ./apps/admin/
 # Install all dependencies (ignore NODE_ENV to always include devDeps in build stage)
 RUN NODE_ENV=development pnpm install --frozen-lockfile
 
-# Accept build-time env var so Next.js embeds it in the bundle
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
 # Build the admin app
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build --filter @pidefacil/admin
