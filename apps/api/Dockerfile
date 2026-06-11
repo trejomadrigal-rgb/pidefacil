@@ -13,6 +13,9 @@ COPY apps/api/ ./apps/api/
 # Install all dependencies (ignore NODE_ENV to always include devDeps in build stage)
 RUN NODE_ENV=development pnpm install --frozen-lockfile
 
+# Generate Prisma client so TypeScript can resolve the generated types
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+
 # Build the api
 RUN pnpm build --filter @pidefacil/api
 
