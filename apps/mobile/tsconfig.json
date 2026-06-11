@@ -2,8 +2,9 @@
   "extends": "@pidefacil/tsconfig/react-native.json",
   "compilerOptions": {
     "paths": {
-      "@pidefacil/types": ["../../packages/types/src"]
+      "@pidefacil/types": ["../../packages/types/src"],
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.d.ts", "expo-env.d.ts"]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.d.ts", "expo-env.d.ts", "nativewind-env.d.ts"]
 }
