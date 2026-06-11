@@ -27,6 +27,7 @@ export class NotificationsGateway implements OnGatewayConnection {
   }
 
   emitToRoom(businessId: string, event: string, data: unknown): void {
+    if (!this.server) return;
     this.server.to(`business:${businessId}`).emit(event, data);
   }
 }

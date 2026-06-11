@@ -159,6 +159,7 @@ describe('OrdersModule (integration)', () => {
     await prisma.product.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.category.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.menu.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
+    await prisma.notification.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.business.deleteMany({ where: { id: { in: [businessId, otherBusinessId] } } });
 
     // Clean up auth business data
@@ -170,6 +171,7 @@ describe('OrdersModule (integration)', () => {
     await prisma.menu.deleteMany({ where: { businessId: authBusinessId } });
     await prisma.refreshToken.deleteMany({ where: { user: { businessId: authBusinessId } } });
     await prisma.user.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.notification.deleteMany({ where: { businessId: authBusinessId } });
     await prisma.business.deleteMany({ where: { id: authBusinessId } });
 
     await app.close();

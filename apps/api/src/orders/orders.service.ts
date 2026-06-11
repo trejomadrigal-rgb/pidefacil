@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusDto } from './dto/order-status.dto';
 import { OrderListItemDto } from './dto/order-list-item.dto';
@@ -24,7 +25,10 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async findActive(businessId: string): Promise<OrderListItemDto[]> {
     // UTC midnight — aceptable para MVP. Pedidos 00:00-06:00 hora México
@@ -299,6 +303,13 @@ export class OrdersService {
     await this.prisma.order.update({
       where: { id: order.id },
       data: { customerId: customer.id },
+    });
+
+    await this.notificationsService.notifyNewOrder(dto.businessId, {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerName: dto.customer.name,
+      total: Number(order.total),
     });
 
     return {

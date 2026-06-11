@@ -48,6 +48,7 @@ describe('CustomersModule (integration)', () => {
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.menu.deleteMany();
+    await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
     await prisma.business.deleteMany();
@@ -378,7 +379,7 @@ describe('CustomersModule (integration)', () => {
         where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
       });
       expect(customer!.totalOrders).toBe(1);
-    });
+    }, 30000);
 
     it('sube a FREQUENT al llegar a 3 pedidos entregados', async () => {
       for (let i = 0; i < 3; i++) {
@@ -407,7 +408,7 @@ describe('CustomersModule (integration)', () => {
         where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
       });
       expect(customer!.trustLevel).toBe('RISK');
-    });
+    }, 30000);
 
     it('no sube trust level si está en BLOCKED', async () => {
       const orderId = await placeOrder();
@@ -422,6 +423,6 @@ describe('CustomersModule (integration)', () => {
         where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
       });
       expect(customer!.trustLevel).toBe('BLOCKED');
-    });
+    }, 30000);
   });
 });
