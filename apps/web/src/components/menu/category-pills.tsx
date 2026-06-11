@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Category } from '@/lib/api';
 
 interface CategoryPillsProps {
@@ -15,8 +15,11 @@ export function CategoryPills({ categories }: CategoryPillsProps) {
 
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
+    const activeCategories = categories.filter((c) =>
+      c.products.some((p) => p.isAvailable),
+    );
 
-    active.forEach((category) => {
+    activeCategories.forEach((category) => {
       const section = document.getElementById(`cat-${category.id}`);
       if (!section) return;
 
@@ -33,7 +36,7 @@ export function CategoryPills({ categories }: CategoryPillsProps) {
     });
 
     return () => observers.forEach((o) => o.disconnect());
-  }, [active]);
+  }, [categories]);
 
   const scrollToCategory = (id: string) => {
     const section = document.getElementById(`cat-${id}`);

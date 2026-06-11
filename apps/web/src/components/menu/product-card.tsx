@@ -74,6 +74,7 @@ export function ProductCard({ product, slug }: ProductCardProps) {
       </div>
 
       <ProductSheet
+        key={product.id}
         product={product}
         slug={slug}
         open={sheetOpen}
