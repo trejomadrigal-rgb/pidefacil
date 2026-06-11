@@ -3,11 +3,13 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 
 describe('CustomersModule (integration)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let redis: RedisService;
   let ownerToken: string;
   let businessId: string;
 
@@ -30,6 +32,7 @@ describe('CustomersModule (integration)', () => {
       new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
     );
     prisma = module.get<PrismaService>(PrismaService);
+    redis = module.get<RedisService>(RedisService);
     await app.init();
   }, 30000);
 
@@ -302,6 +305,107 @@ describe('CustomersModule (integration)', () => {
         where: { businessId_phone: { businessId, phone: '4421111111' } },
       });
       expect(customer!.notes).toBe('Notas previas');
+    });
+  });
+
+  describe('PATCH /orders/:id/status — trust level', () => {
+    let ownerToken2: string;
+    let businessId2: string;
+    let productId2: string;
+
+    beforeEach(async () => {
+      // Clear rate limit keys so order placement isn't blocked by previous tests
+      const rateLimitKeys = await redis.keys('rate_limit:orders:*');
+      if (rateLimitKeys.length > 0) {
+        await redis.del(...rateLimitKeys);
+      }
+
+      const res = await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({
+          businessName: 'Fonda Trust Test',
+          slug: 'fonda-trust-test',
+          phone: '5550002222',
+          ownerName: 'Roberto Torres',
+          email: 'roberto@trust.com',
+          password: 'Password123!',
+        });
+      ownerToken2 = res.body.access_token;
+      businessId2 = res.body.business.id;
+      await prisma.business.update({ where: { id: businessId2 }, data: { status: 'ACTIVE' } });
+
+      const menu = await prisma.menu.create({
+        data: { businessId: businessId2, name: 'Menú Trust', type: 'FIXED', status: 'PUBLISHED' },
+      });
+      const category = await prisma.category.create({
+        data: { businessId: businessId2, menuId: menu.id, name: 'Platos', status: 'ACTIVE', sortOrder: 0 },
+      });
+      const product = await prisma.product.create({
+        data: { businessId: businessId2, categoryId: category.id, name: 'Tacos', price: 40, isAvailable: true },
+      });
+      productId2 = product.id;
+    });
+
+    const placeOrder = async () => {
+      const res = await request(app.getHttpServer())
+        .post('/public/orders')
+        .send({
+          businessId: businessId2,
+          customer: { name: 'Juan Pérez', phone: '4425555555' },
+          deliveryType: 'PICKUP',
+          items: [{ productId: productId2, quantity: 1 }],
+        })
+        .expect(201);
+      return res.body.id as string;
+    };
+
+    const advanceToDelivered = async (orderId: string) => {
+      const transitions = ['UNDER_REVIEW', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'DELIVERED'];
+      for (const status of transitions) {
+        await request(app.getHttpServer())
+          .patch(`/orders/${orderId}/status`)
+          .set('Authorization', `Bearer ${ownerToken2}`)
+          .send({ status });
+      }
+    };
+
+    it('incrementa totalOrders al entregar pedido', async () => {
+      const orderId = await placeOrder();
+      await advanceToDelivered(orderId);
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
+      });
+      expect(customer!.totalOrders).toBe(1);
+    });
+
+    it('sube a FREQUENT al llegar a 3 pedidos entregados', async () => {
+      for (let i = 0; i < 3; i++) {
+        const orderId = await placeOrder();
+        await advanceToDelivered(orderId);
+      }
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
+      });
+      expect(customer!.trustLevel).toBe('FREQUENT');
+    }, 30000);
+
+    it('no sube trust level si está en RISK', async () => {
+      // Place first order to create customer
+      const orderId = await placeOrder();
+      // Set customer to RISK with 2 orders (one more would trigger FREQUENT)
+      await prisma.customer.update({
+        where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
+        data: { trustLevel: 'RISK', totalOrders: 2 },
+      });
+
+      await advanceToDelivered(orderId);
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId: businessId2, phone: '4425555555' } },
+      });
+      expect(customer!.trustLevel).toBe('RISK');
     });
   });
 });

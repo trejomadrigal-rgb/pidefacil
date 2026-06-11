@@ -98,6 +98,32 @@ export class OrdersService {
     }
 
     await this.prisma.order.update({ where: { id, businessId }, data: { status: newStatus } });
+
+    // Increment totalOrders and auto-upgrade trust level when order is delivered
+    if (
+      (newStatus === OrderStatus.DELIVERED || newStatus === OrderStatus.FINISHED) &&
+      order.customerId
+    ) {
+      const updated = await this.prisma.customer.update({
+        where: { id: order.customerId },
+        data: { totalOrders: { increment: 1 } },
+      });
+      if (updated.trustLevel !== 'RISK' && updated.trustLevel !== 'BLOCKED') {
+        const newLevel =
+          updated.totalOrders >= 10
+            ? 'TRUSTED'
+            : updated.totalOrders >= 3
+              ? 'FREQUENT'
+              : updated.trustLevel;
+        if (newLevel !== updated.trustLevel) {
+          await this.prisma.customer.update({
+            where: { id: updated.id },
+            data: { trustLevel: newLevel },
+          });
+        }
+      }
+    }
+
     return this.findOne(id, businessId);
   }
 
