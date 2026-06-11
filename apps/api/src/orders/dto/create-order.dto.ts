@@ -73,6 +73,10 @@ export class CreateOrderDto {
   @IsString()
   notes?: string;
 
+  @IsOptional()
+  @IsString()
+  deliveryNotes?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)

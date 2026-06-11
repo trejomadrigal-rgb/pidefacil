@@ -232,4 +232,76 @@ describe('CustomersModule (integration)', () => {
         .expect(404);
     });
   });
+
+  describe('POST /public/orders — customer upsert', () => {
+    let productId: string;
+
+    beforeEach(async () => {
+      // Seed a published menu with one product for checkout
+      const menu = await prisma.menu.create({
+        data: { businessId, name: 'Menú Test', type: 'FIXED', status: 'PUBLISHED' },
+      });
+      const category = await prisma.category.create({
+        data: { businessId, menuId: menu.id, name: 'Platos', status: 'ACTIVE', sortOrder: 0 },
+      });
+      const product = await prisma.product.create({
+        data: { businessId, categoryId: category.id, name: 'Sopa', price: 50, isAvailable: true },
+      });
+      productId = product.id;
+      await prisma.business.update({ where: { id: businessId }, data: { status: 'ACTIVE' } });
+    });
+
+    const placeOrder = (overrides: object = {}) =>
+      request(app.getHttpServer())
+        .post('/public/orders')
+        .send({
+          businessId,
+          customer: { name: 'Ana Ruiz', phone: '4421111111' },
+          deliveryType: 'PICKUP',
+          items: [{ productId, quantity: 1 }],
+          ...overrides,
+        });
+
+    it('crea Customer al colocar primer pedido', async () => {
+      await placeOrder().expect(201);
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId, phone: '4421111111' } },
+      });
+      expect(customer).not.toBeNull();
+      expect(customer!.name).toBe('Ana Ruiz');
+      expect(customer!.trustLevel).toBe('NEW');
+    });
+
+    it('actualiza nombre y notas en pedido repetido (upsert)', async () => {
+      await placeOrder().expect(201);
+      await placeOrder({
+        customer: { name: 'Ana R. Actualizada', phone: '4421111111' },
+        deliveryNotes: 'Piso 2 oficina 5',
+      }).expect(201);
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId, phone: '4421111111' } },
+      });
+      expect(customer!.name).toBe('Ana R. Actualizada');
+      expect(customer!.notes).toBe('Piso 2 oficina 5');
+    });
+
+    it('vincula el pedido al customerId', async () => {
+      const res = await placeOrder().expect(201);
+      const order = await prisma.order.findUnique({ where: { id: res.body.id } });
+      expect(order!.customerId).not.toBeNull();
+    });
+
+    it('no sobreescribe notes si deliveryNotes no se envía', async () => {
+      await placeOrder({ deliveryNotes: 'Notas previas' }).expect(201);
+      // Second order without deliveryNotes
+      await placeOrder().expect(201);
+
+      const customer = await prisma.customer.findUnique({
+        where: { businessId_phone: { businessId, phone: '4421111111' } },
+      });
+      expect(customer!.notes).toBe('Notas previas');
+    });
+  });
 });

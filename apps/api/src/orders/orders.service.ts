@@ -236,6 +236,31 @@ export class OrdersService {
         throw err;
       });
 
+    // Upsert customer by (businessId, phone) and link to this order
+    const customer = await this.prisma.customer.upsert({
+      where: {
+        businessId_phone: {
+          businessId: dto.businessId,
+          phone: dto.customer.phone,
+        },
+      },
+      create: {
+        businessId: dto.businessId,
+        name: dto.customer.name,
+        phone: dto.customer.phone,
+        notes: dto.deliveryNotes,
+      },
+      update: {
+        name: dto.customer.name,
+        ...(dto.deliveryNotes !== undefined ? { notes: dto.deliveryNotes } : {}),
+      },
+    });
+
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: { customerId: customer.id },
+    });
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
