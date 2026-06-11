@@ -35,9 +35,10 @@ type FormValues = z.infer<typeof schema>;
 interface CheckoutFormProps {
   slug: string;
   businessId: string;
+  businessPhone?: string;
 }
 
-export function CheckoutForm({ slug, businessId }: CheckoutFormProps) {
+export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormProps) {
   const { items, total, clearCart } = useCartStore();
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState('');
@@ -76,7 +77,7 @@ export function CheckoutForm({ slug, businessId }: CheckoutFormProps) {
       });
       clearCart();
       router.push(
-        `/${slug}/pedido-enviado?folio=${result.orderNumber}&phone=${values.phone}`,
+        `/${slug}/pedido-enviado?folio=${result.orderNumber}&phone=${values.phone}&businessPhone=${encodeURIComponent(businessPhone ?? '')}`,
       );
     } catch (err: unknown) {
       if (err instanceof Error && err.message === 'RATE_LIMIT') {

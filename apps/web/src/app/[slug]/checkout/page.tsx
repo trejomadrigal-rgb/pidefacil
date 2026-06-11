@@ -57,5 +57,5 @@ function CheckoutFormWrapper({ slug }: { slug: string }) {
     );
   }
 
-  return <CheckoutForm slug={slug} businessId={business.id} />;
+  return <CheckoutForm slug={slug} businessId={business.id} businessPhone={business.phone} />;
 }

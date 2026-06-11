@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { getOrderStatus, OrderStatusResponse } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 
-const TERMINAL_STATUSES = ['DELIVERED', 'CANCELLED', 'REJECTED'];
+const TERMINAL_STATUSES = ['DELIVERED', 'CANCELLED', 'REJECTED', 'FINISHED'];
 const POLL_INTERVAL = 15_000;
 
 const STATUS_CONFIG: Record<
@@ -21,6 +21,7 @@ const STATUS_CONFIG: Record<
   DELIVERED: { label: 'Entregado', color: 'text-gray-500', bg: 'bg-gray-50', icon: '✔️' },
   CANCELLED: { label: 'Cancelado', color: 'text-red-500', bg: 'bg-red-50', icon: '❌' },
   REJECTED: { label: 'Rechazado', color: 'text-red-500', bg: 'bg-red-50', icon: '❌' },
+  FINISHED: { label: 'Finalizado', color: 'text-gray-500', bg: 'bg-gray-50', icon: '✔️' },
 };
 
 const STATUS_FLOW = [

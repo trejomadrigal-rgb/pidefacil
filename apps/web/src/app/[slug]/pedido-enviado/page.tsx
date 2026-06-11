@@ -1,20 +1,26 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatPhone } from '@/lib/utils';
 
-export default function PedidoEnviadoPage() {
+function PedidoEnviadoContent() {
   const params = useParams<{ slug: string }>();
   const searchParams = useSearchParams();
 
   const folio = searchParams.get('folio') ?? '';
   const phone = searchParams.get('phone') ?? '';
+  const businessPhone = searchParams.get('businessPhone') ?? '';
   const slug = params.slug;
 
   const whatsappText = encodeURIComponent(
     `Hola, mi pedido es el #${folio}`,
   );
+
+  const whatsappUrl = businessPhone
+    ? `https://wa.me/${businessPhone.replace(/\D/g, '')}?text=${whatsappText}`
+    : `https://wa.me/?text=${whatsappText}`;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -33,7 +39,7 @@ export default function PedidoEnviadoPage() {
 
         <div className="space-y-3">
           <a
-            href={`https://wa.me/?text=${whatsappText}`}
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 w-full bg-green-500 text-white rounded-2xl py-4 font-bold"
@@ -55,5 +61,13 @@ export default function PedidoEnviadoPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PedidoEnviadoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <PedidoEnviadoContent />
+    </Suspense>
   );
 }
