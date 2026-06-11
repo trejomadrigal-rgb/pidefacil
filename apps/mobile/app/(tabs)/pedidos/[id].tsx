@@ -84,6 +84,34 @@ export default function OrderDetailScreen() {
         </View>
       </View>
 
+      {/* Trust alert banner */}
+      {order.customer?.trustLevel === 'BLOCKED' && (
+        <View className="bg-red-500 px-4 py-3 flex-row items-center" style={{ gap: 8 }}>
+          <Text className="text-white font-bold text-sm flex-1">Cliente bloqueado — revisa antes de preparar</Text>
+        </View>
+      )}
+      {order.customer?.trustLevel === 'RISK' && (
+        <View className="bg-amber-500 px-4 py-3 flex-row items-center" style={{ gap: 8 }}>
+          <Text className="text-white font-bold text-sm flex-1">Cliente en riesgo — procede con cuidado</Text>
+        </View>
+      )}
+
+      {/* Customer info */}
+      {order.customer && (
+        <View className="bg-white mx-4 mt-4 rounded-2xl p-4">
+          <Text className="text-gray-500 text-xs font-semibold uppercase mb-2">Cliente</Text>
+          <TouchableOpacity onPress={() => router.push(`/(tabs)/clientes/${order.customer!.id}`)}>
+            <Text className="text-brand-500 font-semibold text-base">{order.customer.name}</Text>
+          </TouchableOpacity>
+          <Text className="text-gray-500 text-sm mt-0.5">{order.customer.phone}</Text>
+          {order.customer.notes ? (
+            <Text className="text-gray-600 text-sm mt-2 italic">
+              Indicaciones: {order.customer.notes}
+            </Text>
+          ) : null}
+        </View>
+      )}
+
       <View className="px-4 pt-4">
         {/* Cliente */}
         <View className="bg-white rounded-2xl p-4 mb-3">

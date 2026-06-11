@@ -22,6 +22,14 @@ export interface OrderItem {
   notes: string | null;
 }
 
+export interface CustomerSnippet {
+  id: string;
+  name: string;
+  phone: string;
+  notes: string | null;
+  trustLevel: string;
+}
+
 export interface OrderDetail {
   id: string;
   orderNumber: string;
@@ -35,6 +43,7 @@ export interface OrderDetail {
   total: number;
   createdAt: string;
   items: OrderItem[];
+  customer: CustomerSnippet | null;
 }
 
 export const getOrders = async (): Promise<OrderListItem[]> => {
