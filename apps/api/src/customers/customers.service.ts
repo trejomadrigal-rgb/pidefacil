@@ -93,6 +93,18 @@ export class CustomersService {
   async update(id: string, businessId: string, dto: UpdateCustomerDto) {
     const customer = await this.prisma.customer.findFirst({ where: { id, businessId } });
     if (!customer) throw new NotFoundException('Cliente no encontrado');
-    return this.prisma.customer.update({ where: { id }, data: dto });
+    return this.prisma.customer.update({
+      where: { id },
+      data: dto,
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        notes: true,
+        trustLevel: true,
+        totalOrders: true,
+        updatedAt: true,
+      },
+    });
   }
 }
