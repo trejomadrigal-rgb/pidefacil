@@ -83,6 +83,8 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, businessId: string, newStatus: OrderStatus): Promise<OrderDetailDto> {
+    // Non-atomic check-then-update: two concurrent requests could both pass the transition
+    // check and both write. Acceptable for MVP; fix with optimistic locking post-pilot.
     const order = await this.prisma.order.findFirst({ where: { id, businessId } });
     if (!order) throw new NotFoundException('Pedido no encontrado');
 
@@ -93,7 +95,7 @@ export class OrdersService {
       );
     }
 
-    await this.prisma.order.update({ where: { id }, data: { status: newStatus } });
+    await this.prisma.order.update({ where: { id, businessId }, data: { status: newStatus } });
     return this.findOne(id, businessId);
   }
 
