@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Slot, useRouter } from 'expo-router';
+import { Redirect, Slot, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '../src/store/auth-store';
@@ -13,19 +13,20 @@ const queryClient = new QueryClient({
 });
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const segments = useSegments();
   const [checking, setChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { setAuth, clearAuth, sessionExpired } = useAuthStore();
+  const initiated = useRef(false);
 
   useEffect(() => {
+    if (initiated.current) return;
+    initiated.current = true;
+
     (async () => {
-      const refreshToken = await getItem('refresh_token');
-      if (!refreshToken) {
-        setChecking(false);
-        router.replace('/login');
-        return;
-      }
       try {
+        const refreshToken = await getItem('refresh_token');
+        if (!refreshToken) return;
         const data = await refreshAuth(refreshToken);
         await saveTokens(data.access_token, data.refresh_token);
         setAuth({
@@ -35,11 +36,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           userName: data.user.name,
           role: data.user.role,
         });
-        router.replace('/(tabs)/pedidos');
+        setIsAuthenticated(true);
       } catch {
-        await clearTokens();
+        await clearTokens().catch(() => {});
         clearAuth();
-        router.replace('/login');
       } finally {
         setChecking(false);
       }
@@ -47,8 +47,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (sessionExpired) router.replace('/login');
-  }, [sessionExpired, router]);
+    if (sessionExpired) setIsAuthenticated(false);
+  }, [sessionExpired]);
 
   if (checking) {
     return (
@@ -56,6 +56,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         <ActivityIndicator color="#FF6B35" size="large" />
       </View>
     );
+  }
+
+  const inAuthGroup = segments[0] === '(tabs)';
+
+  if (!isAuthenticated && inAuthGroup) {
+    return <Redirect href="/login" />;
+  }
+
+  if (isAuthenticated && !inAuthGroup) {
+    return <Redirect href="/(tabs)/pedidos" />;
   }
 
   return <>{children}</>;
