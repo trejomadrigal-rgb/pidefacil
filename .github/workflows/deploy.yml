@@ -77,11 +77,33 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/vps_key
+          chmod 600 ~/.ssh/vps_key
+          ssh-keyscan -H 2.24.201.108 >> ~/.ssh/known_hosts
+
       - name: Deploy API
-        run: curl -fsSL "${{ secrets.COOLIFY_WEBHOOK_API }}"
+        run: |
+          ssh -i ~/.ssh/vps_key root@2.24.201.108 \
+            "curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+              -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+              -H 'Content-Type: application/json' \
+              -d '{\"uuid\":\"h81lvlzrwjd7jf8bp0tkg1wa\",\"force\":false}'"
 
       - name: Deploy Web
-        run: curl -fsSL "${{ secrets.COOLIFY_WEBHOOK_WEB }}"
+        run: |
+          ssh -i ~/.ssh/vps_key root@2.24.201.108 \
+            "curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+              -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+              -H 'Content-Type: application/json' \
+              -d '{\"uuid\":\"b10i6rz52rphphtcnxll73np\",\"force\":false}'"
 
       - name: Deploy Admin
-        run: curl -fsSL "${{ secrets.COOLIFY_WEBHOOK_ADMIN }}"
+        run: |
+          ssh -i ~/.ssh/vps_key root@2.24.201.108 \
+            "curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+              -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+              -H 'Content-Type: application/json' \
+              -d '{\"uuid\":\"vh3jq4ik26i989m3xmlkrz20\",\"force\":false}'"
