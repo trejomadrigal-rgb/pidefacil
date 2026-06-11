@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOrder } from '../../../src/hooks/use-order';
 import { useUpdateOrderStatus } from '../../../src/hooks/use-update-status';
@@ -10,6 +10,7 @@ import {
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { data: order, isLoading } = useOrder(id);
   const { mutate: updateStatus, isPending } = useUpdateOrderStatus(id);
 
@@ -43,8 +44,11 @@ export default function OrderDetailScreen() {
     <ScrollView className="flex-1 bg-gray-50">
       {/* Header */}
       <View className="bg-brand-900 pb-6 px-4" style={{ paddingTop: insets.top + 16 }}>
+        <TouchableOpacity onPress={() => router.back()} className="mb-3">
+          <Text className="text-gray-300 text-sm">← Volver</Text>
+        </TouchableOpacity>
         <View className="flex-row items-center" style={{ gap: 12 }}>
-          <Text className="text-white text-2xl font-black">#{order.orderNumber}</Text>
+          <Text className="text-white text-2xl font-black">Pedido #{order.orderNumber}</Text>
           <View style={{ backgroundColor: statusConfig?.color ?? '#9CA3AF' }} className="rounded-full px-3 py-1">
             <Text className="text-white text-sm font-bold">{statusConfig?.label ?? status}</Text>
           </View>
@@ -79,7 +83,7 @@ export default function OrderDetailScreen() {
                 {item.notes ? <Text className="text-gray-400 text-xs mt-0.5">{item.notes}</Text> : null}
               </View>
               <View className="items-end">
-                <Text className="text-gray-500 text-xs">x{item.quantity}</Text>
+                <Text className="text-gray-500 text-xs">${item.unitPrice.toFixed(2)} × {item.quantity}</Text>
                 <Text className="text-gray-900 font-semibold text-sm">${item.subtotal.toFixed(2)}</Text>
               </View>
             </View>

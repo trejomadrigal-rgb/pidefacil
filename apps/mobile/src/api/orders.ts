@@ -17,6 +17,7 @@ export interface OrderItem {
   name: string;
   quantity: number;
   price: number;
+  unitPrice: number;
   subtotal: number;
   notes: string | null;
 }
