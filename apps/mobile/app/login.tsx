@@ -4,9 +4,12 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { login } from '../src/api/auth';
 import { saveTokens } from '../src/lib/secure-storage';
 import { useAuthStore } from '../src/store/auth-store';
+
+const APP_VERSION = Constants.expoConfig?.version ?? '0.6.1';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -82,6 +85,7 @@ export default function LoginScreen() {
             : <Text className="text-white font-bold text-base">Entrar</Text>}
         </TouchableOpacity>
       </View>
+      <Text className="text-gray-600 text-xs text-center pb-8">v{APP_VERSION}</Text>
     </KeyboardAvoidingView>
   );
 }
