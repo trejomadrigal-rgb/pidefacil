@@ -6,10 +6,10 @@
 
 */
 -- CreateEnum
-CREATE TYPE "DeliveryType" AS ENUM ('PICKUP', 'DELIVERY');
+CREATE TYPE "public"."DeliveryType" AS ENUM ('PICKUP', 'DELIVERY');
 
 -- AlterTable
-ALTER TABLE "Order" ADD COLUMN     "customerName" TEXT NOT NULL,
+ALTER TABLE "public"."Order" ADD COLUMN     "customerName" TEXT NOT NULL,
 ADD COLUMN     "customerPhone" TEXT NOT NULL,
 ADD COLUMN     "deliveryAddress" TEXT,
-ADD COLUMN     "deliveryType" "DeliveryType" NOT NULL DEFAULT 'PICKUP';
+ADD COLUMN     "deliveryType" "public"."DeliveryType" NOT NULL DEFAULT 'PICKUP';

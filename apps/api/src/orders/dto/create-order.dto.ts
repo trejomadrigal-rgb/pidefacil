@@ -2,18 +2,15 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
-  IsNotEmpty,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
-
-export enum DeliveryType {
-  PICKUP = 'PICKUP',
-  DELIVERY = 'DELIVERY',
-}
+import { DeliveryType } from '@prisma/client';
 
 export class OrderItemDto {
   @IsUUID()
@@ -28,7 +25,8 @@ export class OrderItemDto {
   @IsUUID('all', { each: true })
   extraIds?: string[];
 
-  @IsNotEmpty()
+  @IsInt()
+  @Min(1)
   quantity!: number;
 
   @IsOptional()
@@ -48,6 +46,7 @@ export class CustomerDto {
 
 export class AddressDto {
   @IsString()
+  @MinLength(3)
   street!: string;
 
   @IsOptional()
