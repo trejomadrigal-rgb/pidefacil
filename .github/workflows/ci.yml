@@ -26,5 +26,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (excluding mobile)
-        run: pnpm lint --filter=!@pidefacil/mobile
+      - name: Lint (web + admin)
+        run: pnpm lint --filter=@pidefacil/web --filter=@pidefacil/admin
