@@ -8,6 +8,8 @@ import Constants from 'expo-constants';
 import { login } from '../src/api/auth';
 import { saveTokens } from '../src/lib/secure-storage';
 import { useAuthStore } from '../src/store/auth-store';
+import { connectSocket } from '../src/lib/socket';
+import { registerPushToken } from '../src/lib/notifications';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '0.6.1';
 
@@ -33,6 +35,8 @@ export default function LoginScreen() {
         userName: data.user.name,
         role: data.user.role,
       });
+      connectSocket(data.access_token);
+      registerPushToken(); // fire-and-forget
       router.replace('/(tabs)/pedidos');
     } catch {
       setError('Email o contraseña incorrectos');
