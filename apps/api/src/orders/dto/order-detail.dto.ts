@@ -3,6 +3,7 @@ import { DeliveryType, OrderStatus } from '@prisma/client';
 export class OrderItemDetailDto {
   name!: string;
   quantity!: number;
+  price!: number;
   subtotal!: number;
   notes!: string | null;
 }

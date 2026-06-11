@@ -75,6 +75,7 @@ export class OrdersService {
       items: order.items.map((i) => ({
         name: i.product.name,
         quantity: i.quantity,
+        price: Number(i.price),
         subtotal: Number(i.subtotal),
         notes: i.notes,
       })),

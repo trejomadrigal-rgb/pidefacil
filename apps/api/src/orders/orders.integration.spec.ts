@@ -447,14 +447,17 @@ describe('OrdersModule (integration)', () => {
       expect(res.body.customerPhone).toBe('5551234567');
       expect(res.body.deliveryType).toBe('PICKUP');
       expect(res.body.deliveryAddress).toBeNull();
-      expect(typeof res.body.subtotal).toBe('number');
-      expect(typeof res.body.total).toBe('number');
+      expect(res.body.subtotal).toBe(50);
+      expect(res.body.total).toBe(50);
       expect(res.body.createdAt).toBeDefined();
       expect(Array.isArray(res.body.items)).toBe(true);
       expect(res.body.items.length).toBe(1);
       expect(res.body.items[0].name).toBe('Taco Auth');
       expect(res.body.items[0].quantity).toBe(2);
-      expect(typeof res.body.items[0].subtotal).toBe('number');
+      expect(res.body.items[0].subtotal).toBe(50);
+      expect(res.body.items[0].price).toBeDefined();
+      expect(typeof res.body.items[0].price).toBe('number');
+      expect(res.body.items[0].notes).toBeNull();
     });
 
     it('retorna 404 si el pedido pertenece a otro negocio', async () => {
