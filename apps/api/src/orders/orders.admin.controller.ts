@@ -1,9 +1,10 @@
 // apps/api/src/orders/orders.admin.controller.ts
-import { Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { OrdersService } from './orders.service';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @Controller('orders')
 @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR, Role.KITCHEN)
@@ -18,5 +19,14 @@ export class OrdersAdminController {
   @Get(':id')
   findOne(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.ordersService.findOne(id, user.businessId);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderStatusDto,
+  ) {
+    return this.ordersService.updateStatus(id, user.businessId, dto.status);
   }
 }

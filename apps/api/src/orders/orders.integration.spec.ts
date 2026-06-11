@@ -472,4 +472,123 @@ describe('OrdersModule (integration)', () => {
       await request(app.getHttpServer()).get(`/orders/${testOrderId}`).expect(401);
     });
   });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // PATCH /orders/:id/status (authenticated)
+  // ────────────────────────────────────────────────────────────────────────
+  describe('PATCH /orders/:id/status', () => {
+    let statusOrderId: string;
+
+    beforeEach(async () => {
+      // Fresh order in NEW status for each test — use Prisma direct to avoid rate limiter
+      const order = await prisma.order.create({
+        data: {
+          businessId: authBusinessId,
+          orderNumber: `status-${Date.now()}`,
+          status: 'NEW',
+          subtotal: 25,
+          total: 25,
+          customerName: 'Status Test',
+          customerPhone: '5550001234',
+          deliveryType: 'PICKUP',
+        },
+      });
+      statusOrderId = order.id;
+      authOrderIds.push(statusOrderId);
+    }, 15000);
+
+    it('NEW → UNDER_REVIEW: devuelve 200 con status actualizado', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/orders/${statusOrderId}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'UNDER_REVIEW' })
+        .expect(200);
+
+      expect(res.body.status).toBe('UNDER_REVIEW');
+      expect(res.body.id).toBe(statusOrderId);
+      expect(Array.isArray(res.body.items)).toBe(true);
+    });
+
+    it('cadena válida NEW → UNDER_REVIEW → CONFIRMED → IN_PREPARATION → READY', async () => {
+      const advance = (status: string) =>
+        request(app.getHttpServer())
+          .patch(`/orders/${statusOrderId}/status`)
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({ status })
+          .expect(200);
+
+      await advance('UNDER_REVIEW');
+      await advance('CONFIRMED');
+      await advance('IN_PREPARATION');
+      const res = await advance('READY');
+
+      expect(res.body.status).toBe('READY');
+    });
+
+    it('transición inválida IN_PREPARATION → NEW devuelve 400', async () => {
+      // Advance to IN_PREPARATION first
+      await request(app.getHttpServer())
+        .patch(`/orders/${statusOrderId}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'UNDER_REVIEW' })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/orders/${statusOrderId}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'CONFIRMED' })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/orders/${statusOrderId}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'IN_PREPARATION' })
+        .expect(200);
+
+      // Try invalid back-transition
+      const res = await request(app.getHttpServer())
+        .patch(`/orders/${statusOrderId}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'NEW' })
+        .expect(400);
+
+      expect(res.body.message).toContain('Transición inválida');
+    });
+
+    it('transición desde estado terminal DELIVERED → READY devuelve 400', async () => {
+      // Create a DELIVERED order directly in DB
+      const deliveredOrder = await prisma.order.create({
+        data: {
+          businessId: authBusinessId,
+          orderNumber: `terminal-${Date.now()}`,
+          status: 'DELIVERED',
+          subtotal: 25,
+          total: 25,
+          customerName: 'Terminal Test',
+          customerPhone: '5550009999',
+          deliveryType: 'PICKUP',
+        },
+      });
+      authOrderIds.push(deliveredOrder.id);
+
+      await request(app.getHttpServer())
+        .patch(`/orders/${deliveredOrder.id}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'READY' })
+        .expect(400);
+    });
+
+    it('retorna 404 si el pedido pertenece a otro negocio', async () => {
+      await request(app.getHttpServer())
+        .patch(`/orders/${createdOrderIds[0]}/status`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ status: 'UNDER_REVIEW' })
+        .expect(404);
+    });
+
+    it('retorna 401 sin JWT', async () => {
+      await request(app.getHttpServer())
+        .patch(`/orders/${statusOrderId}/status`)
+        .send({ status: 'UNDER_REVIEW' })
+        .expect(401);
+    });
+  });
 });

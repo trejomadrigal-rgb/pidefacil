@@ -82,6 +82,21 @@ export class OrdersService {
     };
   }
 
+  async updateStatus(id: string, businessId: string, newStatus: OrderStatus): Promise<OrderDetailDto> {
+    const order = await this.prisma.order.findFirst({ where: { id, businessId } });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+
+    const allowed = VALID_TRANSITIONS[order.status] ?? [];
+    if (!allowed.includes(newStatus)) {
+      throw new BadRequestException(
+        `Transición inválida: no se puede mover de ${order.status} a ${newStatus}`,
+      );
+    }
+
+    await this.prisma.order.update({ where: { id }, data: { status: newStatus } });
+    return this.findOne(id, businessId);
+  }
+
   async create(dto: CreateOrderDto) {
     const business = await this.prisma.business.findUnique({
       where: { id: dto.businessId },
