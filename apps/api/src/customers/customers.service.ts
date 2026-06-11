@@ -20,7 +20,7 @@ export class CustomersService {
         ? {
             OR: [
               { name: { contains: query.search, mode: 'insensitive' } },
-              { phone: { contains: query.search } },
+              { phone: { contains: query.search, mode: 'insensitive' } },
             ],
           }
         : {}),

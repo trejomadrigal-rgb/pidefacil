@@ -118,6 +118,23 @@ describe('CustomersModule (integration)', () => {
       expect(res.body.data[0].name).toBe('Ana Ruiz');
     });
 
+    it('filtra por search (teléfono)', async () => {
+      await prisma.customer.createMany({
+        data: [
+          { businessId, name: 'Ana Ruiz', phone: '4421111111' },
+          { businessId, name: 'Luis Mora', phone: '4422222222' },
+        ],
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/customers?search=4422')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.total).toBe(1);
+      expect(res.body.data[0].name).toBe('Luis Mora');
+    });
+
     it('no retorna clientes de otro negocio', async () => {
       const otherBiz = await prisma.business.create({
         data: { name: 'Otro', slug: 'otro-biz', phone: '5559999999', status: 'ACTIVE' },
