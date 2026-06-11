@@ -1,11 +1,14 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { useUnreadCount } from '../../src/hooks/use-notifications';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
 }
 
 export default function TabsLayout() {
+  const unreadCount = useUnreadCount();
+
   return (
     <Tabs
       screenOptions={{
@@ -23,7 +26,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="pedidos"
-        options={{ title: 'Pedidos', tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} /> }}
+        options={{
+          title: 'Pedidos',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📋" focused={focused} />,
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+        }}
       />
       <Tabs.Screen
         name="clientes"
