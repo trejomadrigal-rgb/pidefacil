@@ -68,7 +68,7 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
                   size="sm"
                   className="shrink-0 text-xs h-7"
                   onClick={() => markRead.mutate(n.id)}
-                  disabled={markRead.isPending}
+                  disabled={markRead.isPending && markRead.variables === n.id}
                 >
                   Leída
                 </Button>

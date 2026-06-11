@@ -14,6 +14,7 @@ export function NotificationBell({ unreadCount, onClick }: NotificationBellProps
       variant="ghost"
       size="icon"
       onClick={onClick}
+      aria-label="Notificaciones"
       className="relative text-white/70 hover:text-white hover:bg-white/10"
     >
       <Bell className="h-5 w-5" />
