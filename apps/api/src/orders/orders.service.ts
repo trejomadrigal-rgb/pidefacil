@@ -58,7 +58,10 @@ export class OrdersService {
   async findOne(id: string, businessId: string): Promise<OrderDetailDto> {
     const order = await this.prisma.order.findFirst({
       where: { id, businessId },
-      include: { items: { include: { product: { select: { name: true } } } } },
+      include: {
+        items: { include: { product: { select: { name: true } } } },
+        customer: { select: { id: true, name: true, phone: true, notes: true, trustLevel: true } },
+      },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado');
 
@@ -81,6 +84,15 @@ export class OrdersService {
         subtotal: Number(i.subtotal),
         notes: i.notes,
       })),
+      customer: order.customer
+        ? {
+            id: order.customer.id,
+            name: order.customer.name,
+            phone: order.customer.phone,
+            notes: order.customer.notes,
+            trustLevel: order.customer.trustLevel,
+          }
+        : null,
     };
   }
 

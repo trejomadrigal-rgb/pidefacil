@@ -8,6 +8,14 @@ export class OrderItemDetailDto {
   notes!: string | null;
 }
 
+export class CustomerSnippetDto {
+  id!: string;
+  name!: string;
+  phone!: string;
+  notes!: string | null;
+  trustLevel!: string;
+}
+
 export class OrderDetailDto {
   id!: string;
   orderNumber!: string;
@@ -21,4 +29,5 @@ export class OrderDetailDto {
   total!: number;
   createdAt!: Date;
   items!: OrderItemDetailDto[];
+  customer!: CustomerSnippetDto | null;
 }
