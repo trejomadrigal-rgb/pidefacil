@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, UtensilsCrossed, Settings, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/menus', icon: UtensilsCrossed, label: 'Menús' },
+  { href: '/clientes', icon: Users2, label: 'Clientes' },
   { href: '/settings', icon: Settings, label: 'Config.' },
   { href: '/users', icon: Users, label: 'Usuarios', disabled: true },
 ];
