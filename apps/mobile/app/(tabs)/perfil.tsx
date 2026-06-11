@@ -26,6 +26,7 @@ export default function PerfilScreen() {
       clearAuth();
       router.replace('/login');
     } catch {
+      await clearTokens();
       clearAuth();
       router.replace('/login');
     }
