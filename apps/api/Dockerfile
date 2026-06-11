@@ -35,6 +35,9 @@ COPY --from=builder /app/apps/api/prisma.config.ts ./apps/api/
 
 RUN pnpm install --frozen-lockfile --prod
 
+# Regenerate Prisma client for the production runtime (pnpm --prod doesn't preserve builder artifacts)
+RUN cd apps/api && node_modules/.bin/prisma generate
+
 EXPOSE 3000
 # prisma.config.ts (Prisma v7) reads DATABASE_URL from env and configures the
 # migration datasource. We cd into apps/api so Prisma finds prisma.config.ts.
