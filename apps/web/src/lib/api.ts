@@ -4,6 +4,7 @@ export interface BusinessPublic {
   id: string;
   name: string;
   slug: string;
+  description?: string;
   phone?: string;
   address?: string;
   logoUrl?: string;
