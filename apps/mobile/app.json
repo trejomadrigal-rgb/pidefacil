@@ -7,8 +7,9 @@
     "scheme": "pidefacil",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "ios": { "supportsTablet": true },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.pidefacil.app" },
     "android": {
+      "package": "com.pidefacil.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
