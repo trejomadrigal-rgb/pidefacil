@@ -8,16 +8,30 @@ import {
 } from '../../../src/constants/order-status';
 
 export default function OrderDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: order, isLoading } = useOrder(id);
+  const { data: order, isLoading, isError, refetch } = useOrder(id);
   const { mutate: updateStatus, isPending } = useUpdateOrderStatus(id);
 
-  if (isLoading || !order) {
+  if (isLoading) {
     return (
       <View className="flex-1 bg-gray-50 items-center justify-center">
         <ActivityIndicator color="#FF6B35" size="large" />
+      </View>
+    );
+  }
+
+  if (isError || !order) {
+    return (
+      <View className="flex-1 bg-gray-50 items-center justify-center px-8">
+        <Text className="text-red-500 text-base text-center font-medium mb-4">
+          Error al cargar el pedido.
+        </Text>
+        <TouchableOpacity onPress={() => refetch()} className="bg-brand-500 rounded-2xl px-6 py-3">
+          <Text className="text-white font-bold">Reintentar</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -35,13 +49,17 @@ export default function OrderDetailScreen() {
   };
 
   const handleWhatsApp = () => {
-    const phone = order.customerPhone.replace(/\D/g, '');
+    const digits = order.customerPhone.replace(/\D/g, '');
+    const phone = digits.length === 10 ? `52${digits}` : digits;
     const text = encodeURIComponent(`Hola, sobre tu pedido #${order.orderNumber} de PideFacil`);
     Linking.openURL(`https://wa.me/${phone}?text=${text}`);
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView
+      className="flex-1 bg-gray-50"
+      contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+    >
       {/* Header */}
       <View className="bg-brand-900 pb-6 px-4" style={{ paddingTop: insets.top + 16 }}>
         <TouchableOpacity onPress={() => router.back()} className="mb-3">
