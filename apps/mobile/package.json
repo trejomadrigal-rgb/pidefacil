@@ -1,19 +1,30 @@
 {
   "name": "@pidefacil/mobile",
   "version": "1.0.0",
+  "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -rf .expo"
   },
   "dependencies": {
     "@pidefacil/types": "workspace:*",
+    "@tanstack/react-query": "^5.101.0",
+    "axios": "^1.17.0",
     "expo": "~53.0.0",
+    "expo-linking": "^56.0.14",
+    "expo-router": "^56.2.10",
+    "expo-secure-store": "^56.0.4",
     "expo-status-bar": "~2.0.1",
+    "nativewind": "^4.2.5",
     "react": "18.3.1",
-    "react-native": "0.76.9"
+    "react-native": "0.76.9",
+    "react-native-safe-area-context": "^5.8.0",
+    "react-native-screens": "^4.25.2",
+    "tailwindcss": "^3.4.0",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
