@@ -14,6 +14,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
 import { FilesModule } from './files/files.module';
 import { OrdersModule } from './orders/orders.module';
+import { CustomersModule } from './customers/customers.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -49,6 +50,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     ProductsModule,
     FilesModule,
     OrdersModule,
+    CustomersModule,
   ],
   controllers: [AppController],
   providers: [
