@@ -156,9 +156,8 @@ describe('OrdersModule (integration)', () => {
         .expect(201);
       createdOrderIds.push(second.body.id);
 
-      expect(parseInt(second.body.orderNumber, 10)).toBeGreaterThan(
-        parseInt(first.body.orderNumber, 10),
-      );
+      expect(first.body.orderNumber).toBe('2');
+      expect(second.body.orderNumber).toBe('3');
     });
 
     it('retorna 404 para businessId desconocido', async () => {
