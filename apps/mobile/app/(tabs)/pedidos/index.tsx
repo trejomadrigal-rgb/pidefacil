@@ -61,7 +61,10 @@ export default function PedidosScreen() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const { data: orders = [], isLoading, isRefetching, refetch } = useOrders();
 
-  const filtered = activeFilter ? orders.filter((o) => o.status === activeFilter) : orders;
+  const sorted = [...orders].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  const filtered = activeFilter ? sorted.filter((o) => o.status === activeFilter) : sorted;
 
   const handleLogout = useCallback(async () => {
     try {
@@ -81,7 +84,7 @@ export default function PedidosScreen() {
           {businessName || 'Pedidos'}
         </Text>
         <TouchableOpacity onPress={handleLogout} className="p-2">
-          <Text className="text-gray-400 text-sm">Salir</Text>
+          <Text style={{ fontSize: 20 }}>↩️</Text>
         </TouchableOpacity>
       </View>
 
