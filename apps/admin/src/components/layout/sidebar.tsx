@@ -1,11 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
+import { NotificationBell } from './notification-bell';
+import { NotificationDrawer } from './notification-drawer';
+import { useUnreadCount } from '@/hooks/use-notifications';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -19,6 +23,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { userName, clearAuth } = useAuthStore();
+  const unreadCount = useUnreadCount();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -33,7 +39,11 @@ export function Sidebar() {
 
   return (
     <aside className="w-[100px] h-screen bg-brand-900 flex flex-col items-center py-4 flex-shrink-0">
-      <div className="text-brand-500 font-jakarta font-extrabold text-xl mb-6">PF</div>
+      <NotificationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <div className="text-brand-500 font-jakarta font-extrabold text-xl mb-2">PF</div>
+      <div className="mb-4">
+        <NotificationBell unreadCount={unreadCount} onClick={() => setDrawerOpen(true)} />
+      </div>
 
       <nav className="flex-1 flex flex-col gap-1 w-full px-1">
         {navItems.map(({ href, icon: Icon, label, disabled }) => {
