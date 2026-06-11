@@ -39,9 +39,10 @@ interface CheckoutFormProps {
   slug: string;
   businessId: string;
   businessPhone?: string;
+  onSubmitted?: () => void;
 }
 
-export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormProps) {
+export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: CheckoutFormProps) {
   const { items, total, clearCart } = useCartStore();
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState('');
@@ -104,6 +105,7 @@ export function CheckoutForm({ slug, businessId, businessPhone }: CheckoutFormPr
         PROFILE_KEY,
         JSON.stringify({ name: values.name, phone: values.phone, deliveryNotes: values.deliveryNotes }),
       );
+      onSubmitted?.();
       clearCart();
       router.push(
         `/${slug}/pedido-enviado?folio=${result.orderNumber}&phone=${values.phone}&businessPhone=${encodeURIComponent(businessPhone ?? '')}`,

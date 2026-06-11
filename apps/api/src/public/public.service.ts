@@ -63,8 +63,18 @@ export class PublicService {
       },
     });
 
-    await this.redis.set(key, JSON.stringify(categories), CACHE_TTL);
-    return categories;
+    const normalized = categories.map((c) => ({
+      ...c,
+      products: c.products.map((p) => ({
+        ...p,
+        price: Number(p.price),
+        variants: p.variants.map((v) => ({ ...v, price: Number(v.price) })),
+        extras: p.extras.map((e) => ({ ...e, price: Number(e.price) })),
+      })),
+    }));
+
+    await this.redis.set(key, JSON.stringify(normalized), CACHE_TTL);
+    return normalized;
   }
 
   async getProducts(slug: string, categoryId?: string, search?: string) {
@@ -103,10 +113,17 @@ export class PublicService {
       },
     });
 
+    const normalizedProducts = products.map((p) => ({
+      ...p,
+      price: Number(p.price),
+      variants: p.variants.map((v) => ({ ...v, price: Number(v.price) })),
+      extras: p.extras.map((e) => ({ ...e, price: Number(e.price) })),
+    }));
+
     if (!hasFilters) {
-      await this.redis.set(key, JSON.stringify(products), CACHE_TTL);
+      await this.redis.set(key, JSON.stringify(normalizedProducts), CACHE_TTL);
     }
-    return products;
+    return normalizedProducts;
   }
 
   async invalidateCache(slug: string): Promise<void> {

@@ -24,7 +24,7 @@ export function useProducts(categoryId?: string) {
     queryFn: async () => {
       const params = categoryId ? `?categoryId=${categoryId}` : '';
       const { data } = await api.get(`/products${params}`);
-      return data;
+      return data.map((p: Product) => ({ ...p, price: Number(p.price) }));
     },
     enabled: !!categoryId,
   });

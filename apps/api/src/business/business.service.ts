@@ -32,11 +32,19 @@ export class BusinessService {
       if (existing) throw new DuplicateSlugException();
     }
 
+    const current = await this.prisma.business.findUniqueOrThrow({
+      where: { id: businessId },
+      select: { slug: true },
+    });
+
     const business = await this.prisma.business.update({
       where: { id: businessId },
       data: dto,
     });
 
+    if (current.slug !== business.slug) {
+      await this.publicService.invalidateCache(current.slug);
+    }
     await this.publicService.invalidateCache(business.slug);
     return business;
   }

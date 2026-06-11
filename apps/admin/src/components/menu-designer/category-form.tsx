@@ -109,10 +109,11 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
             Eliminar
           </Button>
           <Button
-            type="submit"
+            type="button"
             size="sm"
             className="h-8 text-xs bg-brand-500 hover:bg-brand-700 text-white rounded-lg"
             disabled={!isDirty || isSubmitting}
+            onClick={handleSubmit(onSave)}
           >
             Guardar
           </Button>

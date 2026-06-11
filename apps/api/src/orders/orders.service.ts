@@ -305,12 +305,12 @@ export class OrdersService {
       data: { customerId: customer.id },
     });
 
-    await this.notificationsService.notifyNewOrder(dto.businessId, {
+    this.notificationsService.notifyNewOrder(dto.businessId, {
       id: order.id,
       orderNumber: order.orderNumber,
       customerName: dto.customer.name,
       total: Number(order.total),
-    });
+    }).catch(() => {});
 
     return {
       id: order.id,
