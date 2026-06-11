@@ -95,6 +95,14 @@ describe('NotificationsModule (integration)', () => {
         .send({ token: 'fcm-token-123', platform: 'ANDROID' });
       expect(res.status).toBe(401);
     });
+
+    it('returns 400 for invalid platform value', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/notifications/device-token')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ token: 'fcm-token-123', platform: 'FRIDGE' });
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('GET /notifications', () => {
@@ -157,6 +165,22 @@ describe('NotificationsModule (integration)', () => {
       expect(res.status).toBe(200);
       const unread = await prisma.notification.count({ where: { businessId, isRead: false } });
       expect(unread).toBe(0);
+    });
+
+    it('does not mark another business notifications as read (cross-tenant)', async () => {
+      const otherBiz = await prisma.business.create({
+        data: { name: 'Other3', slug: `other-biz3-${Date.now()}`, phone: '5550000002', status: 'ACTIVE' },
+      });
+      const other = await prisma.notification.create({
+        data: { businessId: otherBiz.id, type: 'NEW_PREORDER', title: 'Not mine', message: 'x' },
+      });
+
+      await request(app.getHttpServer())
+        .patch('/notifications/read-all')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      const unchanged = await prisma.notification.findUnique({ where: { id: other.id } });
+      expect(unchanged!.isRead).toBe(false);
     });
   });
 

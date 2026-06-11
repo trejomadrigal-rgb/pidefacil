@@ -45,13 +45,16 @@ export class NotificationsService {
   }
 
   async getNotifications(businessId: string) {
-    const data = await this.prisma.notification.findMany({
-      where: { businessId },
-      orderBy: [{ isRead: 'asc' }, { createdAt: 'desc' }],
-      take: 20,
-      select: { id: true, type: true, title: true, message: true, isRead: true, createdAt: true },
-    });
-    return { data, unreadCount: data.filter((n) => !n.isRead).length };
+    const [data, unreadCount] = await Promise.all([
+      this.prisma.notification.findMany({
+        where: { businessId },
+        orderBy: [{ isRead: 'asc' }, { createdAt: 'desc' }],
+        take: 20,
+        select: { id: true, type: true, title: true, message: true, isRead: true, createdAt: true },
+      }),
+      this.prisma.notification.count({ where: { businessId, isRead: false } }),
+    ]);
+    return { data, unreadCount };
   }
 
   async markRead(id: string, businessId: string) {

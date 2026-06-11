@@ -5,7 +5,7 @@ import { getMessaging } from 'firebase-admin/messaging';
 @Injectable()
 export class FcmService implements OnModuleInit {
   private readonly logger = new Logger(FcmService.name);
-  initialized = false;
+  private initialized = false;
 
   onModuleInit() {
     if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
