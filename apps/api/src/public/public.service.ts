@@ -55,6 +55,7 @@ export class PublicService {
             price: true,
             imageUrl: true,
             isFeatured: true,
+            isAvailable: true,
             variants: { select: { id: true, name: true, price: true } },
             extras: { select: { id: true, name: true, price: true } },
           },
