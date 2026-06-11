@@ -21,8 +21,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     (async () => {
       const refreshToken = await getItem('refresh_token');
       if (!refreshToken) {
-        router.replace('/login');
         setChecking(false);
+        router.replace('/login');
         return;
       }
       try {
@@ -48,7 +48,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (sessionExpired) router.replace('/login');
-  }, [sessionExpired]);
+  }, [sessionExpired, router]);
 
   if (checking) {
     return (
