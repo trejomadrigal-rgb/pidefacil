@@ -1,9 +1,10 @@
 import { apiClient } from './client';
+import { type OrderStatus } from '../constants/order-status';
 
 export interface OrderListItem {
   id: string;
   orderNumber: string;
-  status: string;
+  status: OrderStatus;
   customerName: string;
   customerPhone: string;
   deliveryType: string;
@@ -23,7 +24,7 @@ export interface OrderItem {
 export interface OrderDetail {
   id: string;
   orderNumber: string;
-  status: string;
+  status: OrderStatus;
   customerName: string;
   customerPhone: string;
   deliveryType: string;
@@ -45,7 +46,7 @@ export const getOrder = async (id: string): Promise<OrderDetail> => {
   return data;
 };
 
-export const updateOrderStatus = async (id: string, status: string): Promise<OrderDetail> => {
+export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<OrderDetail> => {
   const { data } = await apiClient.patch<OrderDetail>(`/orders/${id}/status`, { status });
   return data;
 };
