@@ -24,10 +24,10 @@ export class RateLimitGuard implements CanActivate {
     const key = `rate_limit:orders:${ip}`;
 
     const current = await this.redis.incr(key);
-    if (current === 1) {
-      // First request in window — set expiry
-      await this.redis.expire(key, this.windowSeconds);
-    }
+    // Use EXPIRE … NX so the TTL is set only when none exists yet.
+    // This is atomic per-command and avoids the race where a key created
+    // by incr could lose its TTL if expire/expire-NX were skipped.
+    await this.redis.expireNx(key, this.windowSeconds);
     if (current > this.limit) {
       throw new HttpException(
         'Demasiados pedidos, espera un momento',

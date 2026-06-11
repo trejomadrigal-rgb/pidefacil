@@ -42,6 +42,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.expire(key, seconds);
   }
 
+  /** Sets TTL only if the key has no existing TTL (Redis 7+ EXPIRE … NX). */
+  async expireNx(key: string, seconds: number): Promise<void> {
+    await this.client.expire(key, seconds, 'NX');
+  }
+
   // TODO: replace with SCAN-based iteration for production use with large keyspaces
   async keys(pattern: string): Promise<string[]> {
     return this.client.keys(pattern);
