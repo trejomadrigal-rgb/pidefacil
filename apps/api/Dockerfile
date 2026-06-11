@@ -31,8 +31,11 @@ COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/api/prisma.config.ts ./apps/api/
 
 RUN pnpm install --frozen-lockfile --prod
 
 EXPOSE 3000
-CMD ["sh", "-c", "apps/api/node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma && node apps/api/dist/main"]
+# prisma.config.ts (Prisma v7) reads DATABASE_URL from env and configures the
+# migration datasource. We cd into apps/api so Prisma finds prisma.config.ts.
+CMD ["sh", "-c", "cd apps/api && node_modules/.bin/prisma migrate deploy && cd /app && node apps/api/dist/main"]
