@@ -16,6 +16,24 @@ export default function OrderDetailScreen() {
   const { data: order, isLoading, isError, refetch } = useOrder(id);
   const { mutate: updateStatus, isPending } = useUpdateOrderStatus(id);
 
+  const handleWhatsApp = useCallback(async () => {
+    if (!order) return;
+    const digits = order.customerPhone.replace(/\D/g, '');
+    const phone = digits.length === 10 ? `52${digits}` : digits;
+    const text = encodeURIComponent(`Hola, sobre tu pedido #${order.orderNumber} de PideFacil`);
+    const url = `https://wa.me/${phone}?text=${text}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        Alert.alert('WhatsApp no disponible', 'No se encontró WhatsApp en este dispositivo.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp.');
+    }
+  }, [order]);
+
   if (isLoading) {
     return (
       <View className="flex-1 bg-gray-50 items-center justify-center">
@@ -48,23 +66,6 @@ export default function OrderDetailScreen() {
       { text: 'Sí, confirmar', onPress: () => updateStatus(newStatus) },
     ]);
   };
-
-  const handleWhatsApp = useCallback(async () => {
-    const digits = order.customerPhone.replace(/\D/g, '');
-    const phone = digits.length === 10 ? `52${digits}` : digits;
-    const text = encodeURIComponent(`Hola, sobre tu pedido #${order.orderNumber} de PideFacil`);
-    const url = `https://wa.me/${phone}?text=${text}`;
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (!canOpen) {
-        Alert.alert('WhatsApp no disponible', 'No se encontró WhatsApp en este dispositivo.');
-        return;
-      }
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert('Error', 'No se pudo abrir WhatsApp.');
-    }
-  }, [order.customerPhone, order.orderNumber]);
 
   return (
     <ScrollView
