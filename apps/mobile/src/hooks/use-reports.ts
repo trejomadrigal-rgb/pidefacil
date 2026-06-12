@@ -4,10 +4,12 @@ import { getReportsDashboard, getDateRange, type ReportPeriod } from '../api/rep
 export type { ReportPeriod };
 
 export function useReportsDashboard(period: ReportPeriod) {
-  const { startDate, endDate } = getDateRange(period);
   return useQuery({
     queryKey: ['reports', 'dashboard', period],
-    queryFn: () => getReportsDashboard(startDate, endDate),
+    queryFn: () => {
+      const { startDate, endDate } = getDateRange(period);
+      return getReportsDashboard(startDate, endDate);
+    },
     staleTime: 60_000,
   });
 }

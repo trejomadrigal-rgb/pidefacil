@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReportsDashboard, type ReportPeriod } from '../../src/hooks/use-reports';
@@ -44,7 +44,7 @@ function ProductRow({ product, rank, maxQty }: { product: TopProduct; rank: numb
 export default function ReportesScreen() {
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<ReportPeriod>('today');
-  const { data, isLoading, isError } = useReportsDashboard(period);
+  const { data, isLoading, isError, refetch, isRefetching } = useReportsDashboard(period);
 
   const summary = data?.summary;
   const topProducts = (data?.topProducts ?? []).slice(0, 5);
@@ -54,6 +54,9 @@ export default function ReportesScreen() {
     <ScrollView
       className="flex-1 bg-gray-950"
       contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 24, paddingHorizontal: 16 }}
+      refreshControl={
+        <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#FF6B35" />
+      }
     >
       {/* Header */}
       <Text className="text-white text-xl font-black font-jakarta mb-4">Reportes</Text>
