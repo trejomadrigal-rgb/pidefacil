@@ -126,6 +126,43 @@ export class PublicService {
     return normalizedProducts;
   }
 
+  async getOrdersByPhone(slug: string, phone: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!business) throw new BusinessNotFoundPublicException();
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        businessId: business.id,
+        customerPhone: phone,
+        createdAt: { gte: todayStart },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        total: true,
+        createdAt: true,
+        items: { select: { quantity: true } },
+      },
+    });
+
+    return orders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      total: Number(o.total),
+      createdAt: o.createdAt,
+      itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
+    }));
+  }
+
   async invalidateCache(slug: string): Promise<void> {
     await this.redis.del(
       `public:business:${slug}`,

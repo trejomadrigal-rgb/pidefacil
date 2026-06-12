@@ -25,4 +25,12 @@ export class PublicController {
   ) {
     return this.publicService.getProducts(slug, categoryId, search);
   }
+
+  @Get(':slug/my-orders')
+  getOrdersByPhone(
+    @Param('slug') slug: string,
+    @Query('phone') phone: string,
+  ) {
+    return this.publicService.getOrdersByPhone(slug, phone ?? '');
+  }
 }

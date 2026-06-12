@@ -42,19 +42,19 @@ function PedidoEnviadoContent() {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full bg-green-500 text-white rounded-2xl py-4 font-bold"
+            className="flex items-center justify-center gap-2 w-full bg-green-500 text-white rounded-xl py-3 font-semibold text-sm"
           >
             💬 Enviar por WhatsApp
           </a>
           <Link
             href={`/${slug}/pedido/${folio}`}
-            className="flex items-center justify-center w-full border-2 border-brand-500 text-brand-500 rounded-2xl py-4 font-bold"
+            className="flex items-center justify-center w-full border-2 border-brand-500 text-brand-500 rounded-xl py-3 font-semibold text-sm"
           >
             📋 Ver estado del pedido
           </Link>
           <Link
             href={`/${slug}`}
-            className="flex items-center justify-center w-full text-gray-500 py-3 text-sm"
+            className="flex items-center justify-center w-full text-gray-500 py-2 text-sm"
           >
             ← Volver al menú
           </Link>

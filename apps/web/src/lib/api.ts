@@ -70,6 +70,15 @@ export interface OrderCreatedResponse {
   status: string;
 }
 
+export interface MyOrder {
+  id: string;
+  orderNumber: string;
+  status: string;
+  total: number;
+  createdAt: string;
+  itemCount: number;
+}
+
 export interface OrderStatusResponse {
   orderNumber: string;
   status: string;
@@ -134,6 +143,19 @@ export async function createOrder(
     throw new Error('ORDER_FAILED');
   }
   return res.json();
+}
+
+export async function getMyOrders(slug: string, phone: string): Promise<MyOrder[]> {
+  try {
+    const res = await fetch(
+      `${API_URL}/public/business/${slug}/my-orders?phone=${encodeURIComponent(phone)}`,
+      { cache: 'no-store' },
+    );
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
 }
 
 export async function getOrderStatus(
