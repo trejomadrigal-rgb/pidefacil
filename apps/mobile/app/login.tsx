@@ -40,8 +40,15 @@ export default function LoginScreen() {
       connectSocket(data.access_token);
       registerPushToken();
       router.push('/(tabs)/pedidos');
-    } catch {
-      setError('Email o contraseña incorrectos');
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        setError('Email o contraseña incorrectos');
+      } else if (!status) {
+        setError('Sin conexión al servidor. Verifica tu red.');
+      } else {
+        setError(`Error ${status}. Intenta de nuevo.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -74,7 +81,9 @@ export default function LoginScreen() {
             placeholder="Contraseña"
             placeholderTextColor="#6B7280"
             secureTextEntry={!showPassword}
-            autoComplete="current-password"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
             returnKeyType="done"
             onSubmitEditing={handleLogin}
             value={password}
