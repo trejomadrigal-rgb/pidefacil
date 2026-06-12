@@ -140,7 +140,7 @@ export default function OrderDetailScreen() {
                 {item.notes ? <Text className="text-gray-400 text-xs mt-0.5">{item.notes}</Text> : null}
               </View>
               <View className="items-end">
-                <Text className="text-gray-500 text-xs">${item.unitPrice.toFixed(2)} × {item.quantity}</Text>
+                <Text className="text-gray-500 text-xs">${item.price.toFixed(2)} × {item.quantity}</Text>
                 <Text className="text-gray-900 font-semibold text-sm">${item.subtotal.toFixed(2)}</Text>
               </View>
             </View>
