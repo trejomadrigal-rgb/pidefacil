@@ -26,13 +26,13 @@ function PedidoEnviadoContent() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <div className="text-6xl mb-4">🎉</div>
-        <div className="text-4xl font-black text-green-500 mb-2">#{folio}</div>
+        <div className="text-4xl font-black text-green-500 mb-2">Pedido #{folio}</div>
         <h1 className="text-xl font-bold text-brand-900 mb-2">
           ¡Pedido enviado!
         </h1>
         <p className="text-sm text-gray-500 mb-8">
           El negocio revisará tu pedido y te contactará al{' '}
-          <span className="font-semibold text-brand-900">
+          <span className="font-semibold text-brand-900 whitespace-nowrap">
             {formatPhone(phone)}
           </span>
         </p>
