@@ -1,4 +1,4 @@
-import { DeliveryType, OrderStatus } from '@prisma/client';
+import { DeliveryType, OrderStatus, TrustLevel } from '@prisma/client';
 
 export class OrderListItemDto {
   id!: string;
@@ -10,4 +10,5 @@ export class OrderListItemDto {
   total!: number;
   itemCount!: number;
   createdAt!: Date;
+  customerTrustLevel!: TrustLevel | null;
 }

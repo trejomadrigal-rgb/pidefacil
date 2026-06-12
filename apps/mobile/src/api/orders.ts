@@ -1,6 +1,8 @@
 import { apiClient } from './client';
 import { type OrderStatus } from '../constants/order-status';
 
+export type TrustLevel = 'NEW' | 'FREQUENT' | 'TRUSTED' | 'RISK' | 'BLOCKED';
+
 export interface OrderListItem {
   id: string;
   orderNumber: string;
@@ -11,6 +13,7 @@ export interface OrderListItem {
   total: number;
   itemCount: number;
   createdAt: string;
+  customerTrustLevel: TrustLevel | null;
 }
 
 export interface OrderItem {

@@ -42,7 +42,10 @@ export class OrdersService {
         createdAt: { gte: startOfDay },
         status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.WAITING_CONFIRMATION] },
       },
-      include: { _count: { select: { items: true } } },
+      include: {
+        _count: { select: { items: true } },
+        customer: { select: { trustLevel: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -56,6 +59,7 @@ export class OrdersService {
       total: Number(o.total),
       itemCount: o._count.items,
       createdAt: o.createdAt,
+      customerTrustLevel: o.customer?.trustLevel ?? null,
     }));
   }
 

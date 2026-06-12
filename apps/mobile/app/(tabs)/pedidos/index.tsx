@@ -12,7 +12,13 @@ import { useAuthStore } from '../../../src/store/auth-store';
 import { clearTokens, getItem } from '../../../src/lib/secure-storage';
 import { logoutApi } from '../../../src/api/auth';
 import { STATUS_CONFIG, type OrderStatus } from '../../../src/constants/order-status';
-import type { OrderListItem } from '../../../src/api/orders';
+import type { OrderListItem, TrustLevel } from '../../../src/api/orders';
+
+const TRUST_BADGE: Partial<Record<TrustLevel, { label: string; bg: string }>> = {
+  BLOCKED: { label: '🚫 Bloqueado', bg: '#EF4444' },
+  RISK:    { label: '⚠️ En riesgo', bg: '#F59E0B' },
+  TRUSTED: { label: '⭐ Frecuente', bg: '#10B981' },
+};
 
 const FILTER_CHIPS = [
   { label: 'Todos',       value: null },
@@ -45,7 +51,14 @@ function OrderCard({ order, onPress }: { order: OrderListItem; onPress: () => vo
           <Text className="text-white text-xs font-bold">{config?.label ?? order.status}</Text>
         </View>
       </View>
-      <Text className="text-gray-900 font-semibold text-base mb-1">{order.customerName}</Text>
+      <View className="flex-row items-center mb-1" style={{ gap: 8 }}>
+        <Text className="text-gray-900 font-semibold text-base flex-1">{order.customerName}</Text>
+        {order.customerTrustLevel && TRUST_BADGE[order.customerTrustLevel] && (
+          <View style={{ backgroundColor: TRUST_BADGE[order.customerTrustLevel]!.bg }} className="rounded-full px-2 py-0.5">
+            <Text className="text-white text-[10px] font-bold">{TRUST_BADGE[order.customerTrustLevel]!.label}</Text>
+          </View>
+        )}
+      </View>
       <View className="flex-row justify-between items-center">
         <Text className="text-gray-500 text-sm">
           {order.deliveryType === 'PICKUP' ? '🏪 Para recoger' : '🚗 A domicilio'}
