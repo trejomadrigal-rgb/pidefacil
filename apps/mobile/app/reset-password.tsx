@@ -38,6 +38,7 @@ export default function ResetPasswordScreen() {
     >
       <View className="flex-1 px-8 pt-16">
         <TouchableOpacity onPress={() => router.back()} className="mb-8">
+          {/* @ts-ignore - @expo/vector-icons not yet typed for React 19 */}
           <Ionicons name="arrow-back" size={24} color="#FF6B35" />
         </TouchableOpacity>
 
@@ -74,6 +75,7 @@ export default function ResetPasswordScreen() {
             onPress={() => setShowPassword((v) => !v)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
+            {/* @ts-ignore - @expo/vector-icons not yet typed for React 19 */}
             <Ionicons
               name={showPassword ? 'eye-off' : 'eye'}
               size={22}

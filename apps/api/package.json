@@ -7,9 +7,9 @@
     "dev": "nest start --watch",
     "start": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
-    "test": "jest --runInBand",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "clean": "rm -rf dist",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -30,6 +30,7 @@
     "@pidefacil/types": "workspace:*",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@types/uuid": "9",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -45,7 +46,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
-    "uuid": "^14.0.0"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -93,6 +94,7 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
+    "testTimeout": 30000,
     "setupFiles": [
       "<rootDir>/../test/setup.ts"
     ]

@@ -32,7 +32,7 @@ describe('Business (integration)', () => {
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => { await app.close(); }, 15000);
 
   beforeEach(async () => {
     await prisma.orderItem.deleteMany();

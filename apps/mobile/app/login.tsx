@@ -94,6 +94,7 @@ export default function LoginScreen() {
             onPress={() => setShowPassword((v) => !v)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
+            {/* @ts-ignore - @expo/vector-icons not yet typed for React 19 */}
             <Ionicons
               name={showPassword ? 'eye-off' : 'eye'}
               size={22}

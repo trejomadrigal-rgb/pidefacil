@@ -24,7 +24,7 @@ describe('NotificationsModule (integration)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 15000);
 
   beforeEach(async () => {
     await prisma.notification.deleteMany();

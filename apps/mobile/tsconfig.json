@@ -2,9 +2,22 @@
   "extends": "@pidefacil/tsconfig/react-native.json",
   "compilerOptions": {
     "paths": {
-      "@pidefacil/types": ["../../packages/types/src"],
-      "@/*": ["./src/*"]
+      "@pidefacil/types": [
+        "../../packages/types/src"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.d.ts", "expo-env.d.ts", "nativewind-env.d.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.d.ts",
+    "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "pidefacil-mobile",
+    "node_modules"
+  ]
 }

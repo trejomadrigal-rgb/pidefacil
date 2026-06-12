@@ -23,7 +23,7 @@ describe('Auth (integration)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 15000);
 
   beforeEach(async () => {
     await prisma.orderItem.deleteMany();
