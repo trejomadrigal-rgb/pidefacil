@@ -286,6 +286,38 @@ describe('ReportsModule (integration)', () => {
       expect(res.body.summary.totalRevenue).toBe(0);
     });
 
+    it('excludes REJECTED orders from totalRevenue', async () => {
+      const product = await createProduct();
+      await createOrder({ status: 'DELIVERED', total: 200, productId: product.id });
+      await createOrder({ status: 'REJECTED', total: 100, productId: product.id });
+
+      const today = new Date().toISOString().split('T')[0];
+      const res = await request(app.getHttpServer())
+        .get(`/reports/dashboard?startDate=${today}&endDate=${today}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.totalRevenue).toBe(200);
+      expect(res.body.summary.totalOrders).toBe(2);
+    });
+
+    it('excludes CANCELLED order items from topProducts', async () => {
+      const product = await createProduct('Enchiladas', 80);
+      // This order is CANCELLED — its items should not appear in topProducts
+      await createOrder({ status: 'CANCELLED', total: 160, productId: product.id, qty: 5 });
+      // This order is DELIVERED — its items should appear
+      await createOrder({ status: 'DELIVERED', total: 160, productId: product.id, qty: 2 });
+
+      const today = new Date().toISOString().split('T')[0];
+      const res = await request(app.getHttpServer())
+        .get(`/reports/dashboard?startDate=${today}&endDate=${today}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.topProducts).toHaveLength(1);
+      expect(res.body.topProducts[0].totalQuantity).toBe(2); // only the DELIVERED order's items
+    });
+
     it('counts frequent customers — those with 2+ orders in range', async () => {
       const product = await createProduct();
       // Same customer phone = same customer (customerId is linked via phone)

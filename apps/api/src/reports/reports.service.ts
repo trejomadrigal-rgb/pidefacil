@@ -18,7 +18,13 @@ export class ReportsService {
         _sum: { total: true },
       }),
       this.prisma.orderItem.findMany({
-        where: { order: { businessId, createdAt: { gte: start, lte: end } } },
+        where: {
+          order: {
+            businessId,
+            createdAt: { gte: start, lte: end },
+            status: { notIn: ['CANCELLED', 'REJECTED'] },
+          },
+        },
         select: {
           productId: true,
           quantity: true,
@@ -49,7 +55,7 @@ export class ReportsService {
       const count = row._count.id;
       totalOrders += count;
 
-      if (row.status !== 'CANCELLED') {
+      if (row.status !== 'CANCELLED' && row.status !== 'REJECTED') {
         totalRevenue += Number(row._sum.total ?? 0);
       }
       if (row.status === 'DELIVERED') {
