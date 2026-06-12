@@ -23,7 +23,6 @@ const TRUST_BADGE: Partial<Record<TrustLevel, { label: string; bg: string }>> = 
 const FILTER_CHIPS = [
   { label: 'Todos',       value: null },
   { label: 'Nuevos',      value: 'NEW' },
-  { label: 'En revisión', value: 'UNDER_REVIEW' },
   { label: 'Confirmados', value: 'CONFIRMED' },
   { label: 'Preparando',  value: 'IN_PREPARATION' },
   { label: 'Listos',      value: 'READY' },
@@ -47,8 +46,8 @@ function OrderCard({ order, onPress }: { order: OrderListItem; onPress: () => vo
     >
       <View className="flex-row justify-between items-start mb-2">
         <Text className="text-brand-500 text-lg font-black">#{order.orderNumber}</Text>
-        <View style={{ backgroundColor: config?.color ?? '#9CA3AF' }} className="rounded-full px-3 py-1">
-          <Text className="text-white text-xs font-bold">{config?.label ?? order.status}</Text>
+        <View style={{ backgroundColor: config?.color ?? '#9CA3AF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>{config?.label ?? order.status}</Text>
         </View>
       </View>
       <View className="flex-row items-center mb-1" style={{ gap: 8 }}>
@@ -139,20 +138,26 @@ export default function PedidosScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="py-3"
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' }}
       >
         {FILTER_CHIPS.map((chip) => (
           <TouchableOpacity
             key={chip.label}
             onPress={() => setActiveFilter(chip.value)}
-            className={`px-4 py-2 rounded-full border ${
-              activeFilter === chip.value
-                ? 'bg-brand-500 border-brand-500'
-                : 'bg-white border-gray-200'
-            }`}
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              borderRadius: 20,
+              borderWidth: 1.5,
+              backgroundColor: activeFilter === chip.value ? '#FF6B35' : '#FFFFFF',
+              borderColor: activeFilter === chip.value ? '#FF6B35' : '#E5E7EB',
+            }}
           >
-            <Text className={`text-sm font-semibold ${activeFilter === chip.value ? 'text-white' : 'text-gray-600'}`}>
+            <Text style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color: activeFilter === chip.value ? '#FFFFFF' : '#4B5563',
+            }}>
               {chip.label}
             </Text>
           </TouchableOpacity>

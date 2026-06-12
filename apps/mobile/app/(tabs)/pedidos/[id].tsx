@@ -61,10 +61,22 @@ export default function OrderDetailScreen() {
   const cancelTransition = CANCEL_TRANSITION[status];
 
   const handleStatusChange = (newStatus: OrderStatus, label: string) => {
-    Alert.alert(label, `¿Confirmas "${label.toLowerCase()}" este pedido?`, [
-      { text: 'No', style: 'cancel' },
-      { text: 'Sí, confirmar', onPress: () => updateStatus(newStatus) },
-    ]);
+    const isConfirming = order?.status === 'NEW' && newStatus === 'CONFIRMED';
+    Alert.alert(
+      label,
+      isConfirming
+        ? '¿Confirmas este pedido? Se abrirá WhatsApp para notificar al cliente.'
+        : `¿Confirmas "${label.toLowerCase()}" este pedido?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, confirmar',
+          onPress: () => updateStatus(newStatus, {
+            onSuccess: () => { if (isConfirming) handleWhatsApp(); },
+          }),
+        },
+      ],
+    );
   };
 
   return (

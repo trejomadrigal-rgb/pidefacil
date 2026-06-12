@@ -17,8 +17,7 @@ export const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string }
 
 // Transición principal (avanzar flujo)
 export const NEXT_TRANSITION: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
-  NEW:            { status: 'UNDER_REVIEW',   label: 'Poner en revisión' },
-  UNDER_REVIEW:   { status: 'CONFIRMED',      label: 'Confirmar pedido' },
+  NEW:            { status: 'CONFIRMED',      label: 'Confirmar pedido' },
   CONFIRMED:      { status: 'IN_PREPARATION', label: 'Iniciar preparación' },
   IN_PREPARATION: { status: 'READY',          label: 'Marcar como listo' },
   READY:          { status: 'DELIVERED',      label: 'Marcar entregado' },
@@ -27,7 +26,6 @@ export const NEXT_TRANSITION: Partial<Record<OrderStatus, { status: OrderStatus;
 // Transición de cancelación/rechazo
 export const CANCEL_TRANSITION: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
   NEW:            { status: 'REJECTED',  label: 'Rechazar' },
-  UNDER_REVIEW:   { status: 'REJECTED',  label: 'Rechazar' },
   CONFIRMED:      { status: 'CANCELLED', label: 'Cancelar' },
   IN_PREPARATION: { status: 'CANCELLED', label: 'Cancelar' },
 };
