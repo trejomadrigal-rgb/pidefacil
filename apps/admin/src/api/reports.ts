@@ -36,8 +36,8 @@ export async function getReportsDashboard(
   startDate: string,
   endDate: string,
 ): Promise<ReportsDashboard> {
-  const res = await api.get<ReportsDashboard>(
-    `/reports/dashboard?startDate=${startDate}&endDate=${endDate}`,
-  );
+  const res = await api.get<ReportsDashboard>('/reports/dashboard', {
+    params: { startDate, endDate },
+  });
   return res.data;
 }
