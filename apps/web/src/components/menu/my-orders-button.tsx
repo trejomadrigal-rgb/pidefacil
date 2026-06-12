@@ -62,7 +62,7 @@ export function MyOrdersButton({ slug }: Props) {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
           <div className="absolute inset-0 bg-black/60" onClick={handleClose} />
 
-          <div className="relative bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden">
+          <div className="relative bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden text-gray-900">
             <div className="bg-brand-900 px-5 py-4 flex items-center justify-between">
               <h2 className="text-white font-bold text-base">Revisa tu pedido</h2>
               <button onClick={handleClose} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
@@ -82,7 +82,7 @@ export function MyOrdersButton({ slug }: Props) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-brand-500"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500"
                 />
                 <button
                   onClick={handleSearch}

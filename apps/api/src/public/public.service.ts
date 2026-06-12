@@ -136,10 +136,13 @@ export class PublicService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
+    // Normalize to last 10 digits so "9991234567" matches "529991234567" etc.
+    const last10 = phone.replace(/\D/g, '').slice(-10);
+
     const orders = await this.prisma.order.findMany({
       where: {
         businessId: business.id,
-        customerPhone: phone,
+        customerPhone: { endsWith: last10 },
         createdAt: { gte: todayStart },
       },
       orderBy: { createdAt: 'desc' },
