@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Redirect, Slot, useSegments } from 'expo-router';
+import { Slot, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '../src/store/auth-store';
@@ -14,9 +14,9 @@ const queryClient = new QueryClient({
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
-  const [checking, setChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { setAuth, clearAuth, sessionExpired } = useAuthStore();
+  const router = useRouter();
+  const [initialized, setInitialized] = useState(false);
+  const { accessToken, setAuth, clearAuth } = useAuthStore();
   const initiated = useRef(false);
 
   useEffect(() => {
@@ -36,36 +36,29 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           userName: data.user.name,
           role: data.user.role,
         });
-        setIsAuthenticated(true);
       } catch {
         await clearTokens().catch(() => {});
         clearAuth();
       } finally {
-        setChecking(false);
+        setInitialized(true);
       }
     })();
   }, []);
 
   useEffect(() => {
-    if (sessionExpired) setIsAuthenticated(false);
-  }, [sessionExpired]);
+    if (!initialized) return;
+    const inTabs = segments[0] === '(tabs)';
+    if (!accessToken && inTabs) {
+      router.replace('/login');
+    }
+  }, [initialized, accessToken, segments[0]]);
 
-  if (checking) {
+  if (!initialized) {
     return (
       <View className="flex-1 bg-brand-900 items-center justify-center">
         <ActivityIndicator color="#FF6B35" size="large" />
       </View>
     );
-  }
-
-  const inAuthGroup = segments[0] === '(tabs)';
-
-  if (!isAuthenticated && inAuthGroup) {
-    return <Redirect href="/login" />;
-  }
-
-  if (isAuthenticated && !inAuthGroup) {
-    return <Redirect href="/(tabs)/pedidos" />;
   }
 
   return <>{children}</>;

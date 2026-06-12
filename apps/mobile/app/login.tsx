@@ -11,7 +11,7 @@ import { useAuthStore } from '../src/store/auth-store';
 import { connectSocket } from '../src/lib/socket';
 import { registerPushToken } from '../src/lib/notifications';
 
-const APP_VERSION = Constants.expoConfig?.version ?? '0.6.1';
+const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -36,8 +36,8 @@ export default function LoginScreen() {
         role: data.user.role,
       });
       connectSocket(data.access_token);
-      registerPushToken(); // fire-and-forget
-      router.replace('/(tabs)/pedidos');
+      registerPushToken();
+      router.push('/(tabs)/pedidos');
     } catch {
       setError('Email o contraseña incorrectos');
     } finally {
