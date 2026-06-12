@@ -1,6 +1,6 @@
 'use client';
 
-type Preset = 'today' | '7d' | '30d' | 'custom';
+export type Preset = 'today' | '7d' | '30d' | 'custom';
 
 interface DateFilterProps {
   preset: Preset;
@@ -38,21 +38,28 @@ export function DateFilter({
         </button>
       ))}
       {preset === 'custom' && (
-        <div className="flex items-center gap-2 ml-2">
-          <input
-            type="date"
-            value={customStart}
-            onChange={(e) => onCustomStartChange(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-brand-500"
-          />
-          <span className="text-gray-400 text-sm">–</span>
-          <input
-            type="date"
-            value={customEnd}
-            onChange={(e) => onCustomEndChange(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-brand-500"
-          />
-        </div>
+        <>
+          <div className="flex items-center gap-2 ml-2">
+            <input
+              type="date"
+              value={customStart}
+              max={customEnd || undefined}
+              onChange={(e) => onCustomStartChange(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-brand-500"
+            />
+            <span className="text-gray-400 text-sm">–</span>
+            <input
+              type="date"
+              value={customEnd}
+              min={customStart || undefined}
+              onChange={(e) => onCustomEndChange(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-1 text-sm focus:outline-none focus:border-brand-500"
+            />
+          </div>
+          {(!customStart || !customEnd) && (
+            <span className="text-xs text-gray-400 ml-1">Selecciona ambas fechas</span>
+          )}
+        </>
       )}
     </div>
   );

@@ -2,12 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import { useReportsDashboard } from '@/hooks/use-reports';
-import { DateFilter } from './components/date-filter';
+import { DateFilter, type Preset } from './components/date-filter';
 import { KpiCards } from './components/kpi-cards';
 import { TopProductsChart } from './components/top-products-chart';
 import { PeakHoursChart } from './components/peak-hours-chart';
-
-type Preset = 'today' | '7d' | '30d' | 'custom';
 
 function toDateStr(d: Date) {
   return d.toISOString().split('T')[0];
@@ -37,6 +35,8 @@ const EMPTY_SUMMARY = {
   cancelledOrders: 0, confirmedOrders: 0, frequentCustomers: 0,
 };
 
+const EMPTY_PEAK_HOURS = Array.from({ length: 24 }, (_, hour) => ({ hour, orderCount: 0 }));
+
 export default function ReportesPage() {
   const [preset, setPreset] = useState<Preset>('today');
   const [customStart, setCustomStart] = useState('');
@@ -51,7 +51,7 @@ export default function ReportesPage() {
 
   const summary = data?.summary ?? EMPTY_SUMMARY;
   const topProducts = data?.topProducts ?? [];
-  const peakHours = data?.peakHours ?? Array.from({ length: 24 }, (_, hour) => ({ hour, orderCount: 0 }));
+  const peakHours = data?.peakHours ?? EMPTY_PEAK_HOURS;
 
   return (
     <div className="p-8 h-full overflow-auto">

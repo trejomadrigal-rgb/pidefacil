@@ -14,7 +14,7 @@ export function TopProductsChart({ products }: TopProductsChartProps) {
     );
   }
 
-  const maxQty = products[0].totalQuantity;
+  const maxQty = Math.max(...products.map((p) => p.totalQuantity));
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
