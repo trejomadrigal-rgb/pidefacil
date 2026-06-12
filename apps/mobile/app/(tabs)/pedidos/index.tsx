@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOrders } from '../../../src/hooks/use-orders';
+import { useOrderSound } from '../../../src/hooks/use-order-sound';
 import { getSocket, disconnectSocket } from '../../../src/lib/socket';
 import { useAuthStore } from '../../../src/store/auth-store';
 import { clearTokens, getItem } from '../../../src/lib/secure-storage';
@@ -76,11 +77,13 @@ export default function PedidosScreen() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const { data: orders = [], isLoading, isRefetching, refetch, isError } = useOrders();
   const queryClient = useQueryClient();
+  const { play: playNewOrderSound } = useOrderSound();
 
   useEffect(() => {
     const s = getSocket();
     if (!s) return;
     const handler = () => {
+      playNewOrderSound();
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     };
@@ -88,7 +91,7 @@ export default function PedidosScreen() {
     return () => {
       s.off('new_order', handler);
     };
-  }, [queryClient]);
+  }, [queryClient, playNewOrderSound]);
 
   const sorted = useMemo(
     () => [...orders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
