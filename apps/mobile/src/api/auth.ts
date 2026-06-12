@@ -24,3 +24,11 @@ export async function refreshAuth(refreshToken: string): Promise<AuthResponse> {
 export async function logoutApi(refreshToken: string): Promise<void> {
   await axios.post(`${BASE_URL}/auth/logout`, { refresh_token: refreshToken });
 }
+
+export async function forgotPassword(email: string): Promise<void> {
+  await axios.post(`${BASE_URL}/auth/forgot-password`, { email });
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  await axios.post(`${BASE_URL}/auth/reset-password`, { email, code, newPassword });
+}
