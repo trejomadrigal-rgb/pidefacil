@@ -109,33 +109,26 @@ export default function OrderDetailScreen() {
         </View>
       )}
 
-      {/* Customer info */}
-      {order.customer && (
-        <View className="bg-white mx-4 mt-4 rounded-2xl p-4">
-          <Text className="text-gray-500 text-xs font-semibold uppercase mb-2">Cliente</Text>
-          <TouchableOpacity onPress={() => router.push(`/(tabs)/clientes/${order.customer!.id}`)}>
-            <Text className="text-brand-500 font-semibold text-base">{order.customer.name}</Text>
-          </TouchableOpacity>
-          <Text className="text-gray-500 text-sm mt-0.5">{order.customer.phone}</Text>
-          {order.customer.notes ? (
-            <Text className="text-gray-600 text-sm mt-2 italic">
-              Indicaciones: {order.customer.notes}
-            </Text>
-          ) : null}
-        </View>
-      )}
-
       <View className="px-4 pt-4">
         {/* Cliente */}
         <View className="bg-white rounded-2xl p-4 mb-3">
           <Text className="text-gray-400 text-xs font-semibold uppercase mb-3">Cliente</Text>
-          <Text className="text-gray-900 font-semibold text-base">{order.customerName}</Text>
+          {order.customer ? (
+            <TouchableOpacity onPress={() => router.push(`/(tabs)/clientes/${order.customer!.id}`)}>
+              <Text className="text-brand-500 font-semibold text-base">{order.customerName}</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text className="text-gray-900 font-semibold text-base">{order.customerName}</Text>
+          )}
           <Text className="text-gray-500 text-sm mt-1">{order.customerPhone}</Text>
           <Text className="text-gray-500 text-sm mt-1">
             {order.deliveryType === 'PICKUP'
               ? '🏪 Para recoger'
               : `🚗 A domicilio: ${order.deliveryAddress ?? ''}`}
           </Text>
+          {order.customer?.notes ? (
+            <Text className="text-gray-600 text-sm mt-1 italic">📌 {order.customer.notes}</Text>
+          ) : null}
           {order.notes ? (
             <Text className="text-amber-600 text-sm mt-2 bg-amber-50 rounded-xl p-2">
               📝 {order.notes}

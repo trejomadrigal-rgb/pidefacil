@@ -45,7 +45,7 @@ function OrderCard({ order, onPress }: { order: OrderListItem; onPress: () => vo
       activeOpacity={0.7}
     >
       <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-brand-500 text-lg font-black">#{order.orderNumber}</Text>
+        <Text className="text-brand-500 text-lg font-black">Pedido #{order.orderNumber}</Text>
         <View style={{ backgroundColor: config?.color ?? '#9CA3AF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
           <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>{config?.label ?? order.status}</Text>
         </View>
