@@ -285,5 +285,47 @@ describe('ReportsModule (integration)', () => {
       expect(res.body.summary.totalOrders).toBe(0);
       expect(res.body.summary.totalRevenue).toBe(0);
     });
+
+    it('counts frequent customers — those with 2+ orders in range', async () => {
+      const product = await createProduct();
+      // Same customer phone = same customer (customerId is linked via phone)
+      // We need two orders for the same customerId to trigger frequentCustomers
+      // Create a customer first, then link orders to them
+      const customer = await prisma.customer.create({
+        data: { businessId, name: 'Ana Frecuente', phone: '5559876543', trustLevel: 'NEW' },
+      });
+      await prisma.order.create({
+        data: {
+          businessId,
+          customerId: customer.id,
+          orderNumber: `ORD-FC1`,
+          status: 'DELIVERED',
+          total: 100, subtotal: 100, discount: 0, deliveryFee: 0,
+          customerName: customer.name,
+          customerPhone: customer.phone,
+        },
+      });
+      await prisma.order.create({
+        data: {
+          businessId,
+          customerId: customer.id,
+          orderNumber: `ORD-FC2`,
+          status: 'DELIVERED',
+          total: 120, subtotal: 120, discount: 0, deliveryFee: 0,
+          customerName: customer.name,
+          customerPhone: customer.phone,
+        },
+      });
+      // A second customer with only 1 order — should NOT count
+      await createOrder({ status: 'DELIVERED', total: 80, productId: product.id });
+
+      const today = new Date().toISOString().split('T')[0];
+      const res = await request(app.getHttpServer())
+        .get(`/reports/dashboard?startDate=${today}&endDate=${today}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(res.body.summary.frequentCustomers).toBe(1);
+    });
   });
 });
