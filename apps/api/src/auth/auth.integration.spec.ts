@@ -37,6 +37,7 @@ describe('Auth (integration)', () => {
     await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.subscription.deleteMany();
     await prisma.business.deleteMany();
   });
 

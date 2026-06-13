@@ -51,6 +51,7 @@ describe('Public API (integration)', () => {
     await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.subscription.deleteMany();
     await prisma.business.deleteMany();
     // Limpiar cache Redis de este slug
     await redis.del('public:business:fonda-qr', 'public:categories:fonda-qr', 'public:products:fonda-qr');

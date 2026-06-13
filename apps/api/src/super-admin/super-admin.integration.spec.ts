@@ -28,6 +28,12 @@ describe('SuperAdmin (integration)', () => {
   }, 15000);
 
   afterAll(async () => {
+    // Clean up any data left from the last beforeEach run
+    await prisma.subscription.deleteMany();
+    await prisma.plan.deleteMany();
+    await prisma.refreshToken.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.business.deleteMany();
     await app.close();
   });
 
