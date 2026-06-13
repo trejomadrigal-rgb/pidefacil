@@ -35,6 +35,8 @@ describe('Business (integration)', () => {
   afterAll(async () => { await app.close(); }, 15000);
 
   beforeEach(async () => {
+    await prisma.subscription.deleteMany();
+    await prisma.notification.deleteMany();
     await prisma.orderItem.deleteMany();
     await prisma.order.deleteMany();
     await prisma.customer.deleteMany();
@@ -43,10 +45,10 @@ describe('Business (integration)', () => {
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.menu.deleteMany();
-    await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
     await prisma.business.deleteMany();
+    await prisma.plan.deleteMany();
 
     // Create OWNER via register
     const ownerRes = await request(app.getHttpServer()).post('/auth/register').send(ownerRegBody);
