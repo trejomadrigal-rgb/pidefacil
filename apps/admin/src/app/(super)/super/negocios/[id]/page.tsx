@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import {
   useActivateSaBusiness,
@@ -45,6 +45,16 @@ export default function NegocioDetailPage() {
   const [subStartDate, setSubStartDate] = useState('');
   const [subEndDate, setSubEndDate] = useState('');
   const [subStatus, setSubStatus] = useState<SaSubscription['status']>('TRIAL');
+
+  // Pre-populate subscription form when biz.subscription loads
+  useEffect(() => {
+    if (biz?.subscription) {
+      setSubPlanId(biz.subscription.planId);
+      setSubStartDate(biz.subscription.startDate.slice(0, 10));
+      setSubEndDate(biz.subscription.endDate ? biz.subscription.endDate.slice(0, 10) : '');
+      setSubStatus(biz.subscription.status);
+    }
+  }, [biz?.subscription?.id]);
 
   const handleStartEdit = () => {
     if (!biz) return;
@@ -171,6 +181,11 @@ export default function NegocioDetailPage() {
                 {updateBiz.isPending ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
+            {updateBiz.error && (
+              <p className="text-sm text-red-500">
+                {(updateBiz.error as any)?.response?.data?.message ?? 'Error al guardar cambios'}
+              </p>
+            )}
           </div>
         )}
       </section>
@@ -266,6 +281,11 @@ export default function NegocioDetailPage() {
           >
             {upsertSub.isPending ? 'Guardando...' : biz.subscription ? 'Actualizar' : 'Asignar'}
           </button>
+          {upsertSub.error && (
+            <p className="text-sm text-red-500">
+              {(upsertSub.error as any)?.response?.data?.message ?? 'Error al guardar suscripción'}
+            </p>
+          )}
         </form>
       </section>
     </div>

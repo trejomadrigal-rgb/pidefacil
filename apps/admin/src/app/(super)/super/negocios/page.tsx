@@ -20,11 +20,16 @@ const FILTER_OPTIONS: Filter[] = ['all', 'ACTIVE', 'TRIAL', 'SUSPENDED'];
 
 export default function SuperNegociosPage() {
   const [filter, setFilter] = useState<Filter>('all');
-  // 'TRIAL' is a subscription status, not a business status; pass it as a cast so the
-  // API can handle it while keeping the filter UX intact.
-  const apiStatus =
-    filter === 'all' ? undefined : (filter as SaBusiness['status']);
-  const { data: businesses = [], isLoading } = useSaBusinesses(apiStatus);
+  // Fetch all businesses; TRIAL filter is applied client-side
+  const { data: allBusinesses = [], isLoading } = useSaBusinesses(
+    filter !== 'all' && filter !== 'TRIAL' ? (filter as SaBusiness['status']) : undefined,
+  );
+
+  // Apply TRIAL filter client-side
+  const businesses =
+    filter === 'TRIAL'
+      ? allBusinesses.filter((b) => b.subscription?.status === 'TRIAL')
+      : allBusinesses;
 
   return (
     <div className="p-8 h-full overflow-auto">
