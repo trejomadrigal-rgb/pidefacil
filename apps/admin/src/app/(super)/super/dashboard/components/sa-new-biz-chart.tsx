@@ -3,7 +3,7 @@ import type { SaNewBiz } from '@/api/super-admin';
 interface Props { data: SaNewBiz[]; }
 
 export function SaNewBizChart({ data }: Props) {
-  const maxCount = Math.max(...data.map((d) => d.count), 1);
+  const maxCount = data.reduce((m, d) => Math.max(m, d.count), 1);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">

@@ -17,7 +17,7 @@ const EMPTY_DASHBOARD = {
 
 export default function SuperDashboardPage() {
   const { data: dashboard = EMPTY_DASHBOARD, isLoading: dashLoading } = useSaDashboard();
-  const { data: businesses = [] } = useSaBusinesses();
+  const { data: businesses = [], isLoading: bizLoading } = useSaBusinesses();
 
   return (
     <div className="p-8 h-full overflow-auto">
@@ -43,7 +43,13 @@ export default function SuperDashboardPage() {
         <SaNewBizChart data={dashboard.newBusinesses30d} />
       </div>
 
-      <SaBizTable businesses={businesses} />
+      {bizLoading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-sm text-gray-400 animate-pulse">
+          Cargando negocios...
+        </div>
+      ) : (
+        <SaBizTable businesses={businesses} />
+      )}
     </div>
   );
 }

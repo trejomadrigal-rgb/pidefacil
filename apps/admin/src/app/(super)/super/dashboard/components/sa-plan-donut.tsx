@@ -33,9 +33,11 @@ export function SaPlanDonut({ data }: Props) {
       </p>
       <div className="flex items-center gap-4">
         <div
-          className="w-14 h-14 rounded-full flex-shrink-0"
+          className="relative w-14 h-14 rounded-full flex-shrink-0"
           style={{ background: `conic-gradient(${gradient})` }}
-        />
+        >
+          <div className="absolute inset-0 m-[10px] bg-white rounded-full" />
+        </div>
         <div className="flex flex-col gap-1.5">
           {data.length === 0 ? (
             <p className="text-xs text-gray-400">Sin suscripciones</p>
