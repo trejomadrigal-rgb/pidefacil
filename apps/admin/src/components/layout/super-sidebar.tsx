@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Building2, CreditCard } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
+import { api } from '@/lib/api';
 
 const navItems = [
   { href: '/super/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -13,7 +14,19 @@ const navItems = [
 
 export function SuperSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const clearAuth = useAuthStore((s) => s.clearAuth);
+
+  const handleLogout = async () => {
+    try {
+      const rfToken = document.cookie.match(/rf_token=([^;]+)/)?.[1];
+      if (rfToken) await api.post('/auth/logout', { refresh_token: rfToken });
+    } finally {
+      document.cookie = 'rf_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+      clearAuth();
+      router.push('/login');
+    }
+  };
 
   return (
     <aside className="w-56 bg-[#1A1A2E] flex flex-col h-full flex-shrink-0">
@@ -42,10 +55,7 @@ export function SuperSidebar() {
       </nav>
       <div className="px-4 py-4 border-t border-white/10">
         <button
-          onClick={() => {
-            clearAuth();
-            window.location.href = '/login';
-          }}
+          onClick={handleLogout}
           className="text-white/40 text-xs hover:text-white/70 transition-colors"
         >
           Cerrar sesión

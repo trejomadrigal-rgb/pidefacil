@@ -86,7 +86,7 @@ export async function deleteSaPlan(id: string): Promise<void> {
   await api.delete(`/super-admin/plans/${id}`);
 }
 
-export async function getSaBusinesses(status?: string): Promise<SaBusiness[]> {
+export async function getSaBusinesses(status?: SaBusiness['status']): Promise<SaBusiness[]> {
   return (await api.get<SaBusiness[]>('/super-admin/businesses', { params: status ? { status } : undefined })).data;
 }
 

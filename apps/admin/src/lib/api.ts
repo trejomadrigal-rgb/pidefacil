@@ -11,7 +11,7 @@ function getCookie(name: string): string | null {
   return match ? match[2] : null;
 }
 
-function parseJwtPayload(token: string): { sub: string; businessId: string; role: string } {
+export function parseJwtPayload(token: string): { sub: string; businessId: string; role: string } {
   const base64Url = token.split('.')[1];
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
   return JSON.parse(atob(base64));

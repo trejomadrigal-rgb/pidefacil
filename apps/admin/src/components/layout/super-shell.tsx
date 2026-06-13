@@ -3,12 +3,13 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
+import { parseJwtPayload } from '@/lib/api';
 import { SuperSidebar } from './super-sidebar';
 
 function decodeRole(token: string | null): string | null {
   if (!token) return null;
   try {
-    return (JSON.parse(atob(token.split('.')[1])) as { role?: string }).role ?? null;
+    return parseJwtPayload(token).role ?? null;
   } catch {
     return null;
   }
