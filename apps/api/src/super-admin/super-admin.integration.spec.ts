@@ -246,6 +246,22 @@ describe('SuperAdmin (integration)', () => {
     });
   });
 
+  describe('GET /super-admin/businesses/:id', () => {
+    it('returns single business with subscription and plan', async () => {
+      const plan = await prisma.plan.findFirst({ where: { name: 'Pro' } });
+      await prisma.subscription.create({
+        data: { businessId: ownerBusinessId, planId: plan!.id, startDate: new Date(), status: 'ACTIVE' },
+      });
+      const res = await request(app.getHttpServer())
+        .get(`/super-admin/businesses/${ownerBusinessId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+      expect(res.body.id).toBe(ownerBusinessId);
+      expect(res.body.subscription).not.toBeNull();
+      expect(res.body.subscription.plan.name).toBe('Pro');
+    });
+  });
+
   describe('POST /super-admin/businesses/:id/suspend', () => {
     it('sets business status to SUSPENDED', async () => {
       const res = await request(app.getHttpServer())
