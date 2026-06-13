@@ -1,5 +1,6 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { BusinessStatus } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { BusinessService } from '../business/business.service';
 import { CreateBusinessDto } from '../business/dto/create-business.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -75,7 +76,9 @@ export class SuperAdminService {
   }
 
   updatePlan(id: string, dto: UpdatePlanDto) {
-    return this.prisma.plan.update({ where: { id }, data: dto });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.plan.update({ where: { id }, data: dto }),
+    );
   }
 
   async deletePlan(id: string) {
@@ -85,7 +88,9 @@ export class SuperAdminService {
     if (activeCount > 0) {
       throw new ConflictException('Cannot delete a plan with active or trial subscriptions');
     }
-    return this.prisma.plan.delete({ where: { id } });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.plan.delete({ where: { id } }),
+    );
   }
 
   // ── Businesses ────────────────────────────────────────────────────────
@@ -99,10 +104,12 @@ export class SuperAdminService {
   }
 
   getBusinessById(id: string) {
-    return this.prisma.business.findUniqueOrThrow({
-      where: { id },
-      include: { subscription: { include: { plan: true } } },
-    });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.business.findUniqueOrThrow({
+        where: { id },
+        include: { subscription: { include: { plan: true } } },
+      }),
+    );
   }
 
   createBusiness(dto: CreateBusinessDto) {
@@ -110,15 +117,21 @@ export class SuperAdminService {
   }
 
   updateBusiness(id: string, dto: UpdateBusinessDto) {
-    return this.prisma.business.update({ where: { id }, data: dto });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.business.update({ where: { id }, data: dto }),
+    );
   }
 
   suspendBusiness(id: string) {
-    return this.prisma.business.update({ where: { id }, data: { status: 'SUSPENDED' } });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.business.update({ where: { id }, data: { status: 'SUSPENDED' } }),
+    );
   }
 
   activateBusiness(id: string) {
-    return this.prisma.business.update({ where: { id }, data: { status: 'ACTIVE' } });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.business.update({ where: { id }, data: { status: 'ACTIVE' } }),
+    );
   }
 
   // ── Subscriptions ─────────────────────────────────────────────────────
@@ -143,14 +156,29 @@ export class SuperAdminService {
   }
 
   updateSubscription(id: string, dto: UpdateSubscriptionDto) {
-    return this.prisma.subscription.update({
-      where: { id },
-      data: {
-        ...(dto.planId && { planId: dto.planId }),
-        ...(dto.startDate && { startDate: new Date(dto.startDate) }),
-        ...(dto.endDate !== undefined && { endDate: dto.endDate ? new Date(dto.endDate) : null }),
-        ...(dto.status && { status: dto.status }),
-      },
-    });
+    return this.handlePrismaNotFound(() =>
+      this.prisma.subscription.update({
+        where: { id },
+        data: {
+          ...(dto.planId !== undefined && { planId: dto.planId }),
+          ...(dto.startDate !== undefined && { startDate: new Date(dto.startDate) }),
+          ...(dto.endDate !== undefined && { endDate: dto.endDate ? new Date(dto.endDate) : null }),
+          ...(dto.status !== undefined && { status: dto.status }),
+        },
+      }),
+    );
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────
+
+  private async handlePrismaNotFound<T>(fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof PrismaClientKnownRequestError && e.code === 'P2025') {
+        throw new NotFoundException('Record not found');
+      }
+      throw e;
+    }
   }
 }

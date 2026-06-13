@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../app.module';
 import { PrismaService } from '../prisma/prisma.service';
+import { HttpExceptionFilter } from '../common/filters/http-exception.filter';
 
 const PASSWORD = 'SuperPass1!';
 const PASSWORD_HASH =
@@ -20,7 +21,8 @@ describe('SuperAdmin (integration)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+    app.useGlobalFilters(new HttpExceptionFilter());
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     prisma = moduleRef.get(PrismaService);
     await app.init();
   }, 15000);
@@ -259,6 +261,17 @@ describe('SuperAdmin (integration)', () => {
       expect(res.body.id).toBe(ownerBusinessId);
       expect(res.body.subscription).not.toBeNull();
       expect(res.body.subscription.plan.name).toBe('Pro');
+    });
+  });
+
+  describe('PATCH /super-admin/businesses/:id', () => {
+    it('updates business name', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/super-admin/businesses/${ownerBusinessId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ name: 'Updated Fonda Name' })
+        .expect(200);
+      expect(res.body.name).toBe('Updated Fonda Name');
     });
   });
 

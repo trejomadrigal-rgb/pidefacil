@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseEnumPipe, Patch, Post, Query } from '@nestjs/common';
 import { BusinessStatus, Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CreateBusinessDto } from '../business/dto/create-business.dto';
@@ -40,7 +40,7 @@ export class SuperAdminController {
   }
 
   @Get('businesses')
-  getBusinesses(@Query('status') status?: BusinessStatus) {
+  getBusinesses(@Query('status', new ParseEnumPipe(BusinessStatus, { optional: true })) status?: BusinessStatus) {
     return this.superAdminService.getBusinesses(status);
   }
 
