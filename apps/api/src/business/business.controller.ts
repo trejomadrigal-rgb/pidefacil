@@ -1,8 +1,7 @@
-import { Controller, Get, Patch, Post, Body } from '@nestjs/common';
+import { Controller, Get, Patch, Body } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { BusinessService } from './business.service';
 import { UpdateBusinessDto } from './dto/update-business.dto';
-import { CreateBusinessDto } from './dto/create-business.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 
@@ -24,9 +23,4 @@ export class BusinessController {
     return this.businessService.updateMyBusiness(user.businessId, dto);
   }
 
-  @Post('admin/businesses')
-  @Roles(Role.SUPER_ADMIN)
-  createBusiness(@Body() dto: CreateBusinessDto) {
-    return this.businessService.createBusiness(dto);
-  }
 }

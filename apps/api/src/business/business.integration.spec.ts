@@ -108,10 +108,10 @@ describe('Business (integration)', () => {
     });
   });
 
-  describe('POST /admin/businesses', () => {
+  describe('POST /super-admin/businesses', () => {
     it('SUPER_ADMIN crea negocio con OWNER', async () => {
       const res = await request(app.getHttpServer())
-        .post('/admin/businesses')
+        .post('/super-admin/businesses')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
           businessName: 'Fonda Nueva',
@@ -128,7 +128,7 @@ describe('Business (integration)', () => {
 
     it('OWNER no puede crear negocios → 403', async () => {
       await request(app.getHttpServer())
-        .post('/admin/businesses')
+        .post('/super-admin/businesses')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           businessName: 'Otro',
