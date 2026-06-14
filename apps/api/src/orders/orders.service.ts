@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, OrderStatus } from '@prisma/client';
+import { Prisma, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -110,6 +110,14 @@ export class OrdersService {
     // check and both write. Acceptable for MVP; fix with optimistic locking post-pilot.
     const order = await this.prisma.order.findFirst({ where: { id, businessId } });
     if (!order) throw new NotFoundException('Pedido no encontrado');
+
+    if (newStatus === OrderStatus.OUT_FOR_DELIVERY) {
+      if (order.paymentMethod !== PaymentMethod.CASH && !order.isPaid) {
+        throw new BadRequestException(
+          'El pedido requiere confirmación de pago antes de salir a entrega',
+        );
+      }
+    }
 
     const allowed = VALID_TRANSITIONS[order.status] ?? [];
     if (!allowed.includes(newStatus)) {
@@ -356,5 +364,15 @@ export class OrdersService {
       })),
       createdAt: order.createdAt,
     };
+  }
+
+  async confirmPayment(id: string, businessId: string) {
+    const order = await this.prisma.order.findFirst({ where: { id, businessId } });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (order.isPaid) throw new BadRequestException('El pedido ya está marcado como pagado');
+    return this.prisma.order.update({
+      where: { id },
+      data: { isPaid: true },
+    });
   }
 }

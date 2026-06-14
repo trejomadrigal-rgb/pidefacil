@@ -9,7 +9,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { DeliveryType } from '@prisma/client';
+import { DeliveryType, PaymentMethod } from '@prisma/client';
 
 export class OrderItemDto {
   @IsString()
@@ -76,6 +76,14 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   deliveryNotes?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 
   @IsArray()
   @ValidateNested({ each: true })

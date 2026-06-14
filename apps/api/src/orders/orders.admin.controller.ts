@@ -1,5 +1,5 @@
 // apps/api/src/orders/orders.admin.controller.ts
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -29,5 +29,11 @@ export class OrdersAdminController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, user.businessId, dto.status);
+  }
+
+  @Patch(':id/confirm-payment')
+  @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
+  confirmPayment(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
+    return this.ordersService.confirmPayment(id, user.businessId);
   }
 }

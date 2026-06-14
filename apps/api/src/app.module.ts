@@ -20,6 +20,7 @@ import { ReportsModule } from './reports/reports.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { BranchesModule } from './branches/branches.module';
 import { DevicesModule } from './devices/devices.module';
+import { LiquidationsModule } from './liquidations/liquidations.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -62,6 +63,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     SuperAdminModule,
     BranchesModule,
     DevicesModule,
+    LiquidationsModule,
   ],
   controllers: [AppController],
   providers: [
