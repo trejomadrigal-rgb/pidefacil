@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma, OrderStatus, PaymentMethod } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusDto } from './dto/order-status.dto';
 import { OrderListItemDto } from './dto/order-list-item.dto';
@@ -29,6 +30,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   async findActive(businessId: string): Promise<OrderListItemDto[]> {
@@ -154,6 +156,16 @@ export class OrdersService {
         }
       }
     }
+
+    this.whatsappService.sendStatusMessage(
+      {
+        businessId,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+      },
+      newStatus,
+    ).catch(() => {});
 
     return this.findOne(id, businessId);
   }
