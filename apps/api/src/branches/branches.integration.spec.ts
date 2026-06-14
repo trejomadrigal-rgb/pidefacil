@@ -131,6 +131,26 @@ describe('BranchesModule (integration)', () => {
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(204);
     });
+
+    it('retorna 403 si la sucursal tiene pedidos activos', async () => {
+      const branch = await prisma.branch.create({ data: { businessId, ...branchDto } });
+      await prisma.order.create({
+        data: {
+          businessId,
+          branchId: branch.id,
+          orderNumber: 'ORD-001',
+          status: 'NEW',
+          subtotal: 20,
+          total: 20,
+          customerName: 'Cliente Test',
+          customerPhone: '5550000000',
+        },
+      });
+      await request(app.getHttpServer())
+        .delete(`/admin/branches/${branch.id}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(403);
+    });
   });
 
   describe('PUT /admin/branches/:id/menu-schedules', () => {

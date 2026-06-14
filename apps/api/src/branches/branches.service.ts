@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -55,7 +56,7 @@ export class BranchesService {
       },
     });
     if (activeOrders > 0) {
-      throw new BadRequestException('No se puede eliminar una sucursal con pedidos activos');
+      throw new ForbiddenException('No se puede eliminar una sucursal con pedidos activos');
     }
     await this.prisma.branch.delete({ where: { id } });
   }
