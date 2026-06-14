@@ -64,7 +64,11 @@ export class BranchesService {
     if (activeOrders > 0) {
       throw new ForbiddenException('No se puede eliminar una sucursal con pedidos activos');
     }
-    await this.prisma.branch.delete({ where: { id } });
+    await this.prisma.$transaction([
+      this.prisma.branchProductAvailability.deleteMany({ where: { branchId: id } }),
+      this.prisma.branchMenuSchedule.deleteMany({ where: { branchId: id } }),
+      this.prisma.branch.delete({ where: { id } }),
+    ]);
   }
 
   async getMenuSchedules(businessId: string, branchId: string) {
