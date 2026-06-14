@@ -34,7 +34,7 @@ export function BranchPicker({ branches, selectedId, onSelect }: Props) {
       },
       { timeout: 5000 },
     );
-  }, []);
+  }, [branches, selectedId, onSelect]);
 
   return (
     <div className="bg-white border-b border-gray-100 px-4 py-3">

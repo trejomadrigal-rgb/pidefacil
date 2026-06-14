@@ -26,6 +26,7 @@ export default function PlanesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [newRow, setNewRow] = useState<EditRow>(EMPTY_ROW);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleEdit = (plan: SaPlan) => {
     setEditingId(plan.id);
@@ -41,15 +42,25 @@ export default function PlanesPage() {
 
   const handleSaveEdit = async () => {
     if (!editingId) return;
-    await update.mutateAsync({ id: editingId, data: editRow });
-    setEditingId(null);
+    setSaveError(null);
+    try {
+      await update.mutateAsync({ id: editingId, data: editRow });
+      setEditingId(null);
+    } catch (err: any) {
+      setSaveError(err?.response?.data?.message ?? 'No se pudo guardar el plan');
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    await create.mutateAsync(newRow);
-    setIsCreating(false);
-    setNewRow(EMPTY_ROW);
+    setSaveError(null);
+    try {
+      await create.mutateAsync(newRow);
+      setIsCreating(false);
+      setNewRow(EMPTY_ROW);
+    } catch (err: any) {
+      setSaveError(err?.response?.data?.message ?? 'No se pudo crear el plan');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -89,10 +100,16 @@ export default function PlanesPage() {
         </p>
       )}
 
+      {saveError && (
+        <p className="text-sm text-red-500 mb-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {saveError}
+        </p>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className={`grid ${COLS} px-4 py-2 bg-gray-50 border-b border-gray-200`}>
-          {['Nombre', 'Precio/mes', 'Usuarios', 'Productos', 'Sucursales', 'Dispositivos', ''].map((h) => (
-            <span key={h} className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
+          {['Nombre', 'Precio/mes', 'Usuarios', 'Productos', 'Sucursales', 'Dispositivos', ''].map((h, i) => (
+            <span key={h || `col-${i}`} className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
               {h}
             </span>
           ))}

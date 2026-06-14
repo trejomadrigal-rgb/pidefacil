@@ -56,6 +56,7 @@ export interface CreateOrderItem {
 
 export interface CreateOrderPayload {
   businessId: string;
+  branchId?: string | null;
   customer: { name: string; phone: string };
   deliveryType: 'PICKUP' | 'DELIVERY';
   address?: { street: string; references?: string };

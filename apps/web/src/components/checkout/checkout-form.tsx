@@ -43,7 +43,7 @@ interface CheckoutFormProps {
 }
 
 export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: CheckoutFormProps) {
-  const { items, total, clearCart } = useCartStore();
+  const { items, total, clearCart, branchId } = useCartStore();
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -84,6 +84,7 @@ export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: C
     try {
       const result = await createOrder({
         businessId,
+        branchId: branchId ?? undefined,
         customer: { name: values.name, phone: values.phone },
         deliveryType: values.deliveryType,
         address:
