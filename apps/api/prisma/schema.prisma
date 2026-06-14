@@ -143,6 +143,7 @@ model Business {
   address   String?
   timezone  String         @default("America/Mexico_City")
   status    BusinessStatus @default(ACTIVE)
+  whatsappSession String?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
