@@ -41,6 +41,7 @@ describe('Menus (integration)', () => {
     await prisma.customer.deleteMany();
     await prisma.extra.deleteMany();
     await prisma.variant.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.menu.deleteMany();
@@ -50,7 +51,6 @@ describe('Menus (integration)', () => {
     await prisma.subscription.deleteMany();
     await prisma.liquidation.deleteMany();
     await prisma.device.deleteMany();
-    await prisma.branchProductAvailability.deleteMany();
     await prisma.branchMenuSchedule.deleteMany();
     await prisma.branch.deleteMany();
     await prisma.business.deleteMany();

@@ -118,7 +118,7 @@ describe('BranchesModule (integration)', () => {
       await request(app.getHttpServer())
         .patch('/admin/branches/nonexistent')
         .set('Authorization', `Bearer ${ownerToken}`)
-        .send({ name: 'X' })
+        .send({ name: 'Nombre actualizado' })
         .expect(404);
     });
   });
