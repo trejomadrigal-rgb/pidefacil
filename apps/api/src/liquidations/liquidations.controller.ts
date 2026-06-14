@@ -1,9 +1,12 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { LiquidationsService } from './liquidations.service';
 import { CreateLiquidationDto } from './dto/create-liquidation.dto';
 
 @Controller('admin/liquidations')
+@Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
 export class LiquidationsController {
   constructor(private liquidationsService: LiquidationsService) {}
 

@@ -177,6 +177,13 @@ export class OrdersService {
       throw new BadRequestException('El pedido debe tener al menos un producto');
     }
 
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: dto.branchId, businessId: dto.businessId },
+      });
+      if (!branch) throw new NotFoundException('Sucursal no encontrada');
+    }
+
     // Validate each item and calculate prices
     const resolvedItems: Array<{
       productId: string;
@@ -270,6 +277,8 @@ export class OrdersService {
               customerName: dto.customer.name,
               customerPhone: dto.customer.phone,
               deliveryAddress,
+              branchId: dto.branchId ?? null,
+              paymentMethod: dto.paymentMethod ?? null,
               items: {
                 create: resolvedItems.map((item) => ({
                   productId: item.productId,
@@ -370,9 +379,7 @@ export class OrdersService {
     const order = await this.prisma.order.findFirst({ where: { id, businessId } });
     if (!order) throw new NotFoundException('Pedido no encontrado');
     if (order.isPaid) throw new BadRequestException('El pedido ya está marcado como pagado');
-    return this.prisma.order.update({
-      where: { id },
-      data: { isPaid: true },
-    });
+    await this.prisma.order.update({ where: { id }, data: { isPaid: true } });
+    return this.findOne(id, businessId);
   }
 }
