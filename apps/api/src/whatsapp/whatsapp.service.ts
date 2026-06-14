@@ -50,6 +50,9 @@ export class WhatsappService {
       headers: this.headers(),
       body: body ? JSON.stringify(body) : undefined,
     });
+    if (!res.ok) {
+      throw new Error(`Evolution API error: ${res.status} ${res.statusText}`);
+    }
     return res.json() as Promise<T>;
   }
 
