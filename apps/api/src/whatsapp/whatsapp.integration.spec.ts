@@ -13,8 +13,10 @@ describe('WhatsappModule (integration)', () => {
 
   const suffix = Date.now();
   const mockFetch = jest.fn();
+  let originalFetch: typeof fetch;
 
   beforeAll(async () => {
+    originalFetch = global.fetch;
     global.fetch = mockFetch as any;
 
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -44,6 +46,7 @@ describe('WhatsappModule (integration)', () => {
   });
 
   afterAll(async () => {
+    global.fetch = originalFetch;
     jest.restoreAllMocks();
     await prisma.subscription.deleteMany({ where: { businessId } });
     await prisma.refreshToken.deleteMany({ where: { user: { businessId } } });
