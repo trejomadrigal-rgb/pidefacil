@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { DeviceStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 
@@ -14,7 +15,11 @@ export class DevicesService {
   async register(businessId: string, userId: string, dto: RegisterDeviceDto) {
     const existing = await this.prisma.device.findUnique({ where: { token: dto.token } });
     if (existing) {
-      if (existing.status === 'BLOCKED') {
+      // Cross-business token collision — treat as new device for this business
+      if (existing.businessId !== businessId) {
+        throw new ForbiddenException('Este token ya está registrado en otro negocio');
+      }
+      if (existing.status === DeviceStatus.BLOCKED) {
         throw new ForbiddenException('DEVICE_BLOCKED');
       }
       await this.prisma.device.update({
@@ -50,28 +55,32 @@ export class DevicesService {
       if (!branch) throw new NotFoundException('Sucursal no encontrada');
     }
 
-    const sub = await this.prisma.subscription.findUnique({
-      where: { businessId },
-      include: { plan: true },
-    });
-    const max = sub?.plan?.maxDevices ?? 4;
-    const active = await this.prisma.device.count({ where: { businessId, status: 'ACTIVE' } });
-    if (active >= max) {
-      throw new BadRequestException(
-        `Tu plan permite máximo ${max} dispositivo(s) activo(s). Actualiza tu plan para agregar más.`,
-      );
-    }
-
-    return this.prisma.device.update({
-      where: { id },
-      data: { status: 'ACTIVE', branchId: branchId ?? null },
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        const sub = await tx.subscription.findUnique({
+          where: { businessId },
+          include: { plan: true },
+        });
+        const max = sub?.plan?.maxDevices ?? 4;
+        const active = await tx.device.count({ where: { businessId, status: DeviceStatus.ACTIVE } });
+        if (active >= max) {
+          throw new BadRequestException(
+            `Tu plan permite máximo ${max} dispositivo(s) activo(s). Actualiza tu plan para agregar más.`,
+          );
+        }
+        return tx.device.update({
+          where: { id },
+          data: { status: DeviceStatus.ACTIVE, branchId: branchId ?? null },
+        });
+      },
+      { isolationLevel: 'Serializable' },
+    );
   }
 
   async block(businessId: string, id: string) {
     const device = await this.prisma.device.findFirst({ where: { id, businessId } });
     if (!device) throw new NotFoundException('Dispositivo no encontrado');
-    return this.prisma.device.update({ where: { id }, data: { status: 'BLOCKED' } });
+    return this.prisma.device.update({ where: { id }, data: { status: DeviceStatus.BLOCKED } });
   }
 
   async remove(businessId: string, id: string) {
@@ -80,11 +89,11 @@ export class DevicesService {
     await this.prisma.device.delete({ where: { id } });
   }
 
-  async checkToken(token: string): Promise<'PENDING' | 'ACTIVE' | 'BLOCKED' | null> {
+  async checkToken(token: string): Promise<DeviceStatus | null> {
     const device = await this.prisma.device.findUnique({
       where: { token },
       select: { status: true },
     });
-    return (device?.status as 'PENDING' | 'ACTIVE' | 'BLOCKED') ?? null;
+    return device?.status ?? null;
   }
 }
