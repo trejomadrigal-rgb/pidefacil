@@ -31,10 +31,10 @@ describe('SuperAdmin (integration)', () => {
     // Clean up any data left from the last beforeEach run
     await prisma.subscription.deleteMany();
     await prisma.plan.deleteMany();
-    await prisma.refreshToken.deleteMany();
-    await prisma.user.deleteMany();
     await prisma.liquidation.deleteMany();
     await prisma.device.deleteMany();
+    await prisma.refreshToken.deleteMany();
+    await prisma.user.deleteMany();
     await prisma.branchProductAvailability.deleteMany();
     await prisma.branchMenuSchedule.deleteMany();
     await prisma.branch.deleteMany();
@@ -51,10 +51,10 @@ describe('SuperAdmin (integration)', () => {
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.menu.deleteMany();
-    await prisma.refreshToken.deleteMany();
-    await prisma.user.deleteMany();
     await prisma.liquidation.deleteMany();
     await prisma.device.deleteMany();
+    await prisma.refreshToken.deleteMany();
+    await prisma.user.deleteMany();
     await prisma.branchProductAvailability.deleteMany();
     await prisma.branchMenuSchedule.deleteMany();
     await prisma.branch.deleteMany();

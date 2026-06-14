@@ -49,7 +49,7 @@ export class ReportsService {
     let cancelledOrders = 0;
     let confirmedOrders = 0;
 
-    const ACTIVE_STATUSES = ['NEW', 'UNDER_REVIEW', 'WAITING_CONFIRMATION', 'CONFIRMED', 'IN_PREPARATION', 'READY'];
+    const ACTIVE_STATUSES = ['NEW', 'UNDER_REVIEW', 'WAITING_CONFIRMATION', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'OUT_FOR_DELIVERY'];
 
     for (const row of orderGroups) {
       const count = row._count.id;
