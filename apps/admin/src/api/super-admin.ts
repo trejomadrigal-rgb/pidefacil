@@ -19,6 +19,7 @@ export interface SaPlan {
   maxUsers: number;
   maxProducts: number;
   maxBranches: number;
+  maxDevices: number;
 }
 
 export interface SaSubscription {

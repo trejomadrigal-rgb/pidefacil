@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
-import { getBusinessMenu } from '@/lib/api';
+import { getBusinessMenu, getPublicBranches } from '@/lib/api';
 import { BusinessHeader } from '@/components/menu/business-header';
 import { ProductList } from '@/components/menu/product-list';
 import { CategoryPills } from '@/components/menu/category-pills';
 import { CartBar } from '@/components/cart/cart-bar';
+import { MenuClient } from './menu-client';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -11,7 +12,10 @@ interface Props {
 
 export default async function MenuPage({ params }: Props) {
   const { slug } = await params;
-  const menu = await getBusinessMenu(slug);
+  const [menu, branches] = await Promise.all([
+    getBusinessMenu(slug),
+    getPublicBranches(slug),
+  ]);
 
   if (!menu) {
     notFound();
@@ -22,6 +26,7 @@ export default async function MenuPage({ params }: Props) {
   return (
     <main className="min-h-screen bg-gray-50">
       <BusinessHeader business={business} />
+      <MenuClient branches={branches} />
       <CategoryPills categories={categories} />
       <ProductList categories={categories} slug={slug} />
       <CartBar slug={slug} />

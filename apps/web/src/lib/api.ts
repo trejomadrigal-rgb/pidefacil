@@ -173,3 +173,44 @@ export async function getOrderStatus(
     return null;
   }
 }
+
+export interface PublicBranch {
+  id: string;
+  name: string;
+  address: string;
+  phone?: string;
+  latitude: number;
+  longitude: number;
+}
+
+export async function getPublicBranches(slug: string): Promise<PublicBranch[]> {
+  try {
+    const res = await fetch(`${API_URL}/public/business/${slug}/branches`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function sortBranchesByDistance(
+  branches: PublicBranch[],
+  userLat: number,
+  userLon: number,
+): (PublicBranch & { distanceKm: number })[] {
+  return branches
+    .map((b) => ({ ...b, distanceKm: haversineDistance(userLat, userLon, b.latitude, b.longitude) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+}

@@ -27,6 +27,7 @@ const FILTER_CHIPS = [
   { label: 'Confirmados', value: 'CONFIRMED' },
   { label: 'Preparando',  value: 'IN_PREPARATION' },
   { label: 'Listos',      value: 'READY' },
+  { label: 'En camino',   value: 'OUT_FOR_DELIVERY' },
 ];
 
 function formatRelativeTime(isoDate: string): string {
