@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { BranchStatus, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
@@ -28,18 +29,23 @@ export class BranchesService {
   }
 
   async create(businessId: string, dto: CreateBranchDto) {
-    const sub = await this.prisma.subscription.findUnique({
-      where: { businessId },
-      include: { plan: true },
-    });
-    const max = sub?.plan?.maxBranches ?? 1;
-    const current = await this.prisma.branch.count({ where: { businessId, status: 'ACTIVE' } });
-    if (current >= max) {
-      throw new BadRequestException(
-        `Tu plan permite máximo ${max} sucursal(es). Actualiza tu plan para agregar más.`,
-      );
-    }
-    return this.prisma.branch.create({ data: { businessId, ...dto } });
+    return this.prisma.$transaction(
+      async (tx) => {
+        const sub = await tx.subscription.findUnique({
+          where: { businessId },
+          include: { plan: true },
+        });
+        const max = sub?.plan?.maxBranches ?? 1;
+        const current = await tx.branch.count({ where: { businessId, status: BranchStatus.ACTIVE } });
+        if (current >= max) {
+          throw new BadRequestException(
+            `Tu plan permite máximo ${max} sucursal(es). Actualiza tu plan para agregar más.`,
+          );
+        }
+        return tx.branch.create({ data: { businessId, ...dto } });
+      },
+      { isolationLevel: 'Serializable' },
+    );
   }
 
   async update(businessId: string, id: string, dto: UpdateBranchDto) {
@@ -52,7 +58,7 @@ export class BranchesService {
     const activeOrders = await this.prisma.order.count({
       where: {
         branchId: id,
-        status: { notIn: ['DELIVERED', 'CANCELLED', 'REJECTED', 'FINISHED'] },
+        status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.OUT_FOR_DELIVERY] },
       },
     });
     if (activeOrders > 0) {
@@ -71,15 +77,27 @@ export class BranchesService {
 
   async upsertMenuSchedules(businessId: string, branchId: string, dto: UpsertMenuSchedulesDto) {
     await this.findOne(businessId, branchId);
-    await this.prisma.$transaction(
-      dto.schedules.map((s) =>
-        this.prisma.branchMenuSchedule.upsert({
-          where: { branchId_menuId: { branchId, menuId: s.menuId } },
-          create: { branchId, menuId: s.menuId, isActive: s.isActive, daysOfWeek: s.daysOfWeek },
-          update: { isActive: s.isActive, daysOfWeek: s.daysOfWeek },
+
+    // Validate all menuIds belong to this business (cross-tenant guard)
+    const menuIds = dto.schedules.map((s) => s.menuId);
+    if (menuIds.length > 0) {
+      const ownedCount = await this.prisma.menu.count({
+        where: { id: { in: menuIds }, businessId },
+      });
+      if (ownedCount !== menuIds.length) {
+        throw new NotFoundException('Uno o más menús no encontrados');
+      }
+    }
+
+    // DELETE then INSERT for proper PUT semantics (replaces full schedule set)
+    await this.prisma.$transaction([
+      this.prisma.branchMenuSchedule.deleteMany({ where: { branchId } }),
+      ...dto.schedules.map((s) =>
+        this.prisma.branchMenuSchedule.create({
+          data: { branchId, menuId: s.menuId, isActive: s.isActive, daysOfWeek: s.daysOfWeek },
         }),
       ),
-    );
+    ]);
     return this.getMenuSchedules(businessId, branchId);
   }
 
@@ -113,6 +131,18 @@ export class BranchesService {
     dto: UpdateProductAvailabilityDto,
   ) {
     await this.findOne(businessId, branchId);
+
+    // Validate all productIds belong to this business (cross-tenant guard)
+    const productIds = dto.items.map((item) => item.productId);
+    if (productIds.length > 0) {
+      const ownedCount = await this.prisma.product.count({
+        where: { id: { in: productIds }, businessId },
+      });
+      if (ownedCount !== productIds.length) {
+        throw new NotFoundException('Uno o más platillos no encontrados');
+      }
+    }
+
     await this.prisma.$transaction(
       dto.items.map((item) =>
         this.prisma.branchProductAvailability.upsert({
