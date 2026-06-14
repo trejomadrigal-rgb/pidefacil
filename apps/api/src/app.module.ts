@@ -21,6 +21,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
 import { BranchesModule } from './branches/branches.module';
 import { DevicesModule } from './devices/devices.module';
 import { LiquidationsModule } from './liquidations/liquidations.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -44,6 +45,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
         MINIO_SECRET_KEY: Joi.string().default('minioadmin'),
         MINIO_BUCKET: Joi.string().default('pidefacil'),
         FIREBASE_SERVICE_ACCOUNT: Joi.string().optional(),
+        EVOLUTION_API_URL: Joi.string().optional().default(''),
+        EVOLUTION_API_KEY: Joi.string().optional().default(''),
       }),
     }),
     PrismaModule,
@@ -64,6 +67,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     BranchesModule,
     DevicesModule,
     LiquidationsModule,
+    WhatsappModule,
   ],
   controllers: [AppController],
   providers: [
