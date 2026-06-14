@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, parseJwtPayload } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,8 @@ export function LoginForm() {
         businessSlug: data.business.slug,
         userName: data.user.name,
       });
-      router.push('/dashboard');
+      const { role } = parseJwtPayload(data.access_token);
+      router.push(role === 'SUPER_ADMIN' ? '/super/dashboard' : '/dashboard');
     } catch {
       setErrorMsg('Correo o contraseña incorrectos');
     }
