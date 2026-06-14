@@ -12,9 +12,17 @@ export class PublicController {
     return this.publicService.getBusiness(slug);
   }
 
+  @Get(':slug/branches')
+  getBranches(@Param('slug') slug: string) {
+    return this.publicService.getBranches(slug);
+  }
+
   @Get(':slug/categories')
-  getCategories(@Param('slug') slug: string) {
-    return this.publicService.getCategories(slug);
+  getCategories(
+    @Param('slug') slug: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.publicService.getCategories(slug, branchId);
   }
 
   @Get(':slug/products')

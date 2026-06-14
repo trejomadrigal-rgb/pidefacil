@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { BusinessNotFoundPublicException } from '../common/exceptions/business-not-found-public.exception';
@@ -27,10 +27,34 @@ export class PublicService {
     return business;
   }
 
-  async getCategories(slug: string) {
+  async getBranches(slug: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!business) throw new NotFoundException('Negocio no encontrado');
+
+    return this.prisma.branch.findMany({
+      where: { businessId: business.id, status: 'ACTIVE' },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        phone: true,
+        latitude: true,
+        longitude: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async getCategories(slug: string, branchId?: string) {
+    // Only use cache when no branchId filter is applied
     const key = `public:categories:${slug}`;
-    const cached = await this.redis.get(key);
-    if (cached) return JSON.parse(cached);
+    if (!branchId) {
+      const cached = await this.redis.get(key);
+      if (cached) return JSON.parse(cached);
+    }
 
     const business = await this.prisma.business.findUnique({
       where: { slug },
@@ -38,7 +62,7 @@ export class PublicService {
     });
     if (!business) throw new BusinessNotFoundPublicException();
 
-    const categories = await this.prisma.category.findMany({
+    let categories = await this.prisma.category.findMany({
       where: { businessId: business.id, status: 'ACTIVE' },
       orderBy: { sortOrder: 'asc' },
       select: {
@@ -63,6 +87,24 @@ export class PublicService {
       },
     });
 
+    // Apply branch-level product availability overrides if branchId is provided
+    if (branchId) {
+      const overrides = await this.prisma.branchProductAvailability.findMany({
+        where: { branchId },
+      });
+      const overrideMap = new Map(overrides.map((o) => [o.productId, o.isAvailable]));
+
+      categories = categories.map((cat) => ({
+        ...cat,
+        products: cat.products.filter((p) => {
+          if (overrideMap.has(p.id)) {
+            return overrideMap.get(p.id);
+          }
+          return p.isAvailable ?? true;
+        }),
+      }));
+    }
+
     const normalized = categories.map((c) => ({
       ...c,
       products: c.products.map((p) => ({
@@ -73,7 +115,9 @@ export class PublicService {
       })),
     }));
 
-    await this.redis.set(key, JSON.stringify(normalized), CACHE_TTL);
+    if (!branchId) {
+      await this.redis.set(key, JSON.stringify(normalized), CACHE_TTL);
+    }
     return normalized;
   }
 
