@@ -42,6 +42,11 @@ describe('NotificationsModule (integration)', () => {
     await prisma.auditLog.deleteMany();
     await prisma.user.deleteMany();
     await prisma.subscription.deleteMany();
+    await prisma.liquidation.deleteMany();
+    await prisma.device.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
+    await prisma.branchMenuSchedule.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.business.deleteMany();
 
     const business = await prisma.business.create({

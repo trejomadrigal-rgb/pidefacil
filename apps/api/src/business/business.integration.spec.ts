@@ -47,6 +47,11 @@ describe('Business (integration)', () => {
     await prisma.menu.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.liquidation.deleteMany();
+    await prisma.device.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
+    await prisma.branchMenuSchedule.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.business.deleteMany();
     await prisma.plan.deleteMany();
 
