@@ -4,25 +4,26 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
-import { api, parseJwtPayload } from '@/lib/api';
-import { useAuthStore } from '@/store/auth.store';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Suspense } from 'react';
 
 const schema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  code: z.string().length(6, 'El código debe tener 6 dígitos'),
+  newPassword: z.string().min(8, 'Mínimo 8 caracteres'),
 });
 type FormValues = z.infer<typeof schema>;
 
-export function LoginForm() {
+function ResetPasswordForm() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const searchParams = useSearchParams();
+  const email = searchParams.get('email') ?? '';
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -35,19 +36,14 @@ export function LoginForm() {
   const onSubmit = async (values: FormValues) => {
     setErrorMsg('');
     try {
-      const { data } = await api.post('/auth/login', values);
-      // Store refresh token in cookie (NOT httpOnly — browser-set)
-      document.cookie = `rf_token=${data.refresh_token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Strict`;
-      setAuth({
-        accessToken: data.access_token,
-        businessId: data.business.id,
-        businessSlug: data.business.slug,
-        userName: data.user.name,
+      await api.post('/auth/reset-password', {
+        email,
+        code: values.code,
+        newPassword: values.newPassword,
       });
-      const { role } = parseJwtPayload(data.access_token);
-      router.push(role === 'SUPER_ADMIN' ? '/super/dashboard' : '/dashboard');
+      router.push('/login');
     } catch {
-      setErrorMsg('Correo o contraseña incorrectos');
+      setErrorMsg('Código incorrecto o expirado');
     }
   };
 
@@ -58,35 +54,44 @@ export function LoginForm() {
           <h1 className="font-jakarta text-3xl font-extrabold text-brand-900">
             Pide<span className="text-brand-500">Fácil</span>
           </h1>
-          <p className="text-sm text-gray-400 mt-1">Panel Administrativo</p>
+          <p className="text-xl font-bold text-gray-800 mt-3">Nueva contraseña</p>
+          {email && (
+            <p className="text-sm text-gray-400 mt-1">
+              Ingresa el código que enviamos a{' '}
+              <span className="font-medium text-gray-600">{email}</span>
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
-              Correo electrónico
+            <Label htmlFor="code" className="text-sm font-semibold text-gray-700">
+              Código de verificación
             </Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="hola@mifonda.com"
-              className="mt-1 h-12 rounded-xl bg-gray-50"
-              {...register('email')}
+              id="code"
+              type="text"
+              placeholder="123456"
+              maxLength={6}
+              className="mt-1 h-12 rounded-xl bg-gray-50 text-center text-xl font-bold tracking-widest"
+              {...register('code')}
             />
-            {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
+            {errors.code && (
+              <p className="text-xs text-red-500 mt-1">{errors.code.message}</p>
+            )}
           </div>
 
           <div>
-            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
-              Contraseña
+            <Label htmlFor="newPassword" className="text-sm font-semibold text-gray-700">
+              Nueva contraseña
             </Label>
             <div className="relative mt-1">
               <Input
-                id="password"
+                id="newPassword"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 className="h-12 rounded-xl bg-gray-50 pr-10"
-                {...register('password')}
+                {...register('newPassword')}
               />
               <button
                 type="button"
@@ -97,17 +102,9 @@ export function LoginForm() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            {errors.password && (
-              <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
+            {errors.newPassword && (
+              <p className="text-xs text-red-500 mt-1">{errors.newPassword.message}</p>
             )}
-            <div className="text-right mt-1">
-              <Link
-                href="/forgot-password"
-                className="text-xs text-brand-500 hover:underline font-medium"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
           </div>
 
           {errorMsg && (
@@ -121,10 +118,27 @@ export function LoginForm() {
             disabled={isSubmitting}
             className="w-full h-[52px] rounded-xl bg-brand-500 hover:bg-brand-700 text-white font-bold text-base"
           >
-            {isSubmitting ? 'Entrando…' : 'Entrar'}
+            {isSubmitting ? 'Cambiando…' : 'Cambiar contraseña'}
           </Button>
         </form>
+
+        <div className="text-center mt-5">
+          <Link
+            href="/login"
+            className="text-sm text-brand-500 hover:underline font-medium"
+          >
+            Volver al login
+          </Link>
+        </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
