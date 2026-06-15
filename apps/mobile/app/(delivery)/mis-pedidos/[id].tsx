@@ -32,9 +32,13 @@ export default function DeliveryOrderDetailScreen() {
         {
           text: 'Confirmar',
           onPress: async () => {
-            await confirmDelivery.mutateAsync(order.id);
-            if (allDelivered) setShowSummary(true);
-            else router.back();
+            try {
+              await confirmDelivery.mutateAsync(order.id);
+              if (allDelivered) setShowSummary(true);
+              else router.back();
+            } catch {
+              Alert.alert('Error', 'No se pudo confirmar la entrega. Intenta de nuevo.');
+            }
           },
         },
       ],
@@ -42,9 +46,13 @@ export default function DeliveryOrderDetailScreen() {
   };
 
   const handleNotifyReturn = async () => {
-    await notifyReturn.mutateAsync();
-    Alert.alert('Listo', 'Se notificó al administrador que regresaste.');
-    router.back();
+    try {
+      await notifyReturn.mutateAsync();
+      Alert.alert('Listo', 'Se notificó al administrador que regresaste.');
+      router.back();
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar el aviso. Intenta de nuevo.');
+    }
   };
 
   if (showSummary) {
@@ -148,7 +156,13 @@ export default function DeliveryOrderDetailScreen() {
         {order.status === 'READY' && (
           <TouchableOpacity
             className="bg-[#FF6B35] rounded-2xl py-4 items-center"
-            onPress={() => outForDelivery.mutateAsync(order.id)}
+            onPress={async () => {
+              try {
+                await outForDelivery.mutateAsync(order.id);
+              } catch {
+                Alert.alert('Error', 'No se pudo actualizar el pedido. Intenta de nuevo.');
+              }
+            }}
             disabled={outForDelivery.isPending}
           >
             <Text className="text-white font-bold text-base">
