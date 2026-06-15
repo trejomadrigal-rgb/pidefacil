@@ -10,17 +10,21 @@ export function ProductList({ categories, slug }: ProductListProps) {
   const active = categories.filter((c) => c.products.some((p) => p.isAvailable));
 
   return (
-    <div className="pb-32">
+    <div className="pb-32 px-3 pt-3 space-y-5">
       {active.map((category) => (
-        <section
-          key={category.id}
-          id={`cat-${category.id}`}
-          className="mb-6"
-        >
-          <h2 className="text-base font-bold text-brand-900 px-4 py-3 sticky top-[104px] bg-gray-50 z-10 border-b border-gray-100">
-            {category.name}
-          </h2>
-          <div className="divide-y divide-gray-100">
+        <section key={category.id} id={`cat-${category.id}`}>
+          {/* Título de categoría */}
+          <div className="flex items-center gap-1.5 mb-3 px-1">
+            {category.emoji && (
+              <span className="text-[15px]">{category.emoji}</span>
+            )}
+            <span className="text-[11px] font-extrabold text-[#1A1A2E] uppercase tracking-[0.07em]">
+              {category.name}
+            </span>
+          </div>
+
+          {/* Productos */}
+          <div className="flex flex-col gap-2">
             {category.products
               .filter((p) => p.isAvailable)
               .map((product) => (
@@ -28,6 +32,7 @@ export function ProductList({ categories, slug }: ProductListProps) {
                   key={product.id}
                   product={product}
                   slug={slug}
+                  categoryEmoji={category.emoji}
                 />
               ))}
           </div>
