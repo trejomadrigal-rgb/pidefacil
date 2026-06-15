@@ -176,3 +176,4 @@ print(m.group(1) if m else '')
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
             && echo "✅ API redeploy triggered" \
             || echo "⚠️  Could not trigger redeploy — do it manually in Coolify"
+
