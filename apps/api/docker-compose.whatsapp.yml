@@ -3,10 +3,9 @@ services:
   evolution-redis:
     image: redis:7-alpine
     restart: always
-    network_mode: host
-    command: redis-server --port 6380 --save "" --appendonly no
+    command: redis-server --save "" --appendonly no
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       timeout: 3s
       retries: 10
@@ -14,13 +13,13 @@ services:
   evolution-api:
     image: atendai/evolution-api:v2.2.3
     restart: always
-    network_mode: host
+    ports:
+      - "18080:8080"
     depends_on:
       evolution-redis:
         condition: service_healthy
     environment:
       SERVER_URL: "http://localhost:18080"
-      PORT: "18080"
       AUTHENTICATION_TYPE: "apikey"
       AUTHENTICATION_API_KEY: "${EVOLUTION_API_KEY}"
       QRCODE_LIMIT: "30"
@@ -29,7 +28,7 @@ services:
       DATABASE_PROVIDER: "postgresql"
       DATABASE_CONNECTION_URI: "${DATABASE_CONNECTION_URI}"
       REDIS_ENABLED: "true"
-      REDIS_URI: "redis://127.0.0.1:6380"
+      REDIS_URI: "redis://evolution-redis:6379"
       LOG_LEVEL: "ERROR"
     volumes:
       - evolution_instances:/evolution/instances
