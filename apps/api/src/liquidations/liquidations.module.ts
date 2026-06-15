@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { LiquidationsController } from './liquidations.controller';
-import { LiquidationsService } from './liquidations.service';
+import { ShiftsModule } from '../shifts/shifts.module';
 
 @Module({
+  imports: [ShiftsModule],
   controllers: [LiquidationsController],
-  providers: [LiquidationsService],
 })
 export class LiquidationsModule {}
