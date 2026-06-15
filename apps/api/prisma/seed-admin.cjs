@@ -10,15 +10,19 @@ const prisma = new PrismaClient({ adapter });
 const email = process.env.SA_EMAIL || 'superadmin@pidefacil.com';
 const password = process.env.SA_PASS || 'ChangeMe123!';
 async function main() {
+  const hash = await bcrypt.hash(password, 10);
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) { console.log('SUPER_ADMIN ya existe:', email); return; }
+  if (existing) {
+    await prisma.user.update({ where: { email }, data: { passwordHash: hash } });
+    console.log('SUPER_ADMIN password actualizado:', email);
+    return;
+  }
   let biz = await prisma.business.findUnique({ where: { slug: 'pidefacil-admin' } });
   if (!biz) {
     biz = await prisma.business.create({
       data: { name: 'PideFacil Admin', slug: 'pidefacil-admin', phone: '0000000000' },
     });
   }
-  const hash = await bcrypt.hash(password, 10);
   await prisma.user.create({
     data: { businessId: biz.id, name: 'Super Admin', email, passwordHash: hash, role: 'SUPER_ADMIN' },
   });
