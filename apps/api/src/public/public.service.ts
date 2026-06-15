@@ -19,7 +19,7 @@ export class PublicService {
 
     const business = await this.prisma.business.findUnique({
       where: { slug },
-      select: { id: true, name: true, slug: true, phone: true, logoUrl: true, address: true },
+      select: { id: true, name: true, slug: true, phone: true, logoUrl: true, address: true, menuColor: true },
     });
     if (!business) throw new BusinessNotFoundPublicException();
 
@@ -69,6 +69,7 @@ export class PublicService {
         id: true,
         name: true,
         sortOrder: true,
+        emoji: true,
         products: {
           where: { isAvailable: true },
           orderBy: { sortOrder: 'asc' },
@@ -80,6 +81,7 @@ export class PublicService {
             imageUrl: true,
             isFeatured: true,
             isAvailable: true,
+            noteHints: true,
             variants: { select: { id: true, name: true, price: true } },
             extras: { select: { id: true, name: true, price: true } },
           },
@@ -208,6 +210,58 @@ export class PublicService {
       createdAt: o.createdAt,
       itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
     }));
+  }
+
+  async getFeaturedProduct(slug: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!business) throw new BusinessNotFoundPublicException();
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const top = await this.prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        order: {
+          businessId: business.id,
+          createdAt: { gte: sevenDaysAgo },
+          status: { not: 'CANCELLED' },
+        },
+      },
+      _count: { productId: true },
+      orderBy: { _count: { productId: 'desc' } },
+      take: 1,
+    });
+
+    if (top.length === 0) return null;
+
+    const product = await this.prisma.product.findFirst({
+      where: { id: top[0].productId, isAvailable: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        isFeatured: true,
+        isAvailable: true,
+        noteHints: true,
+        variants: { select: { id: true, name: true, price: true } },
+        extras: { select: { id: true, name: true, price: true } },
+      },
+    });
+
+    if (!product) return null;
+
+    return {
+      ...product,
+      price: Number(product.price),
+      variants: product.variants.map((v) => ({ ...v, price: Number(v.price) })),
+      extras: product.extras.map((e) => ({ ...e, price: Number(e.price) })),
+    };
   }
 
   async invalidateCache(slug: string): Promise<void> {
