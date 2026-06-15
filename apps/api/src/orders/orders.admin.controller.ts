@@ -1,5 +1,5 @@
 // apps/api/src/orders/orders.admin.controller.ts
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -12,8 +12,11 @@ export class OrdersAdminController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  findActive(@CurrentUser() user: CurrentUserPayload) {
-    return this.ordersService.findActive(user.businessId);
+  findActive(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('status') status?: string,
+  ) {
+    return this.ordersService.findActive(user.businessId, status);
   }
 
   @Get(':id')

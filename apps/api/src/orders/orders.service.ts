@@ -33,17 +33,21 @@ export class OrdersService {
     private readonly whatsappService: WhatsappService,
   ) {}
 
-  async findActive(businessId: string): Promise<OrderListItemDto[]> {
+  async findActive(businessId: string, status?: string): Promise<OrderListItemDto[]> {
     // UTC midnight — aceptable para MVP. Pedidos 00:00-06:00 hora México
     // aparecen en el "día siguiente" UTC. Corregir post-piloto con timezone.
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
 
+    const statusFilter: Prisma.OrderWhereInput = status
+      ? { status: status as OrderStatus }
+      : { status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.WAITING_CONFIRMATION] } };
+
     const orders = await this.prisma.order.findMany({
       where: {
         businessId,
         createdAt: { gte: startOfDay },
-        status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.WAITING_CONFIRMATION] },
+        ...statusFilter,
       },
       include: {
         _count: { select: { items: true } },
@@ -59,6 +63,10 @@ export class OrdersService {
       customerName: o.customerName,
       customerPhone: o.customerPhone,
       deliveryType: o.deliveryType,
+      deliveryAddress: o.deliveryAddress,
+      paymentMethod: o.paymentMethod,
+      transferConfirmed: o.transferConfirmed,
+      liquidationId: o.liquidationId,
       total: Number(o.total),
       itemCount: o._count.items,
       createdAt: o.createdAt,
