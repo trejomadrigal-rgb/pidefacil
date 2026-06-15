@@ -1,22 +1,28 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { LiquidationsService } from './liquidations.service';
-import { CreateLiquidationDto } from './dto/create-liquidation.dto';
 
+/**
+ * LiquidationsController — STUB
+ *
+ * Routes are kept so that the module compiles and can be wired into AppModule.
+ * All methods delegate to LiquidationsService which returns 501 Not Implemented
+ * until the repartidores task delivers the full implementation.
+ */
 @Controller('admin/liquidations')
 @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
 export class LiquidationsController {
   constructor(private liquidationsService: LiquidationsService) {}
 
   @Post()
-  create(@CurrentUser() user: CurrentUserPayload, @Body() dto: CreateLiquidationDto) {
-    return this.liquidationsService.create(user.businessId, user.userId, dto);
+  create(@CurrentUser() _user: CurrentUserPayload) {
+    return this.liquidationsService.create();
   }
 
   @Get()
-  findAll(@CurrentUser() user: CurrentUserPayload, @Query('branchId') branchId?: string) {
-    return this.liquidationsService.findAll(user.businessId, branchId);
+  findAll(@CurrentUser() _user: CurrentUserPayload) {
+    return this.liquidationsService.findAll();
   }
 }
