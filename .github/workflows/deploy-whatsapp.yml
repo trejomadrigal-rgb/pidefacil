@@ -144,7 +144,7 @@ jobs:
             -H 'Content-Type: application/json' \
             -d "{
               \"data\": [
-                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://localhost:18080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://api-evolution-api-1:8080\", \"is_preview\": false},
                 {\"key\": \"EVOLUTION_API_KEY\", \"value\": \"${EVOLUTION_API_KEY}\", \"is_preview\": false}
               ]
             }" \
