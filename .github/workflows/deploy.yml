@@ -149,10 +149,19 @@ jobs:
             node /tmp/seed-admin.cjs
           echo "✅ Super admin seed OK → ${SA_EMAIL}"
 
-      - name: Seed 3 fondas demo (Node ESM, fetch nativo)
+      - name: Seed 3 fondas demo (via API container, Node ESM)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          API_URL='http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io' \
-            node apps/api/prisma/seed-demo.mjs
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          sudo docker cp apps/api/prisma/seed-demo.mjs "${API_CONTAINER}:/tmp/seed-demo.mjs"
+          sudo docker exec \
+            -e API_URL='http://localhost:3000' \
+            "${API_CONTAINER}" \
+            node /tmp/seed-demo.mjs
           echo "✅ Demo seed OK"
 
   setup-whatsapp:
