@@ -1,6 +1,6 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserStatus } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,9 +11,9 @@ import { DuplicateEmailException } from '../common/exceptions/duplicate-email.ex
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  listUsers(businessId: string) {
+  listUsers(businessId: string, role?: string) {
     return this.prisma.user.findMany({
-      where: { businessId },
+      where: { businessId, ...(role ? { role: role as Role } : {}) },
       select: { id: true, name: true, email: true, role: true, status: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });

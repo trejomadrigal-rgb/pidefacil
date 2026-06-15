@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut, BarChart2, MapPin, DollarSign, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut, BarChart2, MapPin, DollarSign, MessageSquare, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/menus', icon: UtensilsCrossed, label: 'Menús' },
   { href: '/sucursales', icon: MapPin, label: 'Sucursales' },
   { href: '/clientes', icon: Users2, label: 'Clientes' },
+  { href: '/turnos', icon: Truck, label: 'Repartidores' },
   { href: '/liquidaciones', icon: DollarSign, label: 'Liquidaciones' },
   { href: '/reportes', icon: BarChart2, label: 'Reportes' },
   { href: '/settings', icon: Settings, label: 'Config.' },
