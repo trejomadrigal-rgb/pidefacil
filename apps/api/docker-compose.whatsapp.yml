@@ -3,10 +3,10 @@ services:
   evolution-api:
     image: atendai/evolution-api:v2.2.3
     restart: always
-    ports:
-      - "18080:8080"
+    network_mode: host
     environment:
       SERVER_URL: "http://localhost:18080"
+      PORT: "18080"
       AUTHENTICATION_TYPE: "apikey"
       AUTHENTICATION_API_KEY: "${EVOLUTION_API_KEY}"
       QRCODE_LIMIT: "30"
