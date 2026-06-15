@@ -5,11 +5,19 @@ services:
     restart: always
     network_mode: host
     command: redis-server --port 6380 --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
 
   evolution-api:
     image: atendai/evolution-api:v2.2.3
     restart: always
     network_mode: host
+    depends_on:
+      evolution-redis:
+        condition: service_healthy
     environment:
       SERVER_URL: "http://localhost:18080"
       PORT: "18080"
