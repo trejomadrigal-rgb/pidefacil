@@ -309,9 +309,12 @@ const fullNotes = [hintText, notes.trim()].filter(Boolean).join('. ');
 
 ### 4.6 `lib/api.ts`
 
-- Agregar `noteHints: string[]` a la interfaz `Product`
-- Agregar `featuredProduct: Product | null` a la respuesta de `getPublicMenu`
-- Agregar `emoji?: string` a la interfaz `Category`
+- `BusinessPublic`: agregar `menuColor: string | null`
+- `Product`: agregar `noteHints: string[]`
+- `Category`: agregar `emoji?: string`
+- `MenuPublic`: agregar `featuredProduct: Product | null`
+
+La función se llama `getBusinessMenu(slug)` (no `getPublicMenu`). El campo `featuredProduct` viene del servidor en la misma respuesta.
 
 ### 4.7 `app/[slug]/page.tsx`
 
