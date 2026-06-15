@@ -141,6 +141,7 @@ model Business {
   logoUrl   String?
   coverUrl  String?
   address   String?
+  menuColor String?
   timezone  String         @default("America/Mexico_City")
   status    BusinessStatus @default(ACTIVE)
   whatsappSession String?
@@ -262,6 +263,7 @@ model Category {
   menuId     String?
   name       String
   sortOrder  Int            @default(0)
+  emoji      String?
   status     CategoryStatus @default(ACTIVE)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -283,6 +285,7 @@ model Product {
   imageUrl    String?
   isAvailable Boolean  @default(true)
   isFeatured  Boolean  @default(false)
+  noteHints   String[]
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
