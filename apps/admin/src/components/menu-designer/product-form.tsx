@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,6 +27,7 @@ const productFormSchema = z.object({
   price: z.number({ error: 'Ingresa un precio válido' }).min(0, 'El precio debe ser mayor o igual a 0'),
   isAvailable: z.boolean(),
   imageUrl: z.string().optional(),
+  noteHints: z.array(z.string()).optional().default([]),
 });
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
@@ -62,10 +63,24 @@ export function ProductForm({ product, categoryId, onClose }: ProductFormProps) 
       price: product?.price ?? 0,
       isAvailable: product?.isAvailable ?? true,
       imageUrl: product?.imageUrl ?? '',
+      noteHints: product?.noteHints ?? [],
     },
   });
 
   const imageUrl = watch('imageUrl');
+  const noteHints = watch('noteHints') ?? [];
+  const [hintInput, setHintInput] = useState('');
+
+  const addHint = () => {
+    const trimmed = hintInput.trim();
+    if (!trimmed || noteHints.includes(trimmed) || noteHints.length >= 10) return;
+    setValue('noteHints', [...noteHints, trimmed], { shouldDirty: true });
+    setHintInput('');
+  };
+
+  const removeHint = (hint: string) => {
+    setValue('noteHints', noteHints.filter((h) => h !== hint), { shouldDirty: true });
+  };
 
   useEffect(() => {
     if (product) {
@@ -75,6 +90,7 @@ export function ProductForm({ product, categoryId, onClose }: ProductFormProps) 
         price: product.price,
         isAvailable: product.isAvailable,
         imageUrl: product.imageUrl ?? '',
+        noteHints: product.noteHints ?? [],
       });
     }
   }, [product?.id, reset]);
@@ -195,6 +211,9 @@ export function ProductForm({ product, categoryId, onClose }: ProductFormProps) 
               className="hidden"
               onChange={onImageUpload}
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Recomendado: 400 × 400 px (cuadrada), JPG o PNG, máx 2 MB. Se muestra en 62 × 62 px en el menú.
+            </p>
           </div>
 
           {/* Name */}
@@ -219,6 +238,58 @@ export function ProductForm({ product, categoryId, onClose }: ProductFormProps) 
               rows={3}
               placeholder="Descripción opcional del producto"
             />
+          </div>
+
+          {/* Note hints */}
+          <div>
+            <Label className="text-xs font-semibold text-gray-600 mb-1.5 block">
+              Sugerencias de personalización
+            </Label>
+            <p className="text-[10px] text-gray-400 mb-2">
+              Ej: sin cebolla, con picante. El cliente las toca al pedir.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                value={hintInput}
+                onChange={(e) => setHintInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addHint())}
+                className="h-9 rounded-xl text-sm flex-1"
+                placeholder="sin cebolla"
+                maxLength={40}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addHint}
+                disabled={!hintInput.trim() || noteHints.length >= 10}
+                className="h-9 px-3 rounded-xl text-xs"
+              >
+                + Agregar
+              </Button>
+            </div>
+            {noteHints.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {noteHints.map((hint) => (
+                  <span
+                    key={hint}
+                    className="inline-flex items-center gap-1 bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2.5 py-1 text-xs font-medium"
+                  >
+                    {hint}
+                    <button
+                      type="button"
+                      onClick={() => removeHint(hint)}
+                      className="text-brand-400 hover:text-brand-700 leading-none"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {noteHints.length >= 10 && (
+              <p className="text-xs text-amber-500 mt-1">Máximo 10 sugerencias</p>
+            )}
           </div>
 
           {/* Price */}
