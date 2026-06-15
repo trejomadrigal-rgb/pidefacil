@@ -34,6 +34,7 @@ import { formatPrice } from '@/lib/utils';
 const categoryFormSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   status: z.enum(['ACTIVE', 'INACTIVE']),
+  emoji: z.string().optional(),
 });
 type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
@@ -59,11 +60,11 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
     formState: { errors, isDirty, isSubmitting },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
-    defaultValues: { name: category.name, status: category.status },
+    defaultValues: { name: category.name, status: category.status, emoji: category?.emoji ?? '' },
   });
 
   useEffect(() => {
-    reset({ name: category.name, status: category.status });
+    reset({ name: category.name, status: category.status, emoji: category.emoji ?? '' });
   }, [category.id, reset]);
 
   const onSave = async (values: CategoryFormValues) => {
@@ -153,6 +154,21 @@ export function CategoryForm({ category, onAddProduct, onEditProduct }: Category
                   <SelectItem value="INACTIVE">Inactiva</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold text-gray-600 mb-1.5 block">
+                Emoji (opcional)
+              </Label>
+              <Input
+                {...register('emoji')}
+                className="h-11 rounded-xl w-24 text-2xl text-center"
+                placeholder="🍲"
+                maxLength={2}
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Se muestra junto al nombre de la categoría en el menú
+              </p>
             </div>
           </div>
 
