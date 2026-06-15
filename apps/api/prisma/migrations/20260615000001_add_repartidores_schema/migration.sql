@@ -56,10 +56,20 @@ CREATE TABLE "Shift" (
 CREATE INDEX "Shift_businessId_idx" ON "Shift"("businessId");
 CREATE INDEX "Shift_businessId_status_idx" ON "Shift"("businessId", "status");
 
--- AlterTable: add liquidationId to Order
-ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "liquidationId" TEXT;
+-- AlterEnum: add DELIVERY to Role
+ALTER TYPE "Role" ADD VALUE IF NOT EXISTS 'DELIVERY';
 
--- CreateIndex: Order.liquidationId
+-- AlterEnum: add DELIVERY_RETURN to NotificationType
+ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'DELIVERY_RETURN';
+
+-- AlterTable: add delivery columns to Order
+ALTER TABLE "Order"
+  ADD COLUMN IF NOT EXISTS "assignedToId" TEXT,
+  ADD COLUMN IF NOT EXISTS "liquidationId" TEXT,
+  ADD COLUMN IF NOT EXISTS "transferConfirmed" BOOLEAN NOT NULL DEFAULT false;
+
+-- CreateIndex: Order delivery columns
+CREATE INDEX IF NOT EXISTS "Order_assignedToId_idx" ON "Order"("assignedToId");
 CREATE INDEX IF NOT EXISTS "Order_liquidationId_idx" ON "Order"("liquidationId");
 
 -- CreateIndex: new Liquidation indexes
@@ -86,6 +96,9 @@ ALTER TABLE "Liquidation" ADD CONSTRAINT "Liquidation_shiftId_fkey" FOREIGN KEY 
 
 -- AddForeignKey: Liquidation.confirmedById → User
 ALTER TABLE "Liquidation" ADD CONSTRAINT "Liquidation_confirmedById_fkey" FOREIGN KEY ("confirmedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey: Order.assignedToId → User
+ALTER TABLE "Order" ADD CONSTRAINT "Order_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey: Order.liquidationId → Liquidation
 ALTER TABLE "Order" ADD CONSTRAINT "Order_liquidationId_fkey" FOREIGN KEY ("liquidationId") REFERENCES "Liquidation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
