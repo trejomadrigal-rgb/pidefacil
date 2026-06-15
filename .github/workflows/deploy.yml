@@ -127,7 +127,7 @@ jobs:
           echo "Waiting for Evolution API..."
           sleep 15
           curl -sf -H "apikey: ${EVOLUTION_API_KEY}" \
-            http://localhost:8080/instance/fetchInstances \
+            http://localhost:18080/instance/fetchInstances \
             && echo "✅ Evolution API is up" \
             || (echo "❌ Evolution API failed to start" && sudo docker compose -f docker-compose.whatsapp.yml logs && exit 1)
 
@@ -138,7 +138,7 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{
               "data": [
-                {"key": "EVOLUTION_API_URL", "value": "http://localhost:8080", "is_preview": false},
+                {"key": "EVOLUTION_API_URL", "value": "http://localhost:18080", "is_preview": false},
                 {"key": "EVOLUTION_API_KEY", "value": "${{ secrets.EVOLUTION_API_KEY }}", "is_preview": false}
               ]
             }' && echo "✅ Env vars updated"
