@@ -28,7 +28,14 @@ export function ProductSheet({
   const [selectedExtras, setSelectedExtras] = useState<ProductExtra[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [activeHints, setActiveHints] = useState<string[]>([]);
   const { addItem } = useCartStore();
+
+  const toggleHint = (hint: string) => {
+    setActiveHints((prev) =>
+      prev.includes(hint) ? prev.filter((h) => h !== hint) : [...prev, hint],
+    );
+  };
 
   const toggleExtra = (extra: ProductExtra) => {
     setSelectedExtras((prev) =>
@@ -46,6 +53,9 @@ export function ProductSheet({
   const handleAdd = () => {
     if (product.variants.length > 0 && !selectedVariant) return;
 
+    const hintText = activeHints.join(', ');
+    const fullNotes = [hintText, notes.trim()].filter(Boolean).join('. ');
+
     addItem(slug, {
       productId: product.id,
       variantId: selectedVariant?.id,
@@ -54,7 +64,7 @@ export function ProductSheet({
       imageUrl: product.imageUrl,
       price: unitPrice,
       extras: selectedExtras,
-      notes: notes.trim() || undefined,
+      notes: fullNotes || undefined,
       quantity,
     });
     onClose();
@@ -149,6 +159,35 @@ export function ProductSheet({
                       >
                         {isSelected && '✓ '}{extra.name}
                         {extra.price > 0 && ` +${formatPrice(extra.price)}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Note hints */}
+            {product.noteHints.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-2">
+                  Personalizar
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {product.noteHints.map((hint) => {
+                    const isActive = activeHints.includes(hint);
+                    return (
+                      <button
+                        key={hint}
+                        type="button"
+                        onClick={() => toggleHint(hint)}
+                        className="px-3 py-1 rounded-full text-xs font-bold transition-colors border-2"
+                        style={
+                          isActive
+                            ? { borderColor: 'var(--brand)', color: 'var(--brand)', background: '#FFF3EE' }
+                            : { borderColor: '#E5E7EB', color: '#6B7280', background: '#F9FAFB' }
+                        }
+                      >
+                        {isActive ? `✓ ${hint}` : hint}
                       </button>
                     );
                   })}
