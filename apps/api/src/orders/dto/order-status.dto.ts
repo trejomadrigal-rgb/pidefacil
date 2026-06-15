@@ -9,6 +9,9 @@ export class OrderStatusDto {
   status!: string;
   total!: number;
   deliveryType!: string;
+  paymentMethod!: string | null;
+  transferConfirmed!: boolean;
+  assignedToId!: string | null;
   items!: OrderItemStatusDto[];
   createdAt!: Date;
 }

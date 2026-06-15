@@ -371,9 +371,16 @@ export class OrdersService {
 
     const order = await this.prisma.order.findFirst({
       where: { businessId: business.id, orderNumber },
-      include: {
+      select: {
+        id: true, orderNumber: true, status: true, deliveryType: true,
+        subtotal: true, discount: true, deliveryFee: true, total: true,
+        paymentMethod: true, transferConfirmed: true, assignedToId: true,
+        createdAt: true,
         items: {
-          include: { product: { select: { name: true } } },
+          select: {
+            quantity: true, subtotal: true,
+            product: { select: { name: true } },
+          },
         },
       },
     });
@@ -386,6 +393,9 @@ export class OrdersService {
       status: order.status,
       total: Number(order.total),
       deliveryType: order.deliveryType,
+      paymentMethod: order.paymentMethod,
+      transferConfirmed: order.transferConfirmed,
+      assignedToId: order.assignedToId,
       items: order.items.map((i) => ({
         name: i.product.name,
         quantity: i.quantity,

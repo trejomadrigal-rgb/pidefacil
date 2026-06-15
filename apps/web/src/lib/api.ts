@@ -91,6 +91,9 @@ export interface OrderStatusResponse {
   deliveryType: string;
   items: { name: string; quantity: number; subtotal: number }[];
   createdAt: string;
+  paymentMethod: string | null;
+  transferConfirmed: boolean;
+  assignedToId: string | null;
 }
 
 export async function getBusiness(slug: string): Promise<BusinessPublic | null> {
