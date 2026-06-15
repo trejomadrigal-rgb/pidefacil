@@ -40,9 +40,9 @@ export default function LoginScreen() {
       connectSocket(data.access_token);
       registerPushToken();
       if (data.user.role === 'DELIVERY') {
-        router.push('/(delivery)/mis-pedidos');
+        router.replace('/(delivery)/mis-pedidos');
       } else {
-        router.push('/(tabs)/pedidos');
+        router.replace('/(tabs)/pedidos');
       }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;

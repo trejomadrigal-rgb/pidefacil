@@ -7,7 +7,7 @@ export interface DeliveryOrder {
   customerName: string;
   customerPhone: string;
   deliveryAddress: string | null;
-  total: number;
+  total: string;
   paymentMethod: string | null;
   notes: string | null;
   items: Array<{

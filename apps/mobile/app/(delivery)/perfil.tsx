@@ -1,17 +1,30 @@
+import { useCallback } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../src/store/auth-store';
-import { clearTokens } from '../../src/lib/secure-storage';
+import { clearTokens, getItem } from '../../src/lib/secure-storage';
+import { logoutApi } from '../../src/api/auth';
+import { disconnectSocket } from '../../src/lib/socket';
 
 export default function DeliveryPerfilScreen() {
   const router = useRouter();
   const { userName, businessName, clearAuth } = useAuthStore();
 
-  const handleLogout = async () => {
-    await clearTokens();
-    clearAuth();
-    router.replace('/login');
-  };
+  const handleLogout = useCallback(async () => {
+    try {
+      const refreshToken = await getItem('refresh_token');
+      if (refreshToken) await logoutApi(refreshToken);
+      await clearTokens();
+      clearAuth();
+      disconnectSocket();
+      router.replace('/login');
+    } catch {
+      await clearTokens();
+      clearAuth();
+      disconnectSocket();
+      router.replace('/login');
+    }
+  }, [router, clearAuth]);
 
   return (
     <View className="flex-1 bg-gray-50 pt-14 px-5">

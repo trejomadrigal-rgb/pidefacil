@@ -24,5 +24,10 @@ export const useConfirmDelivery = () => {
   });
 };
 
-export const useNotifyReturn = () =>
-  useMutation({ mutationFn: notifyReturn });
+export const useNotifyReturn = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: notifyReturn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['delivery-orders'] }),
+  });
+};
