@@ -51,6 +51,11 @@ describe('WhatsappModule (integration)', () => {
     await prisma.subscription.deleteMany({ where: { businessId } });
     await prisma.refreshToken.deleteMany({ where: { user: { businessId } } });
     await prisma.user.deleteMany({ where: { businessId } });
+    await prisma.liquidation.deleteMany({ where: { businessId } });
+    await prisma.device.deleteMany({ where: { businessId } });
+    await prisma.branchProductAvailability.deleteMany({ where: { branch: { businessId } } });
+    await prisma.branchMenuSchedule.deleteMany({ where: { branch: { businessId } } });
+    await prisma.branch.deleteMany({ where: { businessId } });
     await prisma.business.deleteMany({ where: { id: businessId } });
     await app.close();
   });
