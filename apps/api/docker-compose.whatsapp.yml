@@ -11,9 +11,9 @@ services:
       AUTHENTICATION_API_KEY: "${EVOLUTION_API_KEY}"
       QRCODE_LIMIT: "30"
       DEL_INSTANCE: "false"
-      DATABASE_ENABLED: "false"
-      DATABASE_PROVIDER: "postgresql"
-      DATABASE_CONNECTION_URI: "postgresql://localhost/placeholder"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: "sqlite"
+      DATABASE_CONNECTION_URI: "file:./evolution.db"
       REDIS_ENABLED: "false"
       LOG_LEVEL: "ERROR"
     volumes:
