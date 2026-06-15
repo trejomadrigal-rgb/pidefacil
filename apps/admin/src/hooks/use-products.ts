@@ -16,6 +16,7 @@ export interface Product {
   categoryId: string;
   variants: Variant[];
   extras: Extra[];
+  noteHints: string[];
 }
 
 export function useProducts(categoryId?: string) {
