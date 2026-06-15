@@ -8,6 +8,7 @@ import {
   useCloseTrip,
   useCloseShift,
   useReadyOrders,
+  usePendingTransferOrders,
   useConfirmTransfer,
 } from '@/hooks/use-shifts';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ export default function TurnoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: shift, isLoading } = useShift(id);
   const { data: readyOrders = [] } = useReadyOrders();
+  const { data: confirmedOrders = [] } = usePendingTransferOrders();
   const createTrip = useCreateTrip(id);
   const closeTrip = useCloseTrip();
   const closeShift = useCloseShift();
@@ -32,12 +34,9 @@ export default function TurnoDetailPage() {
     return <div className="p-8 text-sm text-gray-400">Cargando...</div>;
   }
 
-  // Orders with pending transfer (TRANSFER payment + not yet confirmed)
-  const pendingTransfers = readyOrders.filter(
-    (o: ReadyOrder) =>
-      o.paymentMethod === 'TRANSFER' &&
-      !o.transferConfirmed &&
-      (o.status === 'CONFIRMED' || o.status === 'NEW' || o.status === 'UNDER_REVIEW'),
+  // Orders with pending transfer (CONFIRMED status + TRANSFER payment + not yet confirmed)
+  const pendingTransfers = confirmedOrders.filter(
+    (o: ReadyOrder) => o.paymentMethod === 'TRANSFER' && !o.transferConfirmed,
   );
 
   // READY orders not already in a trip and not blocked by unconfirmed transfer

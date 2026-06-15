@@ -20,6 +20,10 @@ export interface ReadyOrder {
 export const getReadyOrders = (): Promise<ReadyOrder[]> =>
   api.get('/orders?status=READY').then((r) => r.data);
 
+// GET /orders?status=CONFIRMED — orders awaiting transfer confirmation
+export const getPendingTransferOrders = (): Promise<ReadyOrder[]> =>
+  api.get('/orders?status=CONFIRMED').then((r) => r.data);
+
 // PATCH /orders/:id/confirm-transfer — confirm bank transfer and move order to IN_PREPARATION
 export const confirmTransfer = (orderId: string) =>
   api.patch(`/orders/${orderId}/confirm-transfer`).then((r) => r.data);

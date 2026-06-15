@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getShifts, getShift, createShift, closeShift, createTrip, closeTrip } from '@/api/shifts';
-import { confirmTransfer, getReadyOrders } from '@/api/orders';
+import { confirmTransfer, getReadyOrders, getPendingTransferOrders } from '@/api/orders';
 
 export const useShifts = () =>
   useQuery({ queryKey: ['shifts'], queryFn: getShifts });
@@ -42,6 +42,12 @@ export const useCloseTrip = () => {
 
 export const useReadyOrders = () =>
   useQuery({ queryKey: ['orders', 'ready'], queryFn: getReadyOrders });
+
+export const usePendingTransferOrders = () =>
+  useQuery({
+    queryKey: ['orders', 'pending-transfer'],
+    queryFn: getPendingTransferOrders,
+  });
 
 export const useConfirmTransfer = () => {
   const qc = useQueryClient();
