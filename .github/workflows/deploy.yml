@@ -140,36 +140,13 @@ jobs:
           SA_EMAIL="${SEED_SUPER_ADMIN_EMAIL:-superadmin@pidefacil.com}"
           SA_PASS="${SEED_SUPER_ADMIN_PASSWORD:-ChangeMe123!}"
 
-          # Write seed script to runner filesystem, copy into container, execute
-          cat > /tmp/seed-admin.cjs << 'NODESCRIPT'
-process.chdir('/app/apps/api');
-const nm = process.cwd() + '/node_modules';
-const { PrismaClient } = require(nm + '/@prisma/client');
-const { PrismaPg } = require(nm + '/@prisma/adapter-pg');
-const bcrypt = require(nm + '/bcrypt');
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
-const email = process.env.SA_EMAIL;
-const password = process.env.SA_PASS;
-async function main() {
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) { console.log('SUPER_ADMIN ya existe:', email); return; }
-  let biz = await prisma.business.findUnique({ where: { slug: 'pidefacil-admin' } });
-  if (!biz) biz = await prisma.business.create({ data: { name: 'PideFacil Admin', slug: 'pidefacil-admin', phone: '0000000000' } });
-  const hash = await bcrypt.hash(password, 10);
-  await prisma.user.create({ data: { businessId: biz.id, name: 'Super Admin', email, passwordHash: hash, role: 'SUPER_ADMIN' } });
-  console.log('SUPER_ADMIN creado:', email);
-}
-main().catch(e => { console.error(e.message); process.exit(1); }).finally(() => prisma.$disconnect());
-NODESCRIPT
-
-          sudo docker cp /tmp/seed-admin.cjs "${API_CONTAINER}:/tmp/seed-admin.cjs"
+          # Copy seed script from repo into container and execute
+          sudo docker cp apps/api/prisma/seed-admin.cjs "${API_CONTAINER}:/tmp/seed-admin.cjs"
           sudo docker exec \
             -e SA_EMAIL="${SA_EMAIL}" \
             -e SA_PASS="${SA_PASS}" \
             "${API_CONTAINER}" \
             node /tmp/seed-admin.cjs
-          rm -f /tmp/seed-admin.cjs
           echo "✅ Super admin seed OK → ${SA_EMAIL}"
 
       - name: Seed 3 fondas demo (Node ESM, fetch nativo)
