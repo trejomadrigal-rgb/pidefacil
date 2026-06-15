@@ -1,0 +1,58 @@
+name: Deploy — Evolution API (WhatsApp)
+
+on:
+  workflow_dispatch:
+    inputs:
+      evolution_api_key:
+        description: 'API key para Evolution API (mínimo 32 chars)'
+        required: true
+        type: string
+
+jobs:
+  deploy-evolution:
+    name: Deploy Evolution API + Update API env vars
+    runs-on: [self-hosted, linux, deploy]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Evolution API with Docker Compose
+        working-directory: apps/api
+        env:
+          EVOLUTION_API_KEY: ${{ inputs.evolution_api_key }}
+        run: |
+          docker compose -f docker-compose.whatsapp.yml pull
+          docker compose -f docker-compose.whatsapp.yml up -d
+          echo "Waiting for Evolution API to be ready..."
+          sleep 10
+          curl -sf -H "apikey: $EVOLUTION_API_KEY" http://localhost:8080/instance/fetchInstances \
+            && echo "✅ Evolution API is up" \
+            || (echo "❌ Evolution API did not start" && exit 1)
+
+      - name: Update API service env vars in Coolify
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+          EVOLUTION_API_KEY: ${{ inputs.evolution_api_key }}
+        run: |
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs/bulk' \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"data\": [
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://localhost:8080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_KEY\", \"value\": \"$EVOLUTION_API_KEY\", \"is_preview\": false}
+              ]
+            }" \
+            && echo "✅ Env vars updated in Coolify" \
+            || echo "⚠️  Could not update Coolify env vars — do it manually"
+
+      - name: Redeploy API to pick up new env vars
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
+            && echo "✅ API redeploy triggered" \
+            || echo "⚠️  Could not trigger redeploy — do it manually in Coolify"
