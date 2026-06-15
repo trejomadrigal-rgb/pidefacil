@@ -11,9 +11,9 @@ import { DuplicateEmailException } from '../common/exceptions/duplicate-email.ex
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  listUsers(businessId: string, role?: string) {
+  listUsers(businessId: string, role?: Role) {
     return this.prisma.user.findMany({
-      where: { businessId, ...(role ? { role: role as Role } : {}) },
+      where: { businessId, ...(role ? { role } : {}) },
       select: { id: true, name: true, email: true, role: true, status: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });

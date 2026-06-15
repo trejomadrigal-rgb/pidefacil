@@ -24,9 +24,13 @@ export default function TurnosPage() {
 
   const handleCreate = async () => {
     if (!selectedUserId) return;
-    await createShift.mutateAsync({ deliveryUserId: selectedUserId });
-    setOpen(false);
-    setSelectedUserId('');
+    try {
+      await createShift.mutateAsync({ deliveryUserId: selectedUserId });
+      setOpen(false);
+      setSelectedUserId('');
+    } catch {
+      // Error is shown via the mutation error state — dialog stays open
+    }
   };
 
   return (
@@ -54,6 +58,9 @@ export default function TurnosPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {createShift.isError && (
+                <p className="text-sm text-red-600">No se pudo abrir el turno. Intenta de nuevo.</p>
+              )}
               <Button
                 className="w-full bg-brand-500 hover:bg-brand-600 text-white"
                 onClick={handleCreate}

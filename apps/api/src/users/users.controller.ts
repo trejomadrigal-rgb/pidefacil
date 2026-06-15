@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, ParseEnumPipe } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -12,7 +12,7 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  listUsers(@CurrentUser() user: CurrentUserPayload, @Query('role') role?: string) {
+  listUsers(@CurrentUser() user: CurrentUserPayload, @Query('role', new ParseEnumPipe(Role, { optional: true })) role?: Role) {
     return this.usersService.listUsers(user.businessId, role);
   }
 
