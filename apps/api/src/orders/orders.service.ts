@@ -394,4 +394,22 @@ export class OrdersService {
     await this.prisma.order.update({ where: { id }, data: { isPaid: true } });
     return this.findOne(id, businessId);
   }
+
+  async confirmTransfer(orderId: string, businessId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, businessId, paymentMethod: 'TRANSFER' },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (order.transferConfirmed) {
+      throw new BadRequestException('La transferencia ya fue confirmada');
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        transferConfirmed: true,
+        status: 'IN_PREPARATION',
+      },
+    });
+  }
 }

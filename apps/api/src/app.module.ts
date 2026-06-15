@@ -23,6 +23,7 @@ import { DevicesModule } from './devices/devices.module';
 import { LiquidationsModule } from './liquidations/liquidations.module';
 import { ShiftsModule } from './shifts/shifts.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { DeliveryModule } from './delivery/delivery.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -70,6 +71,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     LiquidationsModule,
     ShiftsModule,
     WhatsappModule,
+    DeliveryModule,
   ],
   controllers: [AppController],
   providers: [

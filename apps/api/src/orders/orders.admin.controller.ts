@@ -36,4 +36,10 @@ export class OrdersAdminController {
   confirmPayment(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.ordersService.confirmPayment(id, user.businessId);
   }
+
+  @Patch(':id/confirm-transfer')
+  @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
+  confirmTransfer(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.ordersService.confirmTransfer(id, user.businessId);
+  }
 }
