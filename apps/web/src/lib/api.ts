@@ -8,6 +8,7 @@ export interface BusinessPublic {
   phone?: string;
   address?: string;
   logoUrl?: string;
+  menuColor?: string | null;
 }
 
 export interface ProductVariant {
@@ -30,6 +31,7 @@ export interface Product {
   imageUrl?: string;
   isFeatured: boolean;
   isAvailable: boolean;
+  noteHints: string[];
   variants: ProductVariant[];
   extras: ProductExtra[];
 }
@@ -38,12 +40,14 @@ export interface Category {
   id: string;
   name: string;
   sortOrder: number;
+  emoji?: string;
   products: Product[];
 }
 
 export interface MenuPublic {
   business: BusinessPublic;
   categories: Category[];
+  featuredProduct: Product | null;
 }
 
 export interface CreateOrderItem {
@@ -89,7 +93,6 @@ export interface OrderStatusResponse {
   createdAt: string;
 }
 
-// GET /public/business/:slug — returns BusinessPublic directly
 export async function getBusiness(slug: string): Promise<BusinessPublic | null> {
   try {
     const res = await fetch(`${API_URL}/public/business/${slug}`, {
@@ -102,7 +105,6 @@ export async function getBusiness(slug: string): Promise<BusinessPublic | null> 
   }
 }
 
-// GET /public/business/:slug/categories — returns Category[] directly
 export async function getCategories(slug: string): Promise<Category[]> {
   try {
     const res = await fetch(`${API_URL}/public/business/${slug}/categories`, {
@@ -115,15 +117,27 @@ export async function getCategories(slug: string): Promise<Category[]> {
   }
 }
 
-// Convenience: fetch both business + categories in parallel and combine
+export async function getFeaturedProduct(slug: string): Promise<Product | null> {
+  try {
+    const res = await fetch(`${API_URL}/public/business/${slug}/featured-product`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function getBusinessMenu(slug: string): Promise<MenuPublic | null> {
   try {
-    const [business, categories] = await Promise.all([
+    const [business, categories, featuredProduct] = await Promise.all([
       getBusiness(slug),
       getCategories(slug),
+      getFeaturedProduct(slug),
     ]);
     if (!business) return null;
-    return { business, categories };
+    return { business, categories, featuredProduct };
   } catch {
     return null;
   }
@@ -137,12 +151,8 @@ export async function createOrder(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (res.status === 429) {
-    throw new Error('RATE_LIMIT');
-  }
-  if (!res.ok) {
-    throw new Error('ORDER_FAILED');
-  }
+  if (res.status === 429) throw new Error('RATE_LIMIT');
+  if (!res.ok) throw new Error('ORDER_FAILED');
   return res.json();
 }
 
