@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RtdbService } from '../notifications/rtdb.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { CreateLiquidationTripDto } from './dto/create-liquidation-trip.dto';
 
 @Injectable()
 export class ShiftsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rtdb: RtdbService,
+  ) {}
 
   async create(businessId: string, openedById: string, dto: CreateShiftDto) {
     const deliveryUser = await this.prisma.user.findFirst({
@@ -96,7 +100,7 @@ export class ShiftsService {
     const shift = await this.prisma.shift.findFirst({ where: { id: shiftId, businessId, status: 'OPEN' } });
     if (!shift) throw new NotFoundException('Turno no encontrado o ya cerrado');
 
-    return this.prisma.$transaction(async (tx) => {
+    const trip = await this.prisma.$transaction(async (tx) => {
       const orders = await tx.order.findMany({
         where: { id: { in: dto.orderIds }, businessId, status: 'READY' },
       });
@@ -116,7 +120,7 @@ export class ShiftsService {
         throw new BadRequestException('Hay pedidos con transferencia pendiente de confirmar');
       }
 
-      const trip = await tx.liquidation.create({
+      const newTrip = await tx.liquidation.create({
         data: {
           businessId,
           shiftId,
@@ -127,18 +131,24 @@ export class ShiftsService {
       await tx.order.updateMany({
         where: { id: { in: dto.orderIds } },
         data: {
-          liquidationId: trip.id,
+          liquidationId: newTrip.id,
           assignedToId: shift.deliveryUserId,
         },
       });
 
       return tx.liquidation.findUnique({
-        where: { id: trip.id },
+        where: { id: newTrip.id },
         include: {
           orders: { select: { id: true, orderNumber: true, status: true, total: true, paymentMethod: true, customerName: true } },
         },
       });
     }, { isolationLevel: 'Serializable' });
+
+    for (const orderId of dto.orderIds) {
+      await this.rtdb.createChatRoom(orderId);
+    }
+
+    return trip;
   }
 
   async closeTrip(tripId: string, businessId: string, confirmedById: string) {

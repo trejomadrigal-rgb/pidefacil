@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { FcmService } from './fcm.service';
+import { RtdbService } from './rtdb.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
@@ -16,7 +17,7 @@ import { NotificationsController } from './notifications.controller';
     }),
   ],
   controllers: [NotificationsController],
-  providers: [FcmService, NotificationsGateway, NotificationsService],
-  exports: [NotificationsService],
+  providers: [FcmService, RtdbService, NotificationsGateway, NotificationsService],
+  exports: [NotificationsService, RtdbService],
 })
 export class NotificationsModule {}

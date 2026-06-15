@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RtdbService } from '../notifications/rtdb.service';
 
 @Injectable()
 export class DeliveryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rtdb: RtdbService,
+  ) {}
 
   async getMyOrders(userId: string, businessId: string) {
     return this.prisma.order.findMany({
@@ -52,10 +56,14 @@ export class DeliveryService {
       throw new ForbiddenException('El pedido debe estar en OUT_FOR_DELIVERY para confirmarlo como entregado');
     }
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: 'DELIVERED', isPaid: true },
     });
+
+    await this.rtdb.deleteChatRoom(orderId);
+
+    return updated;
   }
 
   async notifyReturn(userId: string, businessId: string) {
