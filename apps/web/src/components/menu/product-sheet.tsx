@@ -67,6 +67,11 @@ export function ProductSheet({
       notes: fullNotes || undefined,
       quantity,
     });
+    setActiveHints([]);
+    setNotes('');
+    setQuantity(1);
+    setSelectedExtras([]);
+    setSelectedVariant(product.variants.length > 0 ? product.variants[0] : null);
     onClose();
   };
 
