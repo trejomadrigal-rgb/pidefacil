@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getOrderStatus, OrderStatusResponse } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { ChatPanel } from './chat-panel';
 
 const TERMINAL_STATUSES = ['DELIVERED', 'CANCELLED', 'REJECTED', 'FINISHED'];
 const POLL_INTERVAL = 15_000;
@@ -193,6 +194,11 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
             })}
           </div>
         </div>
+      )}
+
+      {/* Chat with delivery driver */}
+      {order.assignedToId && !isTerminal && !isCancelled && (
+        <ChatPanel orderId={order.id} />
       )}
 
       {/* Items summary */}

@@ -5,6 +5,7 @@ export class OrderItemStatusDto {
 }
 
 export class OrderStatusDto {
+  id!: string;
   orderNumber!: string;
   status!: string;
   total!: number;

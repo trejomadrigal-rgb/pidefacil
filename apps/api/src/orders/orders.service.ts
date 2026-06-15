@@ -389,6 +389,7 @@ export class OrdersService {
     }
 
     return {
+      id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
       total: Number(order.total),

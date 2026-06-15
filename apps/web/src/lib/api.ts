@@ -85,6 +85,7 @@ export interface MyOrder {
 }
 
 export interface OrderStatusResponse {
+  id: string;
   orderNumber: string;
   status: string;
   total: number;

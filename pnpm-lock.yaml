@@ -390,6 +390,9 @@ importers:
       '@radix-ui/react-dialog':
         specifier: ^1.1.16
         version: 1.1.16(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      firebase:
+        specifier: ^12.14.0
+        version: 12.14.0
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@19.0.0)
