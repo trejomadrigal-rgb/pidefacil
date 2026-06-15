@@ -210,28 +210,86 @@ jobs:
       - name: Start Evolution API
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          # Find the Coolify-managed PostgreSQL container by name
-          PG_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -iE 'postgres' | grep -iv 'evolution' | head -1)
+          # Step 1: Get DATABASE_URL from Coolify to extract the internal PG hostname
+          COOLIFY_RESPONSE=$(curl -sf 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" || echo "[]")
+          echo "Coolify API response (first 300 chars): ${COOLIFY_RESPONSE:0:300}"
+
+          DB_URL=$(echo "$COOLIFY_RESPONSE" | python3 -c "
+import sys, json
+try:
+  data = json.load(sys.stdin)
+  items = data if isinstance(data, list) else data.get('data', [])
+  for e in items:
+    if e.get('key') == 'DATABASE_URL':
+      print(e.get('value', ''))
+      break
+except Exception as ex:
+  import sys; print('parse error: ' + str(ex), file=sys.stderr)
+")
+          echo "DB_URL from Coolify (first 60 chars): ${DB_URL:0:60}"
+
+          DB_HOSTNAME=$(echo "$DB_URL" | python3 -c "
+import sys, re
+m = re.search(r'@([^:/]+)', sys.stdin.read().strip())
+print(m.group(1) if m else '')
+" 2>/dev/null)
+          echo "PG hostname from Coolify URL: ${DB_HOSTNAME}"
+
+          # Step 2: Find PG container — prefer hostname match from Coolify URL
+          PG_CONTAINER=""
+          if [ -n "${DB_HOSTNAME}" ]; then
+            PG_CONTAINER=$(sudo docker ps -q | while read cid; do
+              h=$(sudo docker inspect "$cid" --format '{{.Config.Hostname}}' 2>/dev/null)
+              if [ "$h" = "$DB_HOSTNAME" ]; then
+                sudo docker inspect "$cid" --format '{{.Name}}' | tr -d '/'
+                break
+              fi
+            done)
+          fi
+
+          # Fallback: find PG container with POSTGRES_DB=pidefacil in its env
+          if [ -z "${PG_CONTAINER}" ]; then
+            PG_CONTAINER=$(sudo docker ps -q | while read cid; do
+              env=$(sudo docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+              if echo "$env" | grep -q 'POSTGRES_DB=pidefacil'; then
+                sudo docker inspect "$cid" --format '{{.Name}}' | tr -d '/'
+                break
+              fi
+            done)
+          fi
+
           echo "PostgreSQL container: ${PG_CONTAINER}"
 
           if [ -z "${PG_CONTAINER}" ]; then
-            echo "❌ PostgreSQL container not found. Running containers:"
-            sudo docker ps --format '{{.Names}}'
+            echo "❌ Could not find pidefacil PostgreSQL container. Running containers:"
+            sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
             exit 1
           fi
 
-          # Read credentials directly from the PG container's environment
+          # Step 3: Get credentials from the container's environment
           PG_ENV=$(sudo docker inspect "${PG_CONTAINER}" --format '{{range .Config.Env}}{{println .}}{{end}}')
           PG_USER=$(echo "$PG_ENV" | grep -E '^POSTGRES_USER=' | cut -d= -f2-)
           PG_PASS=$(echo "$PG_ENV" | grep -E '^POSTGRES_PASSWORD=' | cut -d= -f2-)
-          # Bitnami image fallbacks
           [ -z "$PG_USER" ] && PG_USER=$(echo "$PG_ENV" | grep -E '^POSTGRESQL_USERNAME=' | cut -d= -f2-)
           [ -z "$PG_PASS" ] && PG_PASS=$(echo "$PG_ENV" | grep -E '^POSTGRESQL_PASSWORD=' | cut -d= -f2-)
           PG_USER="${PG_USER:-postgres}"
 
-          PG_HOST=$(sudo docker inspect "${PG_CONTAINER}" --format '{{.Config.Hostname}}')
+          # Use Coolify hostname (the DNS name that resolves inside Coolify's network)
+          # If Coolify hostname is unknown, fall back to the container's Config.Hostname
+          if [ -n "${DB_HOSTNAME}" ]; then
+            PG_HOST="${DB_HOSTNAME}"
+          else
+            PG_HOST=$(sudo docker inspect "${PG_CONTAINER}" --format '{{.Config.Hostname}}')
+          fi
+
+          # Prefer the non-bridge Coolify internal network
           PG_NETWORK=$(sudo docker inspect "${PG_CONTAINER}" \
+            --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+            | tr ' ' '\n' | grep -v '^$' | grep -v '^bridge$' | head -1)
+          [ -z "${PG_NETWORK}" ] && PG_NETWORK=$(sudo docker inspect "${PG_CONTAINER}" \
             --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
             | tr ' ' '\n' | grep -v '^$' | head -1)
 
@@ -242,11 +300,11 @@ jobs:
             exit 1
           fi
 
-          # Build Evolution API DB URL using internal hostname + evolution_api database
+          # Step 4: Build Evolution API DB URL
           EVO_DB_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:5432/evolution_api"
           echo "EVO_DB_URL target: evolution_api on ${PG_HOST}"
 
-          # Create evolution_api database in PG
+          # Step 5: Create evolution_api database in PG
           sudo docker exec "${PG_CONTAINER}" \
             psql -U "${PG_USER}" -c "CREATE DATABASE evolution_api;" 2>&1 \
             | grep -v "already exists" || true
