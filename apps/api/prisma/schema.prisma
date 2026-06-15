@@ -15,6 +15,7 @@ enum Role {
   OPERATOR
   KITCHEN
   MENU_DESIGNER
+  DELIVERY
 }
 
 enum UserStatus {
@@ -103,10 +104,21 @@ enum TrustLevel {
   BLOCKED
 }
 
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum LiquidationStatus {
+  OPEN
+  CLOSED
+}
+
 enum NotificationType {
   NEW_PREORDER
   ORDER_READY
   ORDER_CANCELLED
+  DELIVERY_RETURN
 }
 
 enum AuditAction {
@@ -161,6 +173,7 @@ model Business {
   branches          Branch[]
   devices           Device[]
   liquidations      Liquidation[]
+  shifts            Shift[]
 }
 
 model User {
@@ -174,14 +187,17 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  business             Business       @relation(fields: [businessId], references: [id])
-  refreshTokens        RefreshToken[]
-  deviceTokens         DeviceToken[]
-  auditLogs            AuditLog[]
-  notifications        Notification[]
-  devices              Device[]
-  deliveryLiquidations Liquidation[]  @relation("DeliveryLiquidations")
-  receivedLiquidations Liquidation[]  @relation("ReceivedLiquidations")
+  business              Business       @relation(fields: [businessId], references: [id])
+  refreshTokens         RefreshToken[]
+  deviceTokens          DeviceToken[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  devices               Device[]
+  confirmedLiquidations Liquidation[]  @relation("LiquidationConfirmedBy")
+  deliveryShifts        Shift[]        @relation("ShiftDeliveryUser")
+  openedShifts          Shift[]        @relation("ShiftOpenedBy")
+  closedShifts          Shift[]        @relation("ShiftClosedBy")
+  assignedOrders        Order[]        @relation("OrdersAssigned")
 
   @@index([businessId])
   @@index([businessId, status])
@@ -341,22 +357,29 @@ model Order {
   deliveryAddress String?
   scheduledAt     DateTime?
   branchId        String?
-  paymentMethod   PaymentMethod?
-  isPaid          Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  paymentMethod     PaymentMethod?
+  isPaid            Boolean        @default(false)
+  assignedToId      String?
+  liquidationId     String?
+  transferConfirmed Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  business Business    @relation(fields: [businessId], references: [id])
-  customer Customer?   @relation(fields: [customerId], references: [id])
-  branch   Branch?     @relation(fields: [branchId], references: [id])
-  items    OrderItem[]
-  payment  Payment?
+  business    Business     @relation(fields: [businessId], references: [id])
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  branch      Branch?      @relation(fields: [branchId], references: [id])
+  items       OrderItem[]
+  payment     Payment?
+  assignedTo  User?        @relation("OrdersAssigned", fields: [assignedToId], references: [id])
+  liquidation Liquidation? @relation(fields: [liquidationId], references: [id])
 
   @@unique([businessId, orderNumber])
   @@index([businessId])
   @@index([businessId, status])
   @@index([businessId, createdAt])
   @@index([branchId])
+  @@index([assignedToId])
+  @@index([liquidationId])
 }
 
 model OrderItem {
@@ -450,7 +473,7 @@ model Branch {
   menuSchedules       BranchMenuSchedule[]
   orders              Order[]
   devices             Device[]
-  liquidations        Liquidation[]
+  shifts              Shift[]
 
   @@index([businessId])
 }
@@ -499,23 +522,49 @@ model Device {
   @@index([businessId])
 }
 
-model Liquidation {
-  id             String   @id @default(cuid())
+model Shift {
+  id             String      @id @default(cuid())
   businessId     String
-  branchId       String
+  branchId       String?
   deliveryUserId String
-  receivedById   String
-  amount         Decimal  @db.Decimal(10, 2)
+  openedById     String
+  closedById     String?
+  status         ShiftStatus @default(OPEN)
+  openedAt       DateTime    @default(now())
+  closedAt       DateTime?
   notes          String?
-  settledAt      DateTime @default(now())
 
-  business     Business @relation(fields: [businessId], references: [id])
-  branch       Branch   @relation(fields: [branchId], references: [id])
-  deliveryUser User     @relation("DeliveryLiquidations", fields: [deliveryUserId], references: [id])
-  receivedBy   User     @relation("ReceivedLiquidations", fields: [receivedById], references: [id])
+  business     Business      @relation(fields: [businessId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  deliveryUser User          @relation("ShiftDeliveryUser", fields: [deliveryUserId], references: [id])
+  openedBy     User          @relation("ShiftOpenedBy", fields: [openedById], references: [id])
+  closedBy     User?         @relation("ShiftClosedBy", fields: [closedById], references: [id])
+  liquidations Liquidation[]
 
-  @@index([businessId, branchId])
-  @@index([deliveryUserId])
+  @@index([businessId])
+  @@index([businessId, status])
+}
+
+model Liquidation {
+  id            String            @id @default(cuid())
+  businessId    String
+  shiftId       String
+  status        LiquidationStatus @default(OPEN)
+  createdAt     DateTime          @default(now())
+  closedAt      DateTime?
+  confirmedById String?
+  cashTotal     Decimal           @default(0) @db.Decimal(10, 2)
+  cardTotal     Decimal           @default(0) @db.Decimal(10, 2)
+  transferTotal Decimal           @default(0) @db.Decimal(10, 2)
+  notes         String?
+
+  business    Business @relation(fields: [businessId], references: [id])
+  shift       Shift    @relation(fields: [shiftId], references: [id])
+  confirmedBy User?    @relation("LiquidationConfirmedBy", fields: [confirmedById], references: [id])
+  orders      Order[]
+
+  @@index([businessId])
+  @@index([shiftId])
 }
 
 model Plan {
