@@ -1,16 +1,16 @@
 'use client';
 
 import { useLiquidations } from '@/hooks/use-liquidations';
+import { Badge } from '@/components/ui/badge';
 import { DollarSign } from 'lucide-react';
+import { formatPrice } from '@/lib/utils';
 
 export default function LiquidacionesPage() {
   const { data: liquidations = [], isLoading } = useLiquidations();
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-black text-gray-900">Liquidaciones</h1>
-      </div>
+      <h1 className="text-2xl font-black text-gray-900 mb-6">Historial de liquidaciones</h1>
 
       {isLoading ? (
         <p className="text-sm text-gray-400">Cargando...</p>
@@ -20,19 +20,27 @@ export default function LiquidacionesPage() {
           <p className="text-sm text-gray-500">Sin liquidaciones registradas</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="grid grid-cols-[1fr_100px_100px_100px_80px] px-4 py-2 bg-gray-50 border-b border-gray-200">
-            {['Fecha', 'Sucursal', 'Repartidor', 'Recibió', 'Monto'].map((h) => (
-              <span key={h} className="text-[10px] font-bold text-gray-500 uppercase">{h}</span>
-            ))}
-          </div>
+        <div className="space-y-3">
           {liquidations.map((liq) => (
-            <div key={liq.id} className="grid grid-cols-[1fr_100px_100px_100px_80px] px-4 py-3 border-b border-gray-100 last:border-0 items-center">
-              <span className="text-sm text-gray-700">{new Date(liq.settledAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</span>
-              <span className="text-sm text-gray-600">{liq.branch.name}</span>
-              <span className="text-sm text-gray-600">{liq.deliveryUser.name}</span>
-              <span className="text-sm text-gray-600">{liq.receivedBy.name}</span>
-              <span className="text-sm font-bold text-gray-900">${Number(liq.amount).toFixed(2)}</span>
+            <div key={liq.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-bold text-gray-900">{liq.shift.deliveryUser.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(liq.createdAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}
+                    {liq.confirmedBy && ` · Liquidó: ${liq.confirmedBy.name}`}
+                  </p>
+                </div>
+                <Badge variant={liq.status === 'OPEN' ? 'default' : 'secondary'}>
+                  {liq.status === 'OPEN' ? 'En curso' : 'Cerrada'}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div><p className="text-gray-500 text-xs">Efectivo</p><p className="font-bold">{formatPrice(Number(liq.cashTotal))}</p></div>
+                <div><p className="text-gray-500 text-xs">Tarjeta</p><p className="font-bold">{formatPrice(Number(liq.cardTotal))}</p></div>
+                <div><p className="text-gray-500 text-xs">Transferencia</p><p className="font-bold">{formatPrice(Number(liq.transferTotal))}</p></div>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">{liq.orders.length} pedidos</p>
             </div>
           ))}
         </div>

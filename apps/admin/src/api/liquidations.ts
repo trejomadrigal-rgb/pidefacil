@@ -2,16 +2,20 @@ import { api } from '@/lib/api';
 
 export interface Liquidation {
   id: string;
-  amount: number;
-  notes?: string;
-  settledAt: string;
-  branch: { name: string };
-  deliveryUser: { name: string };
-  receivedBy: { name: string };
+  status: 'OPEN' | 'CLOSED';
+  createdAt: string;
+  closedAt: string | null;
+  cashTotal: number;
+  cardTotal: number;
+  transferTotal: number;
+  notes: string | null;
+  shift: {
+    deliveryUser: { name: string };
+    openedAt: string;
+  };
+  confirmedBy: { name: string } | null;
+  orders: Array<{ id: string; orderNumber: string; status: string; total: number }>;
 }
 
-export const getLiquidations = (branchId?: string) =>
-  api.get<Liquidation[]>('/admin/liquidations', { params: branchId ? { branchId } : {} }).then((r) => r.data);
-
-export const createLiquidation = (data: { branchId: string; receivedById: string; amount: number; notes?: string }) =>
-  api.post<Liquidation>('/admin/liquidations', data).then((r) => r.data);
+export const getLiquidations = () =>
+  api.get<Liquidation[]>('/liquidations').then((r) => r.data);
