@@ -10,27 +10,49 @@ const POLL_INTERVAL = 15_000;
 
 const STATUS_CONFIG: Record<
   string,
-  { label: string; color: string; bg: string; icon: string }
+  { label: string; labelDelivery?: string; color: string; bg: string; icon: string; iconDelivery?: string }
 > = {
   NEW: { label: 'Pedido recibido', color: 'text-blue-600', bg: 'bg-blue-50', icon: '📩' },
   UNDER_REVIEW: { label: 'En revisión', color: 'text-yellow-600', bg: 'bg-yellow-50', icon: '🔍' },
   WAITING_CONFIRMATION: { label: 'Esperando confirmación', color: 'text-orange-500', bg: 'bg-orange-50', icon: '⏳' },
   CONFIRMED: { label: 'Confirmado', color: 'text-green-600', bg: 'bg-green-50', icon: '✅' },
   IN_PREPARATION: { label: 'En preparación', color: 'text-brand-500', bg: 'bg-brand-50', icon: '👩‍🍳' },
-  READY: { label: 'Listo para recoger', color: 'text-purple-600', bg: 'bg-purple-50', icon: '🛍️' },
-  DELIVERED: { label: 'Entregado', color: 'text-gray-500', bg: 'bg-gray-50', icon: '✔️' },
+  READY: {
+    label: 'Listo para recoger',
+    labelDelivery: 'Listo para enviar',
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    icon: '🛍️',
+    iconDelivery: '📦',
+  },
+  OUT_FOR_DELIVERY: { label: 'En camino', color: 'text-blue-600', bg: 'bg-blue-50', icon: '🛵' },
+  DELIVERED: {
+    label: 'Entregado',
+    labelDelivery: 'Entregado a domicilio',
+    color: 'text-gray-500',
+    bg: 'bg-gray-50',
+    icon: '✔️',
+    iconDelivery: '🏠',
+  },
   CANCELLED: { label: 'Cancelado', color: 'text-red-500', bg: 'bg-red-50', icon: '❌' },
   REJECTED: { label: 'Rechazado', color: 'text-red-500', bg: 'bg-red-50', icon: '❌' },
   FINISHED: { label: 'Finalizado', color: 'text-gray-500', bg: 'bg-gray-50', icon: '✔️' },
 };
 
-const STATUS_FLOW = [
-  'NEW',
-  'CONFIRMED',
-  'IN_PREPARATION',
-  'READY',
-  'DELIVERED',
-];
+const PICKUP_FLOW = ['NEW', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'DELIVERED'];
+const DELIVERY_FLOW = ['NEW', 'CONFIRMED', 'IN_PREPARATION', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+
+function getLabel(status: string, isDelivery: boolean) {
+  const config = STATUS_CONFIG[status];
+  if (!config) return status;
+  return isDelivery && config.labelDelivery ? config.labelDelivery : config.label;
+}
+
+function getIcon(status: string, isDelivery: boolean) {
+  const config = STATUS_CONFIG[status];
+  if (!config) return '•';
+  return isDelivery && config.iconDelivery ? config.iconDelivery : config.icon;
+}
 
 interface OrderStatusProps {
   slug: string;
@@ -107,10 +129,12 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
     );
   }
 
+  const isDelivery = order.deliveryType === 'DELIVERY';
+  const statusFlow = isDelivery ? DELIVERY_FLOW : PICKUP_FLOW;
   const currentConfig = STATUS_CONFIG[order.status] ?? STATUS_CONFIG['NEW'];
   const isTerminal = TERMINAL_STATUSES.includes(order.status);
   const isCancelled = ['CANCELLED', 'REJECTED'].includes(order.status);
-  const currentIndex = STATUS_FLOW.indexOf(order.status);
+  const currentIndex = statusFlow.indexOf(order.status);
 
   return (
     <div className="px-4 pb-10">
@@ -119,13 +143,16 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
         <h1 className="text-xl font-bold text-brand-900">
           Pedido #{order.orderNumber}
         </h1>
+        <p className="text-xs text-gray-400 mt-1">
+          {isDelivery ? '🛵 Entrega a domicilio' : '🛍️ Recoger en tienda'}
+        </p>
       </div>
 
       {/* Current status card */}
       <div className={`${currentConfig.bg} rounded-2xl p-5 text-center mb-6`}>
-        <div className="text-4xl mb-2">{currentConfig.icon}</div>
+        <div className="text-4xl mb-2">{getIcon(order.status, isDelivery)}</div>
         <p className={`text-lg font-bold ${currentConfig.color}`}>
-          {currentConfig.label}
+          {getLabel(order.status, isDelivery)}
         </p>
       </div>
 
@@ -134,10 +161,9 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
           <h2 className="font-bold text-brand-900 mb-3 text-sm">Seguimiento</h2>
           <div className="space-y-3">
-            {STATUS_FLOW.map((status, idx) => {
+            {statusFlow.map((status, idx) => {
               const done = idx <= currentIndex;
               const active = idx === currentIndex;
-              const config = STATUS_CONFIG[status];
               return (
                 <div key={status} className="flex items-center gap-3">
                   <div
@@ -160,7 +186,7 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
                         : 'text-gray-400'
                     }`}
                   >
-                    {config?.label ?? status}
+                    {getLabel(status, isDelivery)}
                   </span>
                 </div>
               );
