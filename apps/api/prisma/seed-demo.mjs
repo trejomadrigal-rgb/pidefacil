@@ -33,7 +33,7 @@ async function createFonda({ businessName, slug, phone, email, password, menuNam
   const login = await api('/auth/login', 'POST', { email, password });
   const token = login.access_token;
 
-  const menu = await api('/menus', 'POST', { name: menuName }, token);
+  const menu = await api('/menus', 'POST', { name: menuName, type: 'FIXED' }, token);
   const menuId = menu.id;
 
   for (const cat of categories) {
