@@ -5,6 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job a ejecutar manualmente (setup-whatsapp | seed-data)'
+        required: false
+        default: 'setup-whatsapp'
+        type: choice
+        options:
+          - setup-whatsapp
+          - seed-data
 
 jobs:
   test:
@@ -103,9 +112,75 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"vh3jq4ik26i989m3xmlkrz20","force":false}'
 
+  seed-data:
+    name: Seed super admin + 3 fondas demo
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'seed-data'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seed super admin via API container (docker exec)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+          SEED_SUPER_ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
+          SEED_SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
+        run: |
+          # Find the Coolify API container (by label or name pattern)
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -z "$API_CONTAINER" ]; then
+            echo "❌ API container not found"
+            sudo docker ps --format "table {{.Names}}\t{{.Status}}"
+            exit 1
+          fi
+          echo "API container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+
+          SA_EMAIL="${SEED_SUPER_ADMIN_EMAIL:-superadmin@pidefacil.com}"
+          SA_PASS="${SEED_SUPER_ADMIN_PASSWORD:-ChangeMe123!}"
+
+          # Write seed script to runner filesystem, copy into container, execute
+          cat > /tmp/seed-admin.cjs << 'NODESCRIPT'
+process.chdir('/app/apps/api');
+const nm = process.cwd() + '/node_modules';
+const { PrismaClient } = require(nm + '/@prisma/client');
+const { PrismaPg } = require(nm + '/@prisma/adapter-pg');
+const bcrypt = require(nm + '/bcrypt');
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
+const email = process.env.SA_EMAIL;
+const password = process.env.SA_PASS;
+async function main() {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) { console.log('SUPER_ADMIN ya existe:', email); return; }
+  let biz = await prisma.business.findUnique({ where: { slug: 'pidefacil-admin' } });
+  if (!biz) biz = await prisma.business.create({ data: { name: 'PideFacil Admin', slug: 'pidefacil-admin', phone: '0000000000' } });
+  const hash = await bcrypt.hash(password, 10);
+  await prisma.user.create({ data: { businessId: biz.id, name: 'Super Admin', email, passwordHash: hash, role: 'SUPER_ADMIN' } });
+  console.log('SUPER_ADMIN creado:', email);
+}
+main().catch(e => { console.error(e.message); process.exit(1); }).finally(() => prisma.$disconnect());
+NODESCRIPT
+
+          sudo docker cp /tmp/seed-admin.cjs "${API_CONTAINER}:/tmp/seed-admin.cjs"
+          sudo docker exec \
+            -e SA_EMAIL="${SA_EMAIL}" \
+            -e SA_PASS="${SA_PASS}" \
+            "${API_CONTAINER}" \
+            node /tmp/seed-admin.cjs
+          rm -f /tmp/seed-admin.cjs
+          echo "✅ Super admin seed OK → ${SA_EMAIL}"
+
+      - name: Seed 3 fondas demo (Node ESM, fetch nativo)
+        run: |
+          API_URL='http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io' \
+            node apps/api/prisma/seed-demo.mjs
+          echo "✅ Demo seed OK"
+
   setup-whatsapp:
     name: Setup Evolution API (WhatsApp)
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'setup-whatsapp' || github.event.inputs.job == '')
     runs-on: [self-hosted, linux, deploy]
     steps:
       - uses: actions/checkout@v4
