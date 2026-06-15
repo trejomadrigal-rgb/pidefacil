@@ -115,6 +115,11 @@ jobs:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
         run: |
           cd apps/api
+          echo "--- Ports in use ---"
+          sudo ss -tlnp | grep 8080 || true
+          echo "--- Stopping any existing evolution-api container ---"
+          sudo docker stop api-evolution-api-1 2>/dev/null || true
+          sudo docker rm api-evolution-api-1 2>/dev/null || true
           echo "EVOLUTION_API_KEY=${EVOLUTION_API_KEY}" > .env.whatsapp
           sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp pull
           sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp up -d
