@@ -111,13 +111,17 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Start Evolution API
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
         run: |
           cd apps/api
-          EVOLUTION_API_KEY="${{ secrets.EVOLUTION_API_KEY }}" sudo -E docker compose -f docker-compose.whatsapp.yml pull
-          EVOLUTION_API_KEY="${{ secrets.EVOLUTION_API_KEY }}" sudo -E docker compose -f docker-compose.whatsapp.yml up -d
+          echo "EVOLUTION_API_KEY=${EVOLUTION_API_KEY}" > .env.whatsapp
+          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp pull
+          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp up -d
+          rm -f .env.whatsapp
           echo "Waiting for Evolution API..."
           sleep 15
-          curl -sf -H "apikey: ${{ secrets.EVOLUTION_API_KEY }}" \
+          curl -sf -H "apikey: ${EVOLUTION_API_KEY}" \
             http://localhost:8080/instance/fetchInstances \
             && echo "✅ Evolution API is up" \
             || (echo "❌ Evolution API failed to start" && sudo docker compose -f docker-compose.whatsapp.yml logs && exit 1)
