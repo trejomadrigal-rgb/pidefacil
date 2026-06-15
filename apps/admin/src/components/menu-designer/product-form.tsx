@@ -27,7 +27,7 @@ const productFormSchema = z.object({
   price: z.number({ error: 'Ingresa un precio válido' }).min(0, 'El precio debe ser mayor o igual a 0'),
   isAvailable: z.boolean(),
   imageUrl: z.string().optional(),
-  noteHints: z.array(z.string()).optional().default([]),
+  noteHints: z.array(z.string()),
 });
 type ProductFormValues = z.infer<typeof productFormSchema>;
 
