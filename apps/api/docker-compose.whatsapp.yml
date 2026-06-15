@@ -1,5 +1,11 @@
 version: '3.8'
 services:
+  evolution-redis:
+    image: redis:7-alpine
+    restart: always
+    network_mode: host
+    command: redis-server --port 6380 --save "" --appendonly no
+
   evolution-api:
     image: atendai/evolution-api:v2.2.3
     restart: always
@@ -14,7 +20,8 @@ services:
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: "postgresql"
       DATABASE_CONNECTION_URI: "${DATABASE_CONNECTION_URI}"
-      REDIS_ENABLED: "false"
+      REDIS_ENABLED: "true"
+      REDIS_URI: "redis://127.0.0.1:6380"
       LOG_LEVEL: "ERROR"
     volumes:
       - evolution_instances:/evolution/instances

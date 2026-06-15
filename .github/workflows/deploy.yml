@@ -164,9 +164,11 @@ jobs:
           fi
 
           cd apps/api
-          echo "--- Stopping any existing evolution-api container ---"
+          echo "--- Stopping any existing evolution containers ---"
           sudo docker stop api-evolution-api-1 2>/dev/null || true
           sudo docker rm api-evolution-api-1 2>/dev/null || true
+          sudo docker stop api-evolution-redis-1 2>/dev/null || true
+          sudo docker rm api-evolution-redis-1 2>/dev/null || true
 
           printf "EVOLUTION_API_KEY=%s\nDATABASE_CONNECTION_URI=%s\n" \
             "${EVOLUTION_API_KEY}" "${EVO_DB_URL}" > .env.whatsapp
