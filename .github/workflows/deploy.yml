@@ -115,7 +115,7 @@ jobs:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          # Get DATABASE_URL from Coolify
+          # Get DATABASE_URL from Coolify and replace internal hostname with container IP
           DB_URL=$(curl -sf 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' \
             -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
             | python3 -c "import sys,json; envs=json.load(sys.stdin); [print(e['value']) for e in envs if e.get('key')=='DATABASE_URL']")
@@ -125,15 +125,24 @@ jobs:
             exit 1
           fi
 
-          # Build Evolution API DB URL (same host/credentials, different db name)
-          EVO_DB_URL=$(echo "$DB_URL" | sed 's|/[^/?]*\(\?.*\)\?$|/evolution_api|')
+          # Find the PostgreSQL container and get its real IP
+          PG_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i postgres | head -1)
+          echo "PostgreSQL container: ${PG_CONTAINER}"
+          if [ -n "$PG_CONTAINER" ]; then
+            PG_IP=$(sudo docker inspect "${PG_CONTAINER}" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | tr ' ' '\n' | head -1)
+            echo "PostgreSQL IP: ${PG_IP}"
+            # Replace internal hostname with real IP in DB_URL
+            DB_HOSTNAME=$(echo "$DB_URL" | sed 's|.*@\([^:/]*\).*|\1|')
+            DB_URL=$(echo "$DB_URL" | sed "s|${DB_HOSTNAME}|${PG_IP}|g")
+          fi
 
-          # Create evolution_api DB if it doesn't exist (using docker to avoid needing psql)
-          ADMIN_URL=$(echo "$DB_URL" | sed 's|/[^/?]*\(\?.*\)\?$|/postgres|')
-          sudo docker run --rm \
-            -e PGPASSWORD="$(echo $DB_URL | sed 's|.*://[^:]*:\([^@]*\)@.*|\1|')" \
-            postgres:16-alpine \
-            psql "$ADMIN_URL" -c "CREATE DATABASE evolution_api;" 2>&1 | grep -v "already exists" || true
+          # Build Evolution API DB URL (same host/credentials, different db name)
+          EVO_DB_URL=$(echo "$DB_URL" | sed 's|/[^/?]*$|/evolution_api|')
+
+          # Create evolution_api DB via running postgres container
+          if [ -n "$PG_CONTAINER" ]; then
+            sudo docker exec "${PG_CONTAINER}" psql -U postgres -c "CREATE DATABASE evolution_api;" 2>&1 | grep -v "already exists" || true
+          fi
 
           cd apps/api
           echo "--- Stopping any existing evolution-api container ---"
