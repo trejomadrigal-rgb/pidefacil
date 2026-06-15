@@ -1,4 +1,6 @@
-import { IsString, IsOptional, MinLength, MaxLength, Matches, IsUrl } from 'class-validator';
+import { IsIn, IsString, IsOptional, MinLength, MaxLength, Matches, IsUrl } from 'class-validator';
+
+const MENU_COLORS = ['naranja','verde','rojo','azul','morado','rosa','dorado','turquesa'] as const;
 
 export class UpdateBusinessDto {
   @IsOptional()
@@ -41,4 +43,8 @@ export class UpdateBusinessDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  @IsOptional()
+  @IsIn(MENU_COLORS)
+  menuColor?: string;
 }

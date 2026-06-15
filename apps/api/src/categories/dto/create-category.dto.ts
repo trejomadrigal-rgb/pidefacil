@@ -14,4 +14,9 @@ export class CreateCategoryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  emoji?: string;
 }
