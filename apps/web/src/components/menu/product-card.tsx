@@ -11,14 +11,15 @@ import { ProductSheet } from './product-sheet';
 interface ProductCardProps {
   product: Product;
   slug: string;
+  categoryEmoji?: string;
 }
 
-export function ProductCard({ product, slug }: ProductCardProps) {
+export function ProductCard({ product, slug, categoryEmoji }: ProductCardProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { addItem } = useCartStore();
 
   const handleAdd = () => {
-    if (product.variants.length > 0 || product.extras.length > 0) {
+    if (product.variants.length > 0 || product.extras.length > 0 || product.noteHints.length > 0) {
       setSheetOpen(true);
     } else {
       addItem(slug, {
@@ -33,24 +34,28 @@ export function ProductCard({ product, slug }: ProductCardProps) {
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 bg-white">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-brand-900 text-sm leading-snug">
-            {product.name}
-          </p>
-          {product.description && (
-            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-              {product.description}
-            </p>
-          )}
-          <p className="text-brand-500 font-bold text-sm mt-1">
+      <div className="bg-white rounded-[14px] border border-[#ECEDF0] flex items-center overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+        {/* Acento lateral */}
+        <div
+          className="w-1 self-stretch flex-shrink-0 rounded-l-sm"
+          style={{ background: 'var(--brand)' }}
+        />
+
+        {/* Info */}
+        <div className="flex-1 px-3 py-3 min-w-0">
+          <p className="text-[13px] font-bold text-[#1A1A2E] leading-snug">{product.name}</p>
+          <p
+            className="text-[14px] font-extrabold mt-1.5"
+            style={{ color: 'var(--brand)' }}
+          >
             {formatPrice(product.price)}
           </p>
         </div>
 
-        <div className="flex-shrink-0 flex flex-col items-center gap-2">
+        {/* Imagen + botón */}
+        <div className="pr-3 py-3 flex flex-col items-center gap-1.5 flex-shrink-0">
           {product.imageUrl ? (
-            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+            <div className="relative w-[62px] h-[62px] rounded-[10px] overflow-hidden">
               <Image
                 src={product.imageUrl}
                 alt={product.name}
@@ -59,16 +64,19 @@ export function ProductCard({ product, slug }: ProductCardProps) {
               />
             </div>
           ) : (
-            <div className="w-16 h-16 rounded-lg bg-brand-50 flex items-center justify-center text-2xl">
-              🍽️
+            <div
+              className="w-[62px] h-[62px] rounded-[10px] flex items-center justify-center text-2xl"
+              style={{ background: 'linear-gradient(135deg, var(--brand), #1A1A2E)' }}
+            >
+              {categoryEmoji ?? ''}
             </div>
           )}
           <button
             type="button"
             onClick={handleAdd}
-            className="w-8 h-8 bg-brand-500 text-white rounded-full flex items-center justify-center hover:bg-brand-600 active:scale-95 transition-transform"
+            className="w-7 h-7 rounded-[7px] flex items-center justify-center bg-[#1A1A2E] active:scale-95 transition-transform"
           >
-            <Plus size={16} />
+            <Plus size={14} className="text-white" />
           </button>
         </div>
       </div>
