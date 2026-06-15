@@ -13,25 +13,27 @@ export class ShiftsService {
     });
     if (!deliveryUser) throw new NotFoundException('Repartidor no encontrado');
 
-    const openShift = await this.prisma.shift.findFirst({
-      where: { businessId, deliveryUserId: dto.deliveryUserId, status: 'OPEN' },
-    });
-    if (openShift) throw new BadRequestException('Este repartidor ya tiene un turno abierto');
+    return this.prisma.$transaction(async (tx) => {
+      const openShift = await tx.shift.findFirst({
+        where: { businessId, deliveryUserId: dto.deliveryUserId, status: 'OPEN' },
+      });
+      if (openShift) throw new BadRequestException('Este repartidor ya tiene un turno abierto');
 
-    return this.prisma.shift.create({
-      data: {
-        businessId,
-        deliveryUserId: dto.deliveryUserId,
-        openedById,
-        branchId: dto.branchId,
-        notes: dto.notes,
-      },
-      include: {
-        deliveryUser: { select: { id: true, name: true } },
-        openedBy: { select: { id: true, name: true } },
-        liquidations: true,
-      },
-    });
+      return tx.shift.create({
+        data: {
+          businessId,
+          deliveryUserId: dto.deliveryUserId,
+          openedById,
+          branchId: dto.branchId,
+          notes: dto.notes,
+        },
+        include: {
+          deliveryUser: { select: { id: true, name: true } },
+          openedBy: { select: { id: true, name: true } },
+          liquidations: true,
+        },
+      });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async findAll(businessId: string) {
@@ -94,26 +96,26 @@ export class ShiftsService {
     const shift = await this.prisma.shift.findFirst({ where: { id: shiftId, businessId, status: 'OPEN' } });
     if (!shift) throw new NotFoundException('Turno no encontrado o ya cerrado');
 
-    const orders = await this.prisma.order.findMany({
-      where: { id: { in: dto.orderIds }, businessId, status: 'READY' },
-    });
-    if (orders.length !== dto.orderIds.length) {
-      throw new BadRequestException('Algunos pedidos no están en estado READY o no pertenecen al negocio');
-    }
-
-    const alreadyAssigned = orders.filter((o) => o.liquidationId !== null);
-    if (alreadyAssigned.length > 0) {
-      throw new BadRequestException('Algunos pedidos ya están asignados a una salida');
-    }
-
-    const transferNotConfirmed = orders.filter(
-      (o) => o.paymentMethod === 'TRANSFER' && !o.transferConfirmed,
-    );
-    if (transferNotConfirmed.length > 0) {
-      throw new BadRequestException('Hay pedidos con transferencia pendiente de confirmar');
-    }
-
     return this.prisma.$transaction(async (tx) => {
+      const orders = await tx.order.findMany({
+        where: { id: { in: dto.orderIds }, businessId, status: 'READY' },
+      });
+      if (orders.length !== dto.orderIds.length) {
+        throw new BadRequestException('Algunos pedidos no están en estado READY o no pertenecen al negocio');
+      }
+
+      const alreadyAssigned = orders.filter((o) => o.liquidationId !== null);
+      if (alreadyAssigned.length > 0) {
+        throw new BadRequestException('Algunos pedidos ya están asignados a una salida');
+      }
+
+      const transferNotConfirmed = orders.filter(
+        (o) => o.paymentMethod === 'TRANSFER' && !o.transferConfirmed,
+      );
+      if (transferNotConfirmed.length > 0) {
+        throw new BadRequestException('Hay pedidos con transferencia pendiente de confirmar');
+      }
+
       const trip = await tx.liquidation.create({
         data: {
           businessId,
@@ -136,7 +138,7 @@ export class ShiftsService {
           orders: { select: { id: true, orderNumber: true, status: true, total: true, paymentMethod: true, customerName: true } },
         },
       });
-    });
+    }, { isolationLevel: 'Serializable' });
   }
 
   async closeTrip(tripId: string, businessId: string, confirmedById: string) {
@@ -146,6 +148,8 @@ export class ShiftsService {
     });
     if (!trip) throw new NotFoundException('Salida no encontrada');
     if (trip.status === 'CLOSED') throw new BadRequestException('Esta salida ya está liquidada');
+
+    const undelivered = trip.orders.filter((o) => o.status !== 'DELIVERED');
 
     const cashTotal = trip.orders
       .filter((o) => o.paymentMethod === 'CASH' && o.status === 'DELIVERED')
@@ -157,7 +161,7 @@ export class ShiftsService {
       .filter((o) => o.paymentMethod === 'TRANSFER' && o.status === 'DELIVERED')
       .reduce((sum, o) => sum + Number(o.total), 0);
 
-    return this.prisma.liquidation.update({
+    const updated = await this.prisma.liquidation.update({
       where: { id: tripId },
       data: {
         status: 'CLOSED',
@@ -168,5 +172,10 @@ export class ShiftsService {
         transferTotal,
       },
     });
+
+    return {
+      ...updated,
+      undeliveredCount: undelivered.length,
+    };
   }
 }
