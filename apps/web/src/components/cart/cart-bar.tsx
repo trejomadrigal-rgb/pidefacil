@@ -21,15 +21,17 @@ export function CartBar({ slug }: CartBarProps) {
         <button
           type="button"
           onClick={openDrawer}
-          className="w-full bg-brand-500 text-white rounded-2xl px-5 py-4 flex items-center justify-between shadow-lg pointer-events-auto active:scale-[0.98] transition-transform"
+          className="w-full bg-[#1A1A2E] rounded-2xl px-5 py-4 flex items-center justify-between shadow-lg pointer-events-auto active:scale-[0.98] transition-transform"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-white">
             <ShoppingCart size={20} />
             <span className="font-bold">
               {itemCount()} {itemCount() === 1 ? 'producto' : 'productos'}
             </span>
           </div>
-          <span className="font-bold">{formatPrice(total())} →</span>
+          <span className="font-bold" style={{ color: 'var(--brand)' }}>
+            {formatPrice(total())} →
+          </span>
         </button>
       </div>
       <CartDrawer slug={slug} open={isDrawerOpen} onClose={closeDrawer} />
