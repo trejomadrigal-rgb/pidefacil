@@ -7,13 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: 'Job a ejecutar manualmente (setup-whatsapp | seed-data)'
+        description: 'Job a ejecutar manualmente (setup-whatsapp | seed-data | fix-admin-url)'
         required: false
         default: 'setup-whatsapp'
         type: choice
         options:
           - setup-whatsapp
           - seed-data
+          - fix-admin-url
 
 jobs:
   test:
@@ -105,12 +106,47 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"b10i6rz52rphphtcnxll73np","force":false}'
 
+      - name: Set Admin env vars (NEXT_PUBLIC_API_URL)
+        run: |
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/vh3jq4ik26i989m3xmlkrz20/envs/bulk' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+              ]
+            }' && echo "✅ Admin env vars updated"
+
       - name: Deploy Admin
         run: |
           curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
             -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
             -H 'Content-Type: application/json' \
             -d '{"uuid":"vh3jq4ik26i989m3xmlkrz20","force":false}'
+
+  fix-admin-url:
+    name: Fix admin NEXT_PUBLIC_API_URL + redeploy
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'fix-admin-url'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Set NEXT_PUBLIC_API_URL in Coolify for admin
+        run: |
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/vh3jq4ik26i989m3xmlkrz20/envs/bulk' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+              ]
+            }' && echo "✅ Env var set"
+
+      - name: Redeploy Admin
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"vh3jq4ik26i989m3xmlkrz20","force":true}' \
+            && echo "✅ Admin redeploy triggered"
 
   seed-data:
     name: Seed super admin + 3 fondas demo
