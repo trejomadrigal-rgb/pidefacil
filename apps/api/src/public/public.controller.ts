@@ -25,6 +25,11 @@ export class PublicController {
     return this.publicService.getCategories(slug, branchId);
   }
 
+  @Get(':slug/featured-product')
+  getFeaturedProduct(@Param('slug') slug: string) {
+    return this.publicService.getFeaturedProduct(slug);
+  }
+
   @Get(':slug/products')
   getProducts(
     @Param('slug') slug: string,
