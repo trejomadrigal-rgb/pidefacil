@@ -404,10 +404,18 @@ export class OrdersService {
       throw new BadRequestException('La transferencia ya fue confirmada');
     }
 
+    const allowedStatuses = ['CONFIRMED', 'NEW', 'UNDER_REVIEW'];
+    if (!allowedStatuses.includes(order.status)) {
+      throw new BadRequestException(
+        `No se puede confirmar transferencia en estado ${order.status}`,
+      );
+    }
+
     return this.prisma.order.update({
       where: { id: orderId },
       data: {
         transferConfirmed: true,
+        isPaid: true,
         status: 'IN_PREPARATION',
       },
     });

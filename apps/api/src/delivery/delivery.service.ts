@@ -30,6 +30,11 @@ export class DeliveryService {
     if (order.status !== 'READY') {
       throw new ForbiddenException('El pedido debe estar en estado READY para salir a entregar');
     }
+    if (order.paymentMethod !== 'CASH' && !order.isPaid) {
+      throw new ForbiddenException(
+        'El pedido requiere confirmación de pago antes de salir a entrega',
+      );
+    }
 
     return this.prisma.order.update({
       where: { id: orderId },
@@ -60,6 +65,6 @@ export class DeliveryService {
       },
       select: { token: true },
     });
-    return { notified: adminTokens.length, message: 'Notificación enviada al admin' };
+    return { notified: adminTokens.length, message: 'Aviso de retorno registrado' };
   }
 }
