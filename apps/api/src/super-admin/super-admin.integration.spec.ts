@@ -101,9 +101,9 @@ describe('SuperAdmin (integration)', () => {
     // Seed 3 plans
     await prisma.plan.createMany({
       data: [
-        { name: 'Básico', monthlyPrice: 299, maxUsers: 2, maxProducts: 20, maxBranches: 1 },
-        { name: 'Pro', monthlyPrice: 499, maxUsers: 5, maxProducts: 100, maxBranches: 1 },
-        { name: 'Plus', monthlyPrice: 999, maxUsers: 10, maxProducts: 500, maxBranches: 3 },
+        { name: 'Básico', monthlyPrice: 299, maxUsers: 2,maxBranches: 1 },
+        { name: 'Pro', monthlyPrice: 499, maxUsers: 5,maxBranches: 1 },
+        { name: 'Plus', monthlyPrice: 999, maxUsers: 10,maxBranches: 3 },
       ],
     });
   }, 15000);
@@ -174,7 +174,7 @@ describe('SuperAdmin (integration)', () => {
       const res = await request(app.getHttpServer())
         .post('/super-admin/plans')
         .set('Authorization', `Bearer ${superAdminToken}`)
-        .send({ name: 'Enterprise', monthlyPrice: 1999, maxUsers: 50, maxProducts: 9999, maxBranches: 10 })
+        .send({ name: 'Enterprise', monthlyPrice: 1999, maxUsers: 50, maxBranches: 10 })
         .expect(201);
       expect(res.body.name).toBe('Enterprise');
     });
@@ -183,7 +183,7 @@ describe('SuperAdmin (integration)', () => {
       await request(app.getHttpServer())
         .post('/super-admin/plans')
         .set('Authorization', `Bearer ${ownerToken}`)
-        .send({ name: 'X', monthlyPrice: 100, maxUsers: 1, maxProducts: 1, maxBranches: 1 })
+        .send({ name: 'X', monthlyPrice: 100, maxUsers: 1, maxBranches: 1 })
         .expect(403);
     });
   });

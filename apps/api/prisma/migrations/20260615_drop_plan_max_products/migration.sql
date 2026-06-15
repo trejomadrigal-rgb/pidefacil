@@ -1,0 +1,1 @@
+ALTER TABLE "Plan" DROP COLUMN IF EXISTS "maxProducts";

@@ -520,7 +520,6 @@ model Plan {
   name         String  @unique
   monthlyPrice Decimal @db.Decimal(10, 2)
   maxUsers     Int
-  maxProducts  Int
   maxBranches  Int
   maxDevices   Int     @default(4)
 

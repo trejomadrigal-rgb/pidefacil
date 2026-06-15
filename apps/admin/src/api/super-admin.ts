@@ -17,7 +17,6 @@ export interface SaPlan {
   name: string;
   monthlyPrice: number;
   maxUsers: number;
-  maxProducts: number;
   maxBranches: number;
   maxDevices: number;
 }

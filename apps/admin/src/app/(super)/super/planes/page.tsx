@@ -10,7 +10,7 @@ import {
 import type { SaPlan } from '@/api/super-admin';
 
 type EditRow = Omit<SaPlan, 'id'>;
-const EMPTY_ROW: EditRow = { name: '', monthlyPrice: 0, maxUsers: 1, maxProducts: 1, maxBranches: 1, maxDevices: 4 };
+const EMPTY_ROW: EditRow = { name: '', monthlyPrice: 0, maxUsers: 1, maxBranches: 1, maxDevices: 4 };
 
 const inputClass =
   'border border-gray-200 rounded px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#FF6B35]';
@@ -34,7 +34,6 @@ export default function PlanesPage() {
       name: plan.name,
       monthlyPrice: Number(plan.monthlyPrice),
       maxUsers: plan.maxUsers,
-      maxProducts: plan.maxProducts,
       maxBranches: plan.maxBranches,
       maxDevices: plan.maxDevices,
     });
@@ -78,7 +77,7 @@ export default function PlanesPage() {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setter((r) => ({ ...r, [key]: key === 'name' ? e.target.value : Number(e.target.value) }));
 
-  const COLS = 'grid-cols-[160px_90px_70px_90px_90px_80px_110px]';
+  const COLS = 'grid-cols-[160px_90px_70px_90px_80px_110px]';
 
   return (
     <div className="p-8 max-w-3xl">
@@ -108,7 +107,7 @@ export default function PlanesPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className={`grid ${COLS} px-4 py-2 bg-gray-50 border-b border-gray-200`}>
-          {['Nombre', 'Precio/mes', 'Usuarios', 'Productos', 'Sucursales', 'Dispositivos', ''].map((h, i) => (
+          {['Nombre', 'Precio/mes', 'Usuarios', 'Sucursales', 'Dispositivos', ''].map((h, i) => (
             <span key={h || `col-${i}`} className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
               {h}
             </span>
@@ -128,7 +127,6 @@ export default function PlanesPage() {
                   <input value={editRow.name} onChange={setEdit(setEditRow)('name')} className={inputClass} />
                   <input type="number" value={editRow.monthlyPrice} onChange={setEdit(setEditRow)('monthlyPrice')} className={inputClass} />
                   <input type="number" value={editRow.maxUsers} onChange={setEdit(setEditRow)('maxUsers')} min={1} className={inputClass} />
-                  <input type="number" value={editRow.maxProducts} onChange={setEdit(setEditRow)('maxProducts')} min={1} className={inputClass} />
                   <input type="number" value={editRow.maxBranches} onChange={setEdit(setEditRow)('maxBranches')} min={1} className={inputClass} />
                   <input type="number" value={editRow.maxDevices} onChange={setEdit(setEditRow)('maxDevices')} min={1} className={inputClass} />
                   <div className="flex gap-1">
@@ -144,7 +142,6 @@ export default function PlanesPage() {
                   <span className="text-sm font-bold text-gray-800">{plan.name}</span>
                   <span className="text-sm text-gray-700">${plan.monthlyPrice}</span>
                   <span className="text-sm text-gray-600">{plan.maxUsers}</span>
-                  <span className="text-sm text-gray-600">{plan.maxProducts}</span>
                   <span className="text-sm text-gray-600">{plan.maxBranches}</span>
                   <span className="text-sm text-gray-600">{plan.maxDevices}</span>
                   <div className="flex gap-1">
@@ -163,7 +160,6 @@ export default function PlanesPage() {
                 <input placeholder="Nombre" value={newRow.name} onChange={setEdit(setNewRow)('name')} required className={inputClass} />
                 <input type="number" placeholder="Precio" value={newRow.monthlyPrice || ''} onChange={setEdit(setNewRow)('monthlyPrice')} required min={0} className={inputClass} />
                 <input type="number" placeholder="Users" value={newRow.maxUsers || ''} onChange={setEdit(setNewRow)('maxUsers')} required min={1} className={inputClass} />
-                <input type="number" placeholder="Prods" value={newRow.maxProducts || ''} onChange={setEdit(setNewRow)('maxProducts')} required min={1} className={inputClass} />
                 <input type="number" placeholder="Sucursales" value={newRow.maxBranches || ''} onChange={setEdit(setNewRow)('maxBranches')} required min={1} className={inputClass} />
                 <input type="number" placeholder="Dispositivos" value={newRow.maxDevices || ''} onChange={setEdit(setNewRow)('maxDevices')} required min={1} className={inputClass} />
                 <div className="flex gap-1">
