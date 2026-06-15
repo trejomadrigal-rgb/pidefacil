@@ -12,8 +12,8 @@ services:
       QRCODE_LIMIT: "30"
       DEL_INSTANCE: "false"
       DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: "sqlite"
-      DATABASE_CONNECTION_URI: "file:./evolution.db"
+      DATABASE_PROVIDER: "postgresql"
+      DATABASE_CONNECTION_URI: "${DATABASE_CONNECTION_URI}"
       REDIS_ENABLED: "false"
       LOG_LEVEL: "ERROR"
     volumes:

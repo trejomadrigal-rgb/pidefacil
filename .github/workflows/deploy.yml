@@ -110,22 +110,63 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get PostgreSQL URL from Coolify
+        id: get-db
+        run: |
+          ENVS=$(curl -sf 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}')
+          DB_URL=$(echo "$ENVS" | python3 -c "
+          import sys, json
+          envs = json.load(sys.stdin)
+          for e in envs:
+              if e.get('key') == 'DATABASE_URL':
+                  print(e.get('value',''))
+                  break
+          ")
+          echo "DB_URL=${DB_URL}" >> $GITHUB_OUTPUT
+          echo "Got DATABASE_URL (masked)"
+
+      - name: Create evolution_api database if not exists
+        env:
+          DB_URL: ${{ steps.get-db.outputs.DB_URL }}
+        run: |
+          python3 -c "
+          import re, subprocess
+          url = '${{ steps.get-db.outputs.DB_URL }}'
+          m = re.match(r'postgresql://([^:]+):([^@]+)@([^:/]+)(?::(\d+))?/(\S+)', url)
+          if not m:
+              print('Could not parse DB URL')
+              exit(1)
+          user, pw, host, port, db = m.groups()
+          port = port or '5432'
+          admin_url = f'postgresql://{user}:{pw}@{host}:{port}/postgres'
+          result = subprocess.run(
+              ['psql', admin_url, '-c', 'CREATE DATABASE evolution_api;'],
+              capture_output=True, text=True
+          )
+          if 'already exists' in result.stderr or result.returncode == 0:
+              print('DB ready')
+          else:
+              print(result.stderr)
+              exit(1)
+          "
+
       - name: Start Evolution API
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+          DB_URL: ${{ steps.get-db.outputs.DB_URL }}
         run: |
           cd apps/api
-          echo "--- Ports in use ---"
-          sudo ss -tlnp | grep 8080 || true
+          EVO_DB_URL=$(echo "${DB_URL}" | sed 's|/[^/]*$|/evolution_api|')
           echo "--- Stopping any existing evolution-api container ---"
           sudo docker stop api-evolution-api-1 2>/dev/null || true
           sudo docker rm api-evolution-api-1 2>/dev/null || true
-          echo "EVOLUTION_API_KEY=${EVOLUTION_API_KEY}" > .env.whatsapp
+          printf "EVOLUTION_API_KEY=%s\nDATABASE_CONNECTION_URI=%s\n" "${EVOLUTION_API_KEY}" "${EVO_DB_URL}" > .env.whatsapp
           sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp pull
           sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp up -d
           rm -f .env.whatsapp
           echo "Waiting for Evolution API..."
-          sleep 15
+          sleep 20
           curl -sf -H "apikey: ${EVOLUTION_API_KEY}" \
             http://localhost:18080/instance/fetchInstances \
             && echo "✅ Evolution API is up" \
