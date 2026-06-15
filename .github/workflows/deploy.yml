@@ -115,7 +115,7 @@ jobs:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          # Get DATABASE_URL from Coolify and replace internal hostname with container IP
+          # Get DATABASE_URL from Coolify
           DB_URL=$(curl -sf 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' \
             -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
             | python3 -c "import sys,json; envs=json.load(sys.stdin); [print(e['value']) for e in envs if e.get('key')=='DATABASE_URL']")
@@ -125,23 +125,42 @@ jobs:
             exit 1
           fi
 
-          # Find the PostgreSQL container and get its real IP
-          PG_CONTAINER=$(sudo docker ps --format '{{.Names}}' | grep -i postgres | head -1)
+          # Extract hostname from DB URL
+          DB_HOSTNAME=$(echo "$DB_URL" | python3 -c "import sys,re; m=re.search(r'@([^:/]+)', sys.stdin.read().strip()); print(m.group(1) if m else '')")
+          DB_USER=$(echo "$DB_URL" | python3 -c "import sys,re; m=re.search(r'://([^:]+):', sys.stdin.read().strip()); print(m.group(1) if m else 'postgres')")
+          echo "DB hostname: ${DB_HOSTNAME}, user: ${DB_USER}"
+
+          # Find the exact PostgreSQL container by matching its Docker hostname
+          PG_CONTAINER=$(sudo docker ps -q | while read cid; do
+            h=$(sudo docker inspect "$cid" --format '{{.Config.Hostname}}' 2>/dev/null)
+            n=$(sudo docker inspect "$cid" --format '{{.Name}}' 2>/dev/null | tr -d '/')
+            if [ "$h" = "$DB_HOSTNAME" ] || echo "$n" | grep -q "${DB_HOSTNAME:0:8}"; then
+              echo "$n"; break
+            fi
+          done)
           echo "PostgreSQL container: ${PG_CONTAINER}"
+
           if [ -n "$PG_CONTAINER" ]; then
-            PG_IP=$(sudo docker inspect "${PG_CONTAINER}" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' | tr ' ' '\n' | head -1)
+            PG_IP=$(sudo docker inspect "${PG_CONTAINER}" --format \
+              '{{range $k,$v := .NetworkSettings.Networks}}{{$v.IPAddress}} {{end}}' | awk '{print $1}')
             echo "PostgreSQL IP: ${PG_IP}"
-            # Replace internal hostname with real IP in DB_URL
-            DB_HOSTNAME=$(echo "$DB_URL" | sed 's|.*@\([^:/]*\).*|\1|')
             DB_URL=$(echo "$DB_URL" | sed "s|${DB_HOSTNAME}|${PG_IP}|g")
           fi
 
-          # Build Evolution API DB URL (same host/credentials, different db name)
-          EVO_DB_URL=$(echo "$DB_URL" | sed 's|/[^/?]*$|/evolution_api|')
+          # Build Evolution API DB URL (same credentials, database = evolution_api)
+          EVO_DB_URL=$(echo "$DB_URL" | python3 -c "
+          import sys, re
+          url = sys.stdin.read().strip()
+          url = re.sub(r'/[^/?]+(\?.*)?$', '/evolution_api', url)
+          print(url)
+          ")
+          echo "EVO_DB_URL built (host replaced)"
 
-          # Create evolution_api DB via running postgres container
+          # Create evolution_api DB using the postgres container
           if [ -n "$PG_CONTAINER" ]; then
-            sudo docker exec "${PG_CONTAINER}" psql -U postgres -c "CREATE DATABASE evolution_api;" 2>&1 | grep -v "already exists" || true
+            sudo docker exec "${PG_CONTAINER}" \
+              psql -U "${DB_USER}" -c "CREATE DATABASE evolution_api;" 2>&1 \
+              | grep -v "already exists" || true
           fi
 
           cd apps/api
