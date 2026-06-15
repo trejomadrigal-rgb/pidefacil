@@ -113,14 +113,14 @@ jobs:
       - name: Start Evolution API
         run: |
           cd apps/api
-          EVOLUTION_API_KEY="${{ secrets.EVOLUTION_API_KEY }}" docker compose -f docker-compose.whatsapp.yml pull
-          EVOLUTION_API_KEY="${{ secrets.EVOLUTION_API_KEY }}" docker compose -f docker-compose.whatsapp.yml up -d
+          EVOLUTION_API_KEY="${{ secrets.EVOLUTION_API_KEY }}" sudo -E docker compose -f docker-compose.whatsapp.yml pull
+          EVOLUTION_API_KEY="${{ secrets.EVOLUTION_API_KEY }}" sudo -E docker compose -f docker-compose.whatsapp.yml up -d
           echo "Waiting for Evolution API..."
           sleep 15
           curl -sf -H "apikey: ${{ secrets.EVOLUTION_API_KEY }}" \
             http://localhost:8080/instance/fetchInstances \
             && echo "✅ Evolution API is up" \
-            || (echo "❌ Evolution API failed to start" && docker compose logs && exit 1)
+            || (echo "❌ Evolution API failed to start" && sudo docker compose -f docker-compose.whatsapp.yml logs && exit 1)
 
       - name: Update API env vars in Coolify
         run: |
