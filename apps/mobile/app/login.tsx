@@ -39,7 +39,11 @@ export default function LoginScreen() {
       });
       connectSocket(data.access_token);
       registerPushToken();
-      router.push('/(tabs)/pedidos');
+      if (data.user.role === 'DELIVERY') {
+        router.push('/(delivery)/mis-pedidos');
+      } else {
+        router.push('/(tabs)/pedidos');
+      }
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 401) {
