@@ -1,7 +1,7 @@
 # Spec: Rediseño Visual del Menú QR Público
 
 **Fecha:** 2026-06-14  
-**Scope:** `apps/web` (menú público QR) + `apps/api` (nuevo campo + endpoint) + `apps/admin` (campo noteHints en producto)
+**Scope:** `apps/web` (menú público QR) + `apps/api` (nuevo campo + endpoint) + `apps/admin` (campo noteHints en producto, selector de tema)
 
 ---
 
@@ -17,22 +17,96 @@ Reemplazar el diseño funcional-pero-plano del menú QR por un diseño premium e
 |---|---|
 | Estilo general | Premium/restaurante (oscuro → claro, acento naranja izquierdo) |
 | "Más pedido hoy" | Sí, calculado automáticamente (últimos 7 días de OrderItem) |
-| Placeholder sin foto | Gradiente `#FF6B35 → #1A1A2E` + emoji de la categoría |
+| Placeholder sin foto | Gradiente `--brand → #1A1A2E` + emoji de la categoría |
 | Descripción en tarjeta | No — solo en bottom sheet al tocar |
 | Chips de personalización | Sí, por producto, configurados por el dueño en admin |
 | Link de ubicación | Sí — dirección del negocio/sucursal abre Google Maps |
+| Color de acento | Paletas predefinidas (8 temas), configurable por negocio en admin |
+
+---
+
+## Sistema de temas de color
+
+Cada negocio elige uno de 8 temas predefinidos que reemplaza el naranja `#FF6B35` en todo el menú público. El header oscuro (`#1A1A2E`) siempre permanece igual.
+
+### Catálogo de temas
+
+| Key | Nombre | Color primario | Emoji |
+|---|---|---|---|
+| `naranja` | Naranja | `#FF6B35` | 🔥 |
+| `verde` | Verde | `#27AE60` | 🌿 |
+| `rojo` | Rojo | `#E74C3C` | 🌶️ |
+| `azul` | Azul | `#2980B9` | 💙 |
+| `morado` | Morado | `#8E44AD` | 💜 |
+| `rosa` | Rosa | `#E91E8C` | 🌸 |
+| `dorado` | Dorado | `#F39C12` | ✨ |
+| `turquesa` | Turquesa | `#16A085` | 🌊 |
+
+El default cuando `Business.menuColor` es `null` es `naranja`.
+
+### Campo en BD
+
+```prisma
+// model Business — agregar:
+menuColor  String?  // key del tema: "naranja" | "verde" | "rojo" | ...
+```
+
+### Implementación CSS — variables dinámicas
+
+En `apps/web/src/app/[slug]/page.tsx`, el color del tema se inyecta como CSS variable en el wrapper raíz:
+
+```tsx
+const THEMES: Record<string, string> = {
+  naranja:  '#FF6B35',
+  verde:    '#27AE60',
+  rojo:     '#E74C3C',
+  azul:     '#2980B9',
+  morado:   '#8E44AD',
+  rosa:     '#E91E8C',
+  dorado:   '#F39C12',
+  turquesa: '#16A085',
+};
+
+const brandColor = THEMES[business.menuColor ?? 'naranja'];
+
+return (
+  <div style={{ '--brand': brandColor } as React.CSSProperties}>
+    ...
+  </div>
+);
+```
+
+Todos los componentes de `apps/web` usan `var(--brand)` en lugar de clases Tailwind hardcodeadas para el color primario:
+
+| Antes (hardcoded) | Después (variable) |
+|---|---|
+| `bg-brand-500` / `bg-[#FF6B35]` | `bg-[var(--brand)]` |
+| `text-brand-500` / `text-[#FF6B35]` | `text-[var(--brand)]` |
+| `border-brand-500` | `border-[var(--brand)]` |
+| `from-brand-500` (gradiente) | `from-[var(--brand)]` |
+
+El archivo `tailwind.config.ts` de `apps/web` **no cambia** — la variable `--brand` se resuelve en runtime. El color `#1A1A2E` del header y la oscuridad del cart bar son siempre fijos.
+
+### Selector de tema en admin
+
+En la pantalla de configuración del negocio (`apps/admin`), sección **Apariencia del menú**:
+
+- Muestra 8 swatches en grid 4×2
+- Cada swatch: círculo de color + nombre del tema debajo
+- El seleccionado tiene borde exterior naranja (del sistema admin, no del tema)
+- Al guardar, hace `PATCH /business/:id` con `{ menuColor: "verde" }`
 
 ---
 
 ## Paleta y tokens visuales
 
 ```
-Brand primary:   #FF6B35
-Brand dark:      #1A1A2E
-Page bg:         #F7F8FA  (antes: blanco)
+Brand primary:   var(--brand)  ← dinámico, default #FF6B35
+Brand dark:      #1A1A2E       ← siempre fijo
+Page bg:         #F7F8FA       (antes: blanco)
 Card bg:         #FFFFFF
 Card border:     #ECEDF0
-Accent stripe:   4px, #FF6B35, left side of card
+Accent stripe:   4px, var(--brand), left side of card
 Category title:  uppercase bold 11px, color #1A1A2E + emoji
 ```
 
@@ -276,12 +350,28 @@ En el formulario de crear/editar categoría, agregar campo de texto "Emoji" (1 c
 ## 6. Migración de datos
 
 ```sql
--- noteHints en Product (ya cubierto arriba)
+-- noteHints en Product
 ALTER TABLE "Product" ADD COLUMN "noteHints" TEXT[] NOT NULL DEFAULT '{}';
 
 -- emoji en Category
 ALTER TABLE "Category" ADD COLUMN "emoji" TEXT;
+
+-- menuColor en Business
+ALTER TABLE "Business" ADD COLUMN "menuColor" TEXT;
 ```
+
+### DTOs de Business
+
+`PATCH /businesses/:id` ya existe en el módulo de admin. Agregar `menuColor?: string` a `UpdateBusinessDto` con validación:
+
+```ts
+@IsString()
+@IsOptional()
+@IsIn(['naranja','verde','rojo','azul','morado','rosa','dorado','turquesa'])
+menuColor?: string;
+```
+
+La respuesta pública `GET /menu/:slug` ya devuelve el objeto `business`; agregar `menuColor: string | null` a la serialización pública.
 
 ---
 
