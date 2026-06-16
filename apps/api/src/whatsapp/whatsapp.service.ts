@@ -63,26 +63,36 @@ export class WhatsappService {
     // Remove any existing instance to avoid 409 conflicts on re-connect
     await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: false }).catch(() => {});
 
-    const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', {
+    const createData = await this.evo<Record<string, unknown>>('POST', '/instance/create', {
       instanceName: biz.slug,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
     });
+    console.log('[WA] POST /instance/create raw:', JSON.stringify(createData).slice(0, 500));
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
 
     // Evolution API v2 returns QR directly in the create response
-    const qr = createData.qrcode?.base64 ?? '';
-    if (qr) return { status: 'connecting', qr };
+    const cd = createData as { qrcode?: { base64?: string } };
+    const qr = cd.qrcode?.base64 ?? '';
+    if (qr) {
+      console.log('[WA] QR found in create response');
+      return { status: 'connecting', qr };
+    }
 
     // Fallback: poll for QR (WA connection + QR generation takes a few seconds)
     for (let i = 0; i < 3; i++) {
       await new Promise((r) => setTimeout(r, 3000));
       try {
-        const qrData = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.slug}`);
-        const fetched = qrData.base64 ?? qrData.qrcode?.base64 ?? '';
+        const qrData = await this.evo<Record<string, unknown>>('GET', `/instance/connect/${biz.slug}`);
+        console.log(`[WA] GET /instance/connect retry ${i + 1} raw:`, JSON.stringify(qrData).slice(0, 500));
+        const qd = qrData as { base64?: string; qrcode?: { base64?: string } };
+        const fetched = qd.base64 ?? qd.qrcode?.base64 ?? '';
         if (fetched) return { status: 'connecting', qr: fetched };
-      } catch { /* not ready yet */ }
+      } catch (err) {
+        console.log(`[WA] GET /instance/connect retry ${i + 1} error:`, String(err));
+      }
     }
+    console.log('[WA] QR not found after retries — returning empty');
     return { status: 'connecting', qr: '' };
   }
 
@@ -90,9 +100,12 @@ export class WhatsappService {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
     if (!biz?.whatsappSession) return null;
     try {
-      const data = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.whatsappSession}`);
-      return data.base64 ?? data.qrcode?.base64 ?? null;
-    } catch {
+      const data = await this.evo<Record<string, unknown>>('GET', `/instance/connect/${biz.whatsappSession}`);
+      console.log('[WA] getQr raw:', JSON.stringify(data).slice(0, 300));
+      const d = data as { base64?: string; qrcode?: { base64?: string } };
+      return d.base64 ?? d.qrcode?.base64 ?? null;
+    } catch (err) {
+      console.log('[WA] getQr error:', String(err));
       return null;
     }
   }
