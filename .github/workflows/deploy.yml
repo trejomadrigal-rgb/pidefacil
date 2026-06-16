@@ -350,14 +350,52 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'read-logs'
     runs-on: [self-hosted, linux, deploy]
     steps:
-      - name: Print last 100 lines of API container logs
+      - name: Debug Evolution API directly
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          echo "=== Evolution API containers ==="
+          sudo docker ps | grep -i evol || echo "(no evolution containers running)"
+
+          echo ""
+          echo "=== Evolution API last 50 log lines ==="
+          EVO_CONTAINER=$(sudo docker ps --filter "name=evolution-api" -q | head -1)
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker logs "$EVO_CONTAINER" --tail=50 2>&1
+          else
+            echo "(evolution-api container not found)"
+          fi
+
+          echo ""
+          echo "=== Call GET /instance/fetchInstances ==="
+          curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/fetchInstances | python3 -c "import sys,json; data=json.load(sys.stdin); print(json.dumps(data, indent=2))" 2>/dev/null || echo "(fetchInstances failed)"
+
+          echo ""
+          echo "=== Try POST /instance/create test-debug ==="
+          CREATE_RESP=$(curl -s -X POST http://localhost:18080/instance/create \
+            -H "Content-Type: application/json" \
+            -H "apikey: ${EVOLUTION_API_KEY}" \
+            -d '{"instanceName":"debug-test","qrcode":true,"integration":"WHATSAPP-BAILEYS"}')
+          echo "Create response: $CREATE_RESP"
+
+          echo ""
+          echo "=== Try GET /instance/connect/debug-test (wait 3s) ==="
+          sleep 3
+          curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connect/debug-test | python3 -c "import sys,json; data=json.load(sys.stdin); print(json.dumps(data, indent=2))" 2>/dev/null || echo "(connect call failed)"
+
+          echo ""
+          echo "=== Cleanup debug instance ==="
+          curl -s -X DELETE http://localhost:18080/instance/delete/debug-test \
+            -H "Content-Type: application/json" \
+            -H "apikey: ${EVOLUTION_API_KEY}" \
+            -d '{"deleteFiles":false}' || true
+
+      - name: Print NestJS API [WA] logs
         run: |
           API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           if [ -z "$API_CONTAINER" ]; then
             API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           fi
-          echo "Container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
-          echo "--- Last 100 lines ---"
-          sudo docker logs "$API_CONTAINER" --tail=100 2>&1
-          echo "--- [WA] lines only ---"
+          echo "NestJS container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+          echo "--- [WA] log lines ---"
           sudo docker logs "$API_CONTAINER" --tail=500 2>&1 | grep '\[WA\]' || echo "(no [WA] lines found)"
