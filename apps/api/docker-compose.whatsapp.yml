@@ -29,7 +29,13 @@ services:
       DATABASE_CONNECTION_URI: "${DATABASE_CONNECTION_URI}"
       REDIS_ENABLED: "true"
       REDIS_URI: "redis://evolution-redis:6379"
-      LOG_LEVEL: "ERROR"
+      LOG_LEVEL: "LOG"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_URL: "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/whatsapp/webhook"
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      WEBHOOK_EVENTS_APPLICATION_STARTUP: "false"
+      WEBHOOK_EVENTS_QRCODE_UPDATED: "true"
+      WEBHOOK_EVENTS_CONNECTION_UPDATE: "true"
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store

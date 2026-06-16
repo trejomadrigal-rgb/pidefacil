@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Logger, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -38,6 +38,8 @@ export class WhatsappController {
 /** Public endpoint — Evolution API v2 POSTs QR code events here. */
 @Controller('whatsapp')
 export class WhatsappWebhookController {
+  private readonly logger = new Logger('WhatsappWebhook');
+
   constructor(private readonly whatsappService: WhatsappService) {}
 
   @Post('webhook')
@@ -47,6 +49,8 @@ export class WhatsappWebhookController {
     const event = (body.event as string | undefined) ?? '';
     const instance = (body.instance as string | undefined) ?? '';
 
+    this.logger.log(`[WH] event=${event} instance=${instance}`);
+
     if (!instance) return { ok: true };
 
     // Handle QRCODE_UPDATED event (Evolution API v2 delivers QR via webhook)
@@ -54,6 +58,7 @@ export class WhatsappWebhookController {
       const data = body.data as Record<string, unknown> | undefined;
       const qrcode = data?.qrcode as Record<string, unknown> | undefined;
       const base64 = (qrcode?.base64 as string | undefined) ?? '';
+      this.logger.log(`[WH] QR received for ${instance}, base64 length=${base64.length}`);
       if (base64) {
         this.whatsappService.storeQrFromWebhook(instance, base64);
       }
