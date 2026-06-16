@@ -195,8 +195,8 @@ jobs:
             STATUS=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
               "http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa" \
               | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
-            if [ "$STATUS" = "running" ]; then
-              echo "✅ Coolify reports API running after $((i * 5))s"
+            if echo "$STATUS" | grep -q "running"; then
+              echo "✅ Coolify reports API running after $((i * 5))s (status=$STATUS)"
               sleep 5
               break
             fi
