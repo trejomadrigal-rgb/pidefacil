@@ -536,3 +536,33 @@ jobs:
           curl -s http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
             | grep -o '<title>[^<]*\|Negocio no encontrado\|La Cocina\|dona-rosa\|menuColor\|PideFacil' | head -5 || echo "(sin coincidencias)"
 
+          echo ""
+          echo "=== 10. Node.js fetch test desde web container (simula Next.js server-side fetch) ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker exec "$WEB_CONTAINER" node -e "
+              const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+              const url = API_URL + '/public/business/dona-rosa';
+              console.log('process.env.API_URL:', process.env.API_URL);
+              console.log('process.env.NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+              console.log('Fetching URL:', url);
+              fetch(url, { cache: 'no-store' })
+                .then(r => { console.log('HTTP status:', r.status, r.statusText); return r.text(); })
+                .then(body => console.log('Body (first 200 chars):', body.substring(0, 200)))
+                .catch(e => console.error('FETCH ERROR:', e.message, e.cause?.message || '', e.cause?.code || ''));
+            " 2>&1 || echo "❌ node -e failed"
+          fi
+
+          echo ""
+          echo "=== 11. Verificar 'no-store' en código compilado ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            echo "Grep 'no-store' en .next/server/app:"
+            sudo docker exec "$WEB_CONTAINER" grep -rl "no-store" /app/apps/web/.next/server/app/ 2>/dev/null | head -3 \
+              || echo "  (no encontrado en /app/apps/web/.next/server/app/)"
+            echo "Grep 'revalidate' en .next/server/app:"
+            sudo docker exec "$WEB_CONTAINER" grep -rl "revalidate" /app/apps/web/.next/server/app/ 2>/dev/null | head -3 \
+              || echo "  (no encontrado)"
+            echo "API_URL en código compilado (chunks):"
+            sudo docker exec "$WEB_CONTAINER" grep -r "API_URL\|localhost:3000" /app/apps/web/.next/server/ 2>/dev/null \
+              | grep -v "Binary" | head -5 || echo "  (no encontrado)"
+          fi
+
