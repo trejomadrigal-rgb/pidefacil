@@ -20,22 +20,36 @@ async function api(path, method = 'GET', body, token) {
 }
 
 async function createFonda({ businessName, slug, phone, email, password, menuName, categories }) {
-  console.log(`\n🍽️  Creando: ${businessName}`);
+  console.log(`\n🍽️  Procesando: ${businessName}`);
 
-  await api('/auth/register', 'POST', {
+  // Register (ignore 409 if already exists)
+  const registerErr = await api('/auth/register', 'POST', {
     businessName, slug, phone, ownerName: businessName, email, password,
-  }).catch(async (e) => {
-    if (e.message.includes('409') || e.message.includes('already')) {
-      console.log('  ⚠️  Ya existe, continuando...');
-    } else throw e;
-  });
+  }).then(() => null).catch((e) => e);
+
+  if (registerErr) {
+    if (registerErr.message.includes('409') || registerErr.message.includes('already') || registerErr.message.includes('conflict')) {
+      console.log('  ⚠️  Ya existe, limpiando menús anteriores...');
+    } else {
+      throw registerErr;
+    }
+  }
 
   const login = await api('/auth/login', 'POST', { email, password });
   const token = login.access_token;
 
+  // Delete all existing menus (cascades categories + products) for idempotency
+  const existingMenus = await api('/menus', 'GET', undefined, token).catch(() => []);
+  for (const m of (Array.isArray(existingMenus) ? existingMenus : [])) {
+    await api(`/menus/${m.id}`, 'DELETE', undefined, token).catch(() => {});
+    console.log(`  🗑️  Menú eliminado: ${m.name}`);
+  }
+
+  // Create menu
   const menu = await api('/menus', 'POST', { name: menuName, type: 'FIXED' }, token);
   const menuId = menu.id;
 
+  // Create categories and products
   for (const cat of categories) {
     const category = await api('/categories', 'POST', { name: cat.name, menuId }, token);
     const categoryId = category.id;

@@ -12,9 +12,43 @@ const WHATSAPP_STATUSES = new Set<OrderStatus>([
   OrderStatus.REJECTED,
 ]);
 
+const PAYMENT_LABEL: Record<string, string> = {
+  CASH: '💵 Efectivo',
+  TRANSFER: '🏦 Transferencia bancaria',
+  CARD: '💳 Tarjeta',
+  OTHER: '💰 Otro',
+};
+
+function buildConfirmedMessage(
+  folio: string,
+  name: string,
+  business: string,
+  items: { name: string; quantity: number; price: number }[],
+  total: number,
+  paymentMethod: string | null,
+): string {
+  const itemLines = items
+    .map((i) => `• ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`)
+    .join('\n');
+
+  const payLabel = paymentMethod ? (PAYMENT_LABEL[paymentMethod] ?? paymentMethod) : '';
+  const payLine = payLabel ? `\n💳 *Pago:* ${payLabel}` : '';
+
+  const transferNote =
+    paymentMethod === 'TRANSFER' || paymentMethod === 'CARD'
+      ? '\n\n⚠️ *Importante:* Tu pedido pasará a preparación una vez que nos envíes el comprobante de pago. Sin comprobante no iniciaremos la preparación.'
+      : '\n\nYa lo estamos preparando. 🍳';
+
+  return (
+    `✅ *Pedido #${folio} confirmado*\n\n` +
+    `¡Hola ${name}! Tu pedido en *${business}* fue recibido.\n\n` +
+    `🛒 *Tu pedido:*\n${itemLines}\n\n` +
+    `💰 *Total: $${total.toFixed(2)}*${payLine}` +
+    transferNote
+  );
+}
+
 const STATUS_MESSAGES: Partial<Record<OrderStatus, (folio: string, name: string, business: string) => string>> = {
-  [OrderStatus.CONFIRMED]: (f, n, b) =>
-    `✅ *Pedido #${f} confirmado*\n\n¡Hola ${n}! Tu pedido en *${b}* fue aceptado. Ya lo estamos preparando. 🍳`,
   [OrderStatus.READY]: (f, _n, b) =>
     `🍽️ *Pedido #${f} listo*\n\n¡Tu pedido en *${b}* está listo para recoger!`,
   [OrderStatus.OUT_FOR_DELIVERY]: (f, _n, b) =>
@@ -174,12 +208,40 @@ export class WhatsappService {
     const state = await this.getConnectionState(order.businessId);
     if (state !== 'open') return;
 
-    const buildMessage = STATUS_MESSAGES[newStatus];
-    if (!buildMessage) return;
-
     const digits = order.customerPhone.replace(/\D/g, '');
     const phone = digits.length === 10 ? `52${digits}` : digits;
-    const text = buildMessage(order.orderNumber, order.customerName, biz.name);
+
+    let text: string;
+
+    if (newStatus === OrderStatus.CONFIRMED) {
+      const fullOrder = await this.prisma.order.findFirst({
+        where: { businessId: order.businessId, orderNumber: order.orderNumber },
+        select: {
+          total: true,
+          paymentMethod: true,
+          items: { select: { quantity: true, price: true, product: { select: { name: true } } } },
+        },
+      });
+
+      const items = (fullOrder?.items ?? []).map((i) => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        price: Number(i.price),
+      }));
+
+      text = buildConfirmedMessage(
+        order.orderNumber,
+        order.customerName,
+        biz.name,
+        items,
+        Number(fullOrder?.total ?? 0),
+        fullOrder?.paymentMethod ?? null,
+      );
+    } else {
+      const buildMessage = STATUS_MESSAGES[newStatus];
+      if (!buildMessage) return;
+      text = buildMessage(order.orderNumber, order.customerName, biz.name);
+    }
 
     await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
   }
