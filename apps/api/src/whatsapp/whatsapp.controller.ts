@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Logger, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -38,8 +38,6 @@ export class WhatsappController {
 /** Public endpoint — Evolution API v2 POSTs QR code events here. */
 @Controller('whatsapp')
 export class WhatsappWebhookController {
-  private readonly logger = new Logger('WhatsappWebhook');
-
   constructor(private readonly whatsappService: WhatsappService) {}
 
   @Post('webhook')
@@ -58,15 +56,6 @@ export class WhatsappWebhookController {
       if (base64) {
         this.whatsappService.storeQrFromWebhook(instance, base64);
       }
-    }
-
-    if (event === 'connection.update' || event === 'CONNECTION_UPDATE') {
-      const data = body.data as Record<string, unknown> | undefined;
-      const state = data?.state ?? data?.connection ?? '?';
-      const statusCode = data?.lastDisconnect
-        ? JSON.stringify((data.lastDisconnect as Record<string, unknown>)?.error ?? '')
-        : '';
-      this.logger.log(`[WH] ${instance} state=${state}${statusCode ? ' err=' + statusCode.slice(0, 120) : ''}`);
     }
 
     return { ok: true };
