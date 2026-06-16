@@ -27,10 +27,16 @@ const STATUS_MESSAGES: Partial<Record<OrderStatus, (folio: string, name: string,
     `❌ *Pedido #${f} cancelado*\n\nLo sentimos, tu pedido en *${b}* fue cancelado. Disculpa el inconveniente.`,
 };
 
+const QR_TTL_MS = 60_000;
+
 @Injectable()
 export class WhatsappService {
   private readonly apiUrl: string;
   private readonly apiKey: string;
+  private readonly appUrl: string;
+
+  // Instance name → { qr base64, expiry }. Evolution API v2 delivers QR via webhook.
+  private readonly qrStore = new Map<string, { qr: string; expiresAt: number }>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -38,6 +44,7 @@ export class WhatsappService {
   ) {
     this.apiUrl = this.config.get<string>('EVOLUTION_API_URL') ?? '';
     this.apiKey = this.config.get<string>('EVOLUTION_API_KEY') ?? '';
+    this.appUrl = this.config.get<string>('APP_URL') ?? '';
   }
 
   private headers() {
@@ -56,56 +63,75 @@ export class WhatsappService {
     return res.json() as Promise<T>;
   }
 
+  /** Called by the webhook endpoint when Evolution API POSTs a QRCODE_UPDATED event. */
+  storeQrFromWebhook(instanceName: string, qr: string): void {
+    this.qrStore.set(instanceName, { qr, expiresAt: Date.now() + QR_TTL_MS });
+  }
+
   async connectAndGetQr(businessId: string): Promise<{ status: 'connecting'; qr: string }> {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
     if (!biz) throw new NotFoundException('Negocio no encontrado');
 
     // Remove any existing instance to avoid 409 conflicts on re-connect
     await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: false }).catch(() => {});
+    this.qrStore.delete(biz.slug);
 
-    const createData = await this.evo<Record<string, unknown>>('POST', '/instance/create', {
+    const payload: Record<string, unknown> = {
       instanceName: biz.slug,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
-    });
-    console.log('[WA] POST /instance/create raw:', JSON.stringify(createData).slice(0, 500));
+    };
+
+    // Evolution API v2 delivers QR codes via webhook. Configure it when APP_URL is available.
+    if (this.appUrl) {
+      payload.webhook = {
+        url: `${this.appUrl}/whatsapp/webhook`,
+        enabled: true,
+        webhookByEvents: false,
+        events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE'],
+      };
+    }
+
+    const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload);
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
 
-    // Evolution API v2 returns QR directly in the create response
-    const cd = createData as { qrcode?: { base64?: string } };
-    const qr = cd.qrcode?.base64 ?? '';
-    if (qr) {
-      console.log('[WA] QR found in create response');
-      return { status: 'connecting', qr };
+    // Some Evolution API versions return QR directly in the create response
+    const immediateQr = createData.qrcode?.base64 ?? '';
+    if (immediateQr) return { status: 'connecting', qr: immediateQr };
+
+    // Poll the REST endpoint briefly as fallback (works on some versions)
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+
+      // Check webhook-delivered QR first
+      const stored = this.qrStore.get(biz.slug);
+      if (stored && stored.expiresAt > Date.now()) {
+        return { status: 'connecting', qr: stored.qr };
+      }
+
+      try {
+        const qrData = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.slug}`);
+        const fetched = qrData.base64 ?? qrData.qrcode?.base64 ?? '';
+        if (fetched) return { status: 'connecting', qr: fetched };
+      } catch { /* not ready yet */ }
     }
 
-    // Fallback: poll for QR (WA connection + QR generation takes a few seconds)
-    for (let i = 0; i < 3; i++) {
-      await new Promise((r) => setTimeout(r, 3000));
-      try {
-        const qrData = await this.evo<Record<string, unknown>>('GET', `/instance/connect/${biz.slug}`);
-        console.log(`[WA] GET /instance/connect retry ${i + 1} raw:`, JSON.stringify(qrData).slice(0, 500));
-        const qd = qrData as { base64?: string; qrcode?: { base64?: string } };
-        const fetched = qd.base64 ?? qd.qrcode?.base64 ?? '';
-        if (fetched) return { status: 'connecting', qr: fetched };
-      } catch (err) {
-        console.log(`[WA] GET /instance/connect retry ${i + 1} error:`, String(err));
-      }
-    }
-    console.log('[WA] QR not found after retries — returning empty');
     return { status: 'connecting', qr: '' };
   }
 
   async getQrByBusinessId(businessId: string): Promise<string | null> {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
     if (!biz?.whatsappSession) return null;
+
+    // Check webhook-delivered QR store first (Evolution API v2 primary delivery mechanism)
+    const stored = this.qrStore.get(biz.whatsappSession);
+    if (stored && stored.expiresAt > Date.now()) return stored.qr;
+
+    // Fallback: REST endpoint (works on some Evolution API versions)
     try {
-      const data = await this.evo<Record<string, unknown>>('GET', `/instance/connect/${biz.whatsappSession}`);
-      console.log('[WA] getQr raw:', JSON.stringify(data).slice(0, 300));
-      const d = data as { base64?: string; qrcode?: { base64?: string } };
-      return d.base64 ?? d.qrcode?.base64 ?? null;
-    } catch (err) {
-      console.log('[WA] getQr error:', String(err));
+      const data = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.whatsappSession}`);
+      return data.base64 ?? data.qrcode?.base64 ?? null;
+    } catch {
       return null;
     }
   }
@@ -128,6 +154,7 @@ export class WhatsappService {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
     if (biz?.whatsappSession) {
       await this.evo('DELETE', `/instance/delete/${biz.whatsappSession}`, { deleteFiles: false }).catch(() => {});
+      this.qrStore.delete(biz.whatsappSession);
       await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: null } });
     }
   }

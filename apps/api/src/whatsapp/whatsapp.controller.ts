@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { WhatsappService } from './whatsapp.service';
 
 @Controller('admin/whatsapp')
@@ -31,5 +32,33 @@ export class WhatsappController {
   async disconnect(@CurrentUser() user: CurrentUserPayload) {
     await this.whatsappService.disconnect(user.businessId);
     return { status: 'disconnected' };
+  }
+}
+
+/** Public endpoint — Evolution API v2 POSTs QR code events here. */
+@Controller('whatsapp')
+export class WhatsappWebhookController {
+  constructor(private readonly whatsappService: WhatsappService) {}
+
+  @Post('webhook')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  handleWebhook(@Body() body: Record<string, unknown>) {
+    const event = (body.event as string | undefined) ?? '';
+    const instance = (body.instance as string | undefined) ?? '';
+
+    if (!instance) return { ok: true };
+
+    // Handle QRCODE_UPDATED event (Evolution API v2 delivers QR via webhook)
+    if (event === 'QRCODE_UPDATED' || event === 'qrcode.updated') {
+      const data = body.data as Record<string, unknown> | undefined;
+      const qrcode = data?.qrcode as Record<string, unknown> | undefined;
+      const base64 = (qrcode?.base64 as string | undefined) ?? '';
+      if (base64) {
+        this.whatsappService.storeQrFromWebhook(instance, base64);
+      }
+    }
+
+    return { ok: true };
   }
 }

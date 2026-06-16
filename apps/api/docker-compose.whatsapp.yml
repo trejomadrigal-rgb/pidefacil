@@ -29,7 +29,7 @@ services:
       DATABASE_CONNECTION_URI: "${DATABASE_CONNECTION_URI}"
       REDIS_ENABLED: "true"
       REDIS_URI: "redis://evolution-redis:6379"
-      LOG_LEVEL: "LOG"
+      LOG_LEVEL: "ERROR"
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
