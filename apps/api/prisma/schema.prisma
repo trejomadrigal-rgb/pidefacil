@@ -145,20 +145,20 @@ enum Platform {
 // ─── Modelos activos en Phase 1 ──────────────────────────────────────────────
 
 model Business {
-  id        String         @id @default(cuid())
-  name      String
-  slug      String         @unique
-  phone     String
-  whatsapp  String?
-  logoUrl   String?
-  coverUrl  String?
-  address   String?
-  menuColor String?
-  timezone  String         @default("America/Mexico_City")
-  status    BusinessStatus @default(ACTIVE)
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  phone           String
+  whatsapp        String?
+  logoUrl         String?
+  coverUrl        String?
+  address         String?
+  menuColor       String?
+  timezone        String         @default("America/Mexico_City")
+  status          BusinessStatus @default(ACTIVE)
   whatsappSession String?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   users             User[]
   menus             Menu[]
@@ -301,7 +301,7 @@ model Product {
   imageUrl    String?
   isAvailable Boolean  @default(true)
   isFeatured  Boolean  @default(false)
-  noteHints   String[]
+  noteHints   String[]  @default([])
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -341,22 +341,22 @@ model Extra {
 }
 
 model Order {
-  id              String         @id @default(cuid())
-  businessId      String
-  customerId      String?
-  orderNumber     String
-  status          OrderStatus    @default(NEW)
-  subtotal        Decimal        @db.Decimal(10, 2)
-  discount        Decimal        @default(0) @db.Decimal(10, 2)
-  deliveryFee     Decimal        @default(0) @db.Decimal(10, 2)
-  total           Decimal        @db.Decimal(10, 2)
-  notes           String?
-  deliveryType    DeliveryType   @default(PICKUP)
-  customerName    String
-  customerPhone   String
-  deliveryAddress String?
-  scheduledAt     DateTime?
-  branchId        String?
+  id                String         @id @default(cuid())
+  businessId        String
+  customerId        String?
+  orderNumber       String
+  status            OrderStatus    @default(NEW)
+  subtotal          Decimal        @db.Decimal(10, 2)
+  discount          Decimal        @default(0) @db.Decimal(10, 2)
+  deliveryFee       Decimal        @default(0) @db.Decimal(10, 2)
+  total             Decimal        @db.Decimal(10, 2)
+  notes             String?
+  deliveryType      DeliveryType   @default(PICKUP)
+  customerName      String
+  customerPhone     String
+  deliveryAddress   String?
+  scheduledAt       DateTime?
+  branchId          String?
   paymentMethod     PaymentMethod?
   isPaid            Boolean        @default(false)
   assignedToId      String?
