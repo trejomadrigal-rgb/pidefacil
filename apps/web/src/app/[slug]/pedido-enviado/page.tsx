@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import { formatPhone } from '@/lib/utils';
 
 function PedidoEnviadoContent() {
@@ -25,19 +26,46 @@ function PedidoEnviadoContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
-        <div className="text-6xl mb-4">🎉</div>
-        <div className="text-4xl font-black text-green-500 mb-2">Pedido #{folio}</div>
-        <h1 className="text-xl font-bold text-brand-900 mb-2">
-          ¡Pedido enviado!
-        </h1>
-        <p className="text-sm text-gray-500 mb-8">
-          El negocio revisará tu pedido y te contactará al{' '}
-          <span className="font-semibold text-brand-900 whitespace-nowrap">
-            {formatPhone(phone)}
-          </span>
-        </p>
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', damping: 10, stiffness: 280, delay: 0.05 }}
+          className="text-6xl mb-4"
+        >
+          🎉
+        </motion.div>
 
-        <div className="space-y-3">
+        <motion.div
+          initial={{ scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', damping: 14, stiffness: 340, delay: 0.2 }}
+          className="text-4xl font-black text-green-500 mb-2"
+        >
+          Pedido #{folio}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, delay: 0.35 }}
+        >
+          <h1 className="text-xl font-bold text-brand-900 mb-2">
+            ¡Pedido enviado!
+          </h1>
+          <p className="text-sm text-gray-500 mb-8">
+            El negocio revisará tu pedido y te contactará al{' '}
+            <span className="font-semibold text-brand-900 whitespace-nowrap">
+              {formatPhone(phone)}
+            </span>
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32, delay: 0.48 }}
+          className="space-y-3"
+        >
           <a
             href={whatsappUrl}
             target="_blank"
@@ -58,7 +86,7 @@ function PedidoEnviadoContent() {
           >
             ← Volver al menú
           </Link>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

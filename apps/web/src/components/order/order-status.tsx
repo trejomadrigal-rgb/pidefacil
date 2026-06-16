@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getOrderStatus, OrderStatusResponse } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { ChatPanel } from './chat-panel';
@@ -149,13 +150,29 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
         </p>
       </div>
 
-      {/* Current status card */}
-      <div className={`${currentConfig.bg} rounded-2xl p-5 text-center mb-6`}>
-        <div className="text-4xl mb-2">{getIcon(order.status, isDelivery)}</div>
-        <p className={`text-lg font-bold ${currentConfig.color}`}>
-          {getLabel(order.status, isDelivery)}
-        </p>
-      </div>
+      {/* Current status card — re-anima cada vez que cambia el estado */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={order.status}
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.04 }}
+          transition={{ type: 'spring', damping: 18, stiffness: 320 }}
+          className={`${currentConfig.bg} rounded-2xl p-5 text-center mb-6`}
+        >
+          <motion.div
+            initial={{ scale: 0.5, rotate: -12 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', damping: 10, stiffness: 280, delay: 0.06 }}
+            className="text-4xl mb-2"
+          >
+            {getIcon(order.status, isDelivery)}
+          </motion.div>
+          <p className={`text-lg font-bold ${currentConfig.color}`}>
+            {getLabel(order.status, isDelivery)}
+          </p>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Timeline */}
       {!isCancelled && (
@@ -166,9 +183,15 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
               const done = idx <= currentIndex;
               const active = idx === currentIndex;
               return (
-                <div key={status} className="flex items-center gap-3">
+                <motion.div
+                  key={status}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.22, delay: idx * 0.07 }}
+                  className="flex items-center gap-3"
+                >
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-colors duration-300 ${
                       done
                         ? active
                           ? 'bg-brand-500 text-white'
@@ -179,7 +202,7 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
                     {done && !active ? '✓' : idx + 1}
                   </div>
                   <span
-                    className={`text-sm ${
+                    className={`text-sm transition-colors duration-300 ${
                       active
                         ? 'font-bold text-brand-900'
                         : done
@@ -189,7 +212,7 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
                   >
                     {getLabel(status, isDelivery)}
                   </span>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -242,8 +265,15 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
           </Link>
         </div>
       ) : !isTerminal ? (
-        <div className="bg-gray-100 rounded-xl py-3 text-center text-sm text-gray-500">
-          ↻ Actualiza en {countdown}s
+        <div className="bg-gray-100 rounded-xl py-3 px-4">
+          <p className="text-xs text-gray-400 text-center mb-2">↻ Actualizando en {countdown}s</p>
+          <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-brand-500 rounded-full"
+              animate={{ width: `${(countdown / (POLL_INTERVAL / 1000)) * 100}%` }}
+              transition={{ duration: 1, ease: 'linear' }}
+            />
+          </div>
         </div>
       ) : null}
     </div>
