@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Minus, Plus, X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { motion } from 'framer-motion';
 import { Product, ProductExtra, ProductVariant } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/cart.store';
@@ -78,8 +79,14 @@ export function ProductSheet({
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
-        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[90vh] overflow-y-auto focus:outline-none">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
+        <Dialog.Content asChild>
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+          className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[90vh] overflow-y-auto focus:outline-none"
+        >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1">
             <div className="w-10 h-1 bg-gray-200 rounded-full" />
@@ -242,6 +249,7 @@ export function ProductSheet({
               </button>
             </div>
           </div>
+        </motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

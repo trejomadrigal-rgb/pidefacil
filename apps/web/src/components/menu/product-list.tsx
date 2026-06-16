@@ -27,12 +27,13 @@ export function ProductList({ categories, slug }: ProductListProps) {
           <div className="flex flex-col gap-2">
             {category.products
               .filter((p) => p.isAvailable)
-              .map((product) => (
+              .map((product, i) => (
                 <ProductCard
                   key={product.id}
                   product={product}
                   slug={slug}
                   categoryEmoji={category.emoji}
+                  animationIndex={i}
                 />
               ))}
           </div>

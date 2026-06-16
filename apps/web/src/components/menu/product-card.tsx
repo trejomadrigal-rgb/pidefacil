@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Plus } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Product } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/cart.store';
@@ -12,9 +13,10 @@ interface ProductCardProps {
   product: Product;
   slug: string;
   categoryEmoji?: string;
+  animationIndex?: number;
 }
 
-export function ProductCard({ product, slug, categoryEmoji }: ProductCardProps) {
+export function ProductCard({ product, slug, categoryEmoji, animationIndex = 0 }: ProductCardProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const { addItem } = useCartStore();
 
@@ -34,7 +36,12 @@ export function ProductCard({ product, slug, categoryEmoji }: ProductCardProps) 
 
   return (
     <>
-      <div className="bg-white rounded-[14px] border border-[#ECEDF0] flex items-center overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.05)]">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, delay: Math.min(animationIndex * 0.04, 0.4) }}
+        className="bg-white rounded-[14px] border border-[#ECEDF0] flex items-center overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.05)]"
+      >
         {/* Acento lateral */}
         <div
           className="w-1 self-stretch flex-shrink-0 rounded-l-sm"
@@ -79,7 +86,7 @@ export function ProductCard({ product, slug, categoryEmoji }: ProductCardProps) 
             <Plus size={14} className="text-white" />
           </button>
         </div>
-      </div>
+      </motion.div>
 
       <ProductSheet
         key={product.id}
