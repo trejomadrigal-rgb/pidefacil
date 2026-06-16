@@ -304,9 +304,23 @@ jobs:
           sudo docker ps -a --filter "name=evolution" -q | xargs -r sudo docker rm -f 2>/dev/null || true
           echo "--- Containers cleaned ---"
 
+          # Buscar el tag más reciente de Evolution API en DockerHub
+          LATEST_TAG=$(curl -sf "https://hub.docker.com/v2/repositories/atendai/evolution-api/tags?page_size=50&ordering=-name" | \
+            python3 -c "
+import sys, json, re
+data = json.load(sys.stdin)
+tags = [t['name'] for t in data.get('results', []) if re.match(r'^v\d+\.\d+\.\d+$', t['name'])]
+def semver(t):
+    m = re.match(r'^v(\d+)\.(\d+)\.(\d+)$', t)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else (0,0,0)
+tags.sort(key=semver, reverse=True)
+print(tags[0] if tags else 'latest')
+" 2>/dev/null || echo "latest")
+          echo "Evolution API tag a usar: ${LATEST_TAG}"
+
           # Start Redis + Evolution API (bridge mode, port 18080→8080)
-          printf "EVOLUTION_API_KEY=%s\nDATABASE_CONNECTION_URI=%s\n" \
-            "${EVOLUTION_API_KEY}" "${EVO_DB_URL}" > .env.whatsapp
+          printf "EVOLUTION_API_KEY=%s\nDATABASE_CONNECTION_URI=%s\nEVOLUTION_API_TAG=%s\n" \
+            "${EVOLUTION_API_KEY}" "${EVO_DB_URL}" "${LATEST_TAG}" > .env.whatsapp
           sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp pull
           sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp up -d --wait --wait-timeout 60
           rm -f .env.whatsapp
@@ -355,6 +369,20 @@ jobs:
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
         run: |
+          echo "=== Tags disponibles en DockerHub (atendai/evolution-api) ==="
+          curl -sf "https://hub.docker.com/v2/repositories/atendai/evolution-api/tags?page_size=25&ordering=-name" | \
+            python3 -c "import sys,json; [print(t['name']) for t in json.load(sys.stdin).get('results',[])]" 2>/dev/null || echo "(no se pudo consultar DockerHub)"
+
+          echo ""
+          echo "=== Versión de Baileys en el contenedor actual ==="
+          EVO_CONTAINER=$(sudo docker ps --filter "name=api-evolution-api-1" -q | head -1)
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker exec "$EVO_CONTAINER" node -e "try{const p=require('/evolution/node_modules/baileys/package.json');console.log('baileys:',p.name,'v'+p.version)}catch(e){try{const p=require('/evolution/node_modules/@whiskeysockets/baileys/package.json');console.log('@whiskeysockets/baileys v'+p.version)}catch(e2){console.log('no encontrado')}}" 2>&1 || echo "(no se pudo leer)"
+            echo "Imagen del contenedor:"
+            sudo docker inspect "$EVO_CONTAINER" --format '{{.Config.Image}}'
+          fi
+
+          echo ""
           echo "=== Logs NestJS — líneas [WH] (webhook recibido) ==="
           API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           if [ -z "$API_CONTAINER" ]; then

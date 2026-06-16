@@ -11,7 +11,7 @@ services:
       retries: 10
 
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: atendai/evolution-api:${EVOLUTION_API_TAG:-latest}
     restart: always
     ports:
       - "18080:8080"
