@@ -16,6 +16,7 @@ on:
           - seed-data
           - fix-admin-url
           - check-webhook-logs
+          - diagnose-web
 
 jobs:
   test:
@@ -100,16 +101,34 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}'
 
-      - name: Set Web env vars (NEXT_PUBLIC_API_URL)
+      - name: Set Web env vars (NEXT_PUBLIC_API_URL + API_URL internal)
         run: |
+          # API_URL uses the Coolify container label to find the API container hostname at deploy time.
+          # This lets the web container reach the API via the internal Docker network
+          # instead of going through the external sslip.io URL (which may not loop back correctly).
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -n "$API_CONTAINER" ]; then
+            API_INTERNAL_HOST=$(sudo docker inspect "$API_CONTAINER" --format '{{.Config.Hostname}}')
+            echo "API internal hostname: ${API_INTERNAL_HOST}"
+          else
+            API_INTERNAL_HOST=""
+            echo "⚠️  API container not found, will use public URL as fallback"
+          fi
+
+          API_INTERNAL_URL=""
+          if [ -n "$API_INTERNAL_HOST" ]; then
+            API_INTERNAL_URL="http://${API_INTERNAL_HOST}:3000"
+          fi
+
           curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/b10i6rz52rphphtcnxll73np/envs/bulk' \
             -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
             -H 'Content-Type: application/json' \
-            -d '{
-              "data": [
-                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+            -d "{
+              \"data\": [
+                {\"key\": \"NEXT_PUBLIC_API_URL\", \"value\": \"http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io\", \"is_preview\": false},
+                {\"key\": \"API_URL\", \"value\": \"${API_INTERNAL_URL:-http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io}\", \"is_preview\": false}
               ]
-            }' && echo "✅ Web env vars updated"
+            }" && echo "✅ Web env vars updated (API_URL=${API_INTERNAL_URL:-public_fallback})"
 
       - name: Deploy Web
         run: |
@@ -445,4 +464,81 @@ jobs:
           curl -s -X DELETE "http://localhost:18080/instance/delete/wh-test" \
             -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
             -d '{"deleteFiles":false}' 2>/dev/null || true
+
+  diagnose-web:
+    name: Diagnosticar conectividad web → API
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'diagnose-web'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Verificar business en API y conectividad desde web container
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "=== 1. Verificar que dona-rosa existe en la DB (via API directo) ==="
+          curl -sf http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/public/business/dona-rosa \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print('slug:', d.get('slug'), '| name:', d.get('name'))" \
+            || echo "❌ API no devuelve dona-rosa"
+
+          echo ""
+          echo "=== 2. Containers corriendo ==="
+          sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -v "^NAMES" | head -20
+
+          echo ""
+          echo "=== 3. Encontrar web container ==="
+          WEB_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=b10i6rz52rphphtcnxll73np" -q | head -1)
+          if [ -z "$WEB_CONTAINER" ]; then
+            WEB_CONTAINER=$(sudo docker ps --filter "name=b10i6rz52rphphtcnxll73np" -q | head -1)
+          fi
+          echo "Web container ID: $WEB_CONTAINER"
+          if [ -n "$WEB_CONTAINER" ]; then
+            echo "Web container name: $(sudo docker inspect $WEB_CONTAINER --format '{{.Name}}')"
+            echo "Web container hostname: $(sudo docker inspect $WEB_CONTAINER --format '{{.Config.Hostname}}')"
+            echo "Web container networks: $(sudo docker inspect $WEB_CONTAINER --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}')"
+          fi
+
+          echo ""
+          echo "=== 4. Encontrar API container ==="
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          echo "API container ID: $API_CONTAINER"
+          if [ -n "$API_CONTAINER" ]; then
+            echo "API container name: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+            echo "API container hostname: $(sudo docker inspect $API_CONTAINER --format '{{.Config.Hostname}}')"
+            echo "API container networks: $(sudo docker inspect $API_CONTAINER --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}')"
+            echo "API network aliases: $(sudo docker inspect $API_CONTAINER --format '{{range $k,$v := .NetworkSettings.Networks}}{{range $v.Aliases}}  {{.}} {{end}}{{end}}')"
+          fi
+
+          echo ""
+          echo "=== 5. Test curl desde web container → API URL pública ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker exec "$WEB_CONTAINER" \
+              wget -qO- --timeout=5 http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/public/business/dona-rosa \
+              2>&1 || echo "❌ wget fallido (posible problema de red interna)"
+          else
+            echo "⚠️  web container no encontrado"
+          fi
+
+          echo ""
+          echo "=== 6. Test curl desde web container → API hostname interno ==="
+          if [ -n "$WEB_CONTAINER" ] && [ -n "$API_CONTAINER" ]; then
+            API_HOSTNAME=$(sudo docker inspect "$API_CONTAINER" --format '{{.Config.Hostname}}')
+            echo "Probando http://${API_HOSTNAME}:3000/public/business/dona-rosa ..."
+            sudo docker exec "$WEB_CONTAINER" \
+              wget -qO- --timeout=5 "http://${API_HOSTNAME}:3000/public/business/dona-rosa" \
+              2>&1 || echo "❌ wget al hostname interno fallido"
+          fi
+
+          echo ""
+          echo "=== 7. Últimas 20 líneas de logs del web container ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker logs "$WEB_CONTAINER" --tail=20 2>&1 || true
+          fi
+
+          echo ""
+          echo "=== 8. API_URL env var en web container ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker inspect "$WEB_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E 'API_URL|NEXT_PUBLIC' || echo "(no API_URL vars encontradas)"
+          fi
 

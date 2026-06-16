@@ -1,4 +1,10 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+// API_URL (private, runtime) is used for server-side fetches to allow using
+// an internal Docker network hostname. NEXT_PUBLIC_API_URL (build-time) is the
+// public URL embedded in client bundles.
+const API_URL =
+  process.env.API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  'http://localhost:3000';
 
 export interface BusinessPublic {
   id: string;
