@@ -1,0 +1,141 @@
+<h2>¿Cómo navegas entre Menús → Categorías → Productos?</h2>
+<p class="subtitle">Esta es la pantalla más usada del panel — el dueño pasa horas aquí configurando su carta</p>
+
+<div class="cards">
+
+  <!-- Opción A: Páginas separadas -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:180px;background:#f5f5f5;border-radius:8px;overflow:hidden;font-size:11px;">
+        <!-- Sidebar -->
+        <div style="width:110px;background:#1A1A2E;padding:10px 0;flex-shrink:0;">
+          <div style="color:#FF6B35;font-weight:700;font-size:10px;padding:0 10px 8px;">PideFácil</div>
+          <div style="color:#fff;padding:6px 10px;font-size:10px;">Dashboard</div>
+          <div style="color:#FF6B35;background:rgba(255,107,53,0.15);padding:6px 10px;font-size:10px;border-left:2px solid #FF6B35;">▸ Menús</div>
+          <div style="color:#9CA3AF;padding:6px 10px 4px;font-size:9px;margin-top:2px;">  Categorías</div>
+          <div style="color:#9CA3AF;padding:4px 10px;font-size:9px;">  Productos</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Usuarios</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Config.</div>
+        </div>
+        <!-- Content -->
+        <div style="flex:1;padding:10px;">
+          <div style="font-weight:700;font-size:11px;color:#1A1A2E;margin-bottom:6px;">Menús</div>
+          <div style="background:#fff;border-radius:6px;padding:6px 8px;margin-bottom:4px;border:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;font-weight:600;">Menú del día</span>
+            <span style="font-size:9px;background:#10B981;color:#fff;padding:1px 5px;border-radius:10px;">Publicado</span>
+          </div>
+          <div style="background:#fff;border-radius:6px;padding:6px 8px;margin-bottom:4px;border:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;font-weight:600;">Menú Especial</span>
+            <span style="font-size:9px;background:#9CA3AF;color:#fff;padding:1px 5px;border-radius:10px;">Borrador</span>
+          </div>
+          <div style="margin-top:6px;font-size:9px;color:#6B7280;">→ Click en menú para ver sus categorías</div>
+          <div style="margin-top:4px;font-size:9px;color:#6B7280;">→ Ir a Categorías para gestionar todas</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Páginas separadas</h3>
+      <p>Menús, Categorías y Productos son 3 secciones independientes en la barra lateral. Se navega entre ellas individualmente. Simple de implementar.</p>
+      <div style="margin-top:8px;font-size:12px;color:#6B7280;">
+        ✅ Familiar, fácil de entender<br>
+        ❌ Mucho ir y venir para configurar desde cero
+      </div>
+    </div>
+  </div>
+
+  <!-- Opción B: Vista árbol integrada -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:180px;background:#f5f5f5;border-radius:8px;overflow:hidden;font-size:11px;">
+        <!-- Sidebar -->
+        <div style="width:110px;background:#1A1A2E;padding:10px 0;flex-shrink:0;">
+          <div style="color:#FF6B35;font-weight:700;font-size:10px;padding:0 10px 8px;">PideFácil</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Dashboard</div>
+          <div style="color:#FF6B35;background:rgba(255,107,53,0.15);padding:6px 10px;font-size:10px;border-left:2px solid #FF6B35;">Menú Designer</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Usuarios</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Config.</div>
+        </div>
+        <!-- Content: 2 paneles -->
+        <div style="flex:1;display:flex;gap:0;">
+          <!-- Panel izq: árbol -->
+          <div style="width:130px;border-right:1px solid #e5e7eb;padding:8px;background:#fff;">
+            <div style="font-size:9px;font-weight:700;color:#1A1A2E;margin-bottom:6px;">MENÚ DEL DÍA</div>
+            <div style="padding-left:8px;">
+              <div style="font-size:9px;color:#374151;padding:3px 0;">📁 Antojitos</div>
+              <div style="padding-left:10px;">
+                <div style="font-size:9px;color:#6B7280;padding:2px 0;">• Tacos (3)</div>
+                <div style="font-size:9px;color:#6B7280;padding:2px 0;">• Quesadillas (2)</div>
+              </div>
+              <div style="font-size:9px;color:#374151;padding:3px 0;">📁 Bebidas</div>
+              <div style="padding-left:10px;">
+                <div style="font-size:9px;color:#6B7280;padding:2px 0;">• Agua (4)</div>
+              </div>
+            </div>
+            <div style="margin-top:4px;font-size:9px;color:#FF6B35;">+ Categoría</div>
+          </div>
+          <!-- Panel der: detalle -->
+          <div style="flex:1;padding:8px;">
+            <div style="font-size:10px;font-weight:700;color:#1A1A2E;margin-bottom:4px;">Taco de Canasta</div>
+            <div style="background:#f9fafb;border-radius:4px;padding:4px 6px;font-size:9px;color:#374151;margin-bottom:3px;">Precio: $18.00</div>
+            <div style="background:#f9fafb;border-radius:4px;padding:4px 6px;font-size:9px;color:#374151;margin-bottom:3px;">🟢 Disponible</div>
+            <div style="font-size:9px;color:#FF6B35;margin-top:4px;">+ Variante  + Extra</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Vista árbol integrada</h3>
+      <p>Una sola pantalla "Menú Designer" con árbol jerárquico a la izquierda (menú → categorías → productos) y panel de detalle a la derecha.</p>
+      <div style="margin-top:8px;font-size:12px;color:#6B7280;">
+        ✅ Todo en un lugar, muy eficiente<br>
+        ❌ Más compleja de implementar, requiere más espacio en pantalla
+      </div>
+    </div>
+  </div>
+
+  <!-- Opción C: Flujo guiado por menú -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:180px;background:#f5f5f5;border-radius:8px;overflow:hidden;font-size:11px;">
+        <!-- Sidebar -->
+        <div style="width:110px;background:#1A1A2E;padding:10px 0;flex-shrink:0;">
+          <div style="color:#FF6B35;font-weight:700;font-size:10px;padding:0 10px 8px;">PideFácil</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Dashboard</div>
+          <div style="color:#FF6B35;background:rgba(255,107,53,0.15);padding:6px 10px;font-size:10px;border-left:2px solid #FF6B35;">Menús</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Usuarios</div>
+          <div style="color:#9CA3AF;padding:6px 10px;font-size:10px;">Config.</div>
+        </div>
+        <!-- Content: tab flow -->
+        <div style="flex:1;padding:8px;">
+          <!-- Breadcrumb -->
+          <div style="font-size:9px;color:#6B7280;margin-bottom:6px;">Menús / Menú del día / <strong style="color:#1A1A2E;">Antojitos</strong></div>
+          <!-- Tabs -->
+          <div style="display:flex;gap:2px;margin-bottom:6px;">
+            <div style="padding:3px 7px;background:#f5f5f5;border-radius:4px;font-size:9px;color:#6B7280;">Info</div>
+            <div style="padding:3px 7px;background:#FF6B35;border-radius:4px;font-size:9px;color:#fff;">Categorías</div>
+            <div style="padding:3px 7px;background:#f5f5f5;border-radius:4px;font-size:9px;color:#6B7280;">Productos</div>
+          </div>
+          <!-- Category list -->
+          <div style="background:#fff;border-radius:6px;padding:5px 7px;margin-bottom:3px;border:1px solid #e5e7eb;display:flex;justify-content:space-between;">
+            <span style="font-size:9px;font-weight:600;">Antojitos</span>
+            <span style="font-size:9px;color:#FF6B35;">Ver productos →</span>
+          </div>
+          <div style="background:#fff;border-radius:6px;padding:5px 7px;border:1px solid #e5e7eb;display:flex;justify-content:space-between;">
+            <span style="font-size:9px;font-weight:600;">Bebidas</span>
+            <span style="font-size:9px;color:#FF6B35;">Ver productos →</span>
+          </div>
+          <div style="margin-top:5px;font-size:9px;color:#FF6B35;">+ Nueva categoría</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Flujo guiado con tabs + breadcrumb</h3>
+      <p>Se entra al menú y se navega por tabs: Info → Categorías → Productos. Breadcrumb muestra dónde estás. Cada menú es su propio "editor".</p>
+      <div style="margin-top:8px;font-size:12px;color:#6B7280;">
+        ✅ Organizado, orientado al flujo de trabajo<br>
+        ❌ Requiere más clicks para llegar a un producto específico
+      </div>
+    </div>
+  </div>
+
+</div>

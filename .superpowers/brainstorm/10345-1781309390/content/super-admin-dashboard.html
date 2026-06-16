@@ -1,0 +1,293 @@
+<style>
+  .q { font-size: 13px; color: #6B7280; margin-bottom: 20px; }
+  .cards { display: flex; flex-direction: column; gap: 20px; }
+  .card { border: 2px solid #E5E7EB; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.15s; }
+  .card:hover { border-color: #FF6B35; box-shadow: 0 4px 16px rgba(255,107,53,0.15); }
+  .card.selected { border-color: #FF6B35; box-shadow: 0 4px 20px rgba(255,107,53,0.25); }
+  .card-label { background: #1A1A2E; color: white; padding: 10px 16px; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .card-label .badge { background: #FF6B35; border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+  .preview { padding: 14px; background: #F9FAFB; }
+
+  /* Shell */
+  .shell { display: flex; border-radius: 10px; overflow: hidden; border: 1px solid #E5E7EB; background: white; min-height: 200px; }
+  .sidebar { width: 140px; background: #1A1A2E; padding: 10px 0; flex-shrink: 0; }
+  .sidebar-logo { padding: 8px 12px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 8px; }
+  .sidebar-logo-text { color: #FF6B35; font-size: 13px; font-weight: 900; }
+  .sidebar-logo-sub { color: rgba(255,255,255,0.4); font-size: 9px; margin-top: 2px; }
+  .sidebar-item { padding: 6px 12px; font-size: 10px; color: rgba(255,255,255,0.55); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .sidebar-item.active { background: rgba(255,107,53,0.15); color: #FF6B35; font-weight: 700; border-right: 2px solid #FF6B35; }
+  .sidebar-item .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  .main { flex: 1; padding: 12px; overflow: hidden; }
+
+  /* KPIs */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .kpi { background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 10px; }
+  .kpi-val { font-size: 17px; font-weight: 900; color: #FF6B35; }
+  .kpi-lbl { font-size: 9px; color: #9CA3AF; margin-top: 2px; }
+  .kpi.dark { background: #1A1A2E; border-color: #1A1A2E; }
+  .kpi.dark .kpi-val { color: white; }
+  .kpi.dark .kpi-lbl { color: rgba(255,255,255,0.5); }
+
+  /* Page title */
+  .page-title { font-size: 13px; font-weight: 800; color: #1A1A2E; margin-bottom: 10px; }
+
+  /* Business table */
+  .biz-table { border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden; background: white; }
+  .biz-header { display: grid; grid-template-columns: 1fr 70px 60px 50px; padding: 6px 10px; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; }
+  .biz-col-hdr { font-size: 9px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.3px; }
+  .biz-row { display: grid; grid-template-columns: 1fr 70px 60px 50px; padding: 6px 10px; border-bottom: 1px solid #F3F4F6; align-items: center; }
+  .biz-row:last-child { border-bottom: none; }
+  .biz-name { font-size: 10px; font-weight: 700; color: #1A1A2E; }
+  .biz-slug { font-size: 9px; color: #9CA3AF; }
+  .biz-plan { font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 600; display: inline-block; }
+  .plan-pro { background: #FEF3C7; color: #D97706; }
+  .plan-basic { background: #F3F4F6; color: #6B7280; }
+  .plan-plus { background: #EDE9FE; color: #7C3AED; }
+  .biz-status { font-size: 9px; font-weight: 700; }
+  .status-active { color: #10B981; }
+  .status-trial { color: #3B82F6; }
+  .biz-date { font-size: 9px; color: #9CA3AF; }
+
+  /* Charts area */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .chart-box { border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 10px; background: white; }
+  .chart-title { font-size: 9px; font-weight: 700; color: #374151; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* Donut */
+  .donut-row { display: flex; gap: 8px; align-items: center; }
+  .donut-circle { width: 44px; height: 44px; border-radius: 50%; background: conic-gradient(#FF6B35 0% 55%, #7C3AED 55% 80%, #6B7280 80% 100%); flex-shrink: 0; }
+  .donut-legend { display: flex; flex-direction: column; gap: 3px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 9px; color: #374151; }
+  .legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Bar mini */
+  .bar-mini-row { display: flex; gap: 3px; align-items: flex-end; height: 30px; }
+  .bar-mini { flex: 1; border-radius: 2px 2px 0 0; background: #FF6B35; opacity: 0.8; }
+
+  /* Stat cards layout B */
+  .stats-col { width: 120px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
+  .stat-card { background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 10px; }
+  .stat-num { font-size: 16px; font-weight: 900; color: #1A1A2E; }
+  .stat-lbl { font-size: 9px; color: #9CA3AF; }
+  .stat-card.orange .stat-num { color: #FF6B35; }
+
+  /* Right panel in B */
+  .right-panel { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+  /* Recent businesses list in C */
+  .biz-compact-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #F3F4F6; }
+  .biz-compact-row:last-child { border-bottom: none; }
+  .biz-avatar { width: 22px; height: 22px; border-radius: 6px; background: #FF6B35; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 900; flex-shrink: 0; }
+  .biz-compact-name { font-size: 10px; font-weight: 700; color: #1A1A2E; flex: 1; }
+</style>
+
+<h2>Layout del Super Admin Dashboard</h2>
+<p class="q">¿Cómo debe organizarse la vista principal del Super Admin?</p>
+
+<div class="cards">
+
+  <!-- Option A: KPIs + charts + table -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <span class="badge">A</span>
+      KPIs + gráficas + tabla de negocios
+      <span style="margin-left:auto;font-size:11px;color:#9CA3AF;font-weight:400">Dashboard completo, scroll</span>
+    </div>
+    <div class="preview">
+      <div class="shell">
+        <div class="sidebar">
+          <div class="sidebar-logo">
+            <div class="sidebar-logo-text">PideFacil</div>
+            <div class="sidebar-logo-sub">Super Admin</div>
+          </div>
+          <div class="sidebar-item active"><span class="dot"></span> Dashboard</div>
+          <div class="sidebar-item"><span class="dot"></span> Negocios</div>
+          <div class="sidebar-item"><span class="dot"></span> Planes</div>
+          <div class="sidebar-item"><span class="dot"></span> Suscripciones</div>
+        </div>
+        <div class="main">
+          <div class="page-title">Dashboard SaaS</div>
+          <div class="kpi-row">
+            <div class="kpi dark"><div class="kpi-val">$14,200</div><div class="kpi-lbl">MRR</div></div>
+            <div class="kpi"><div class="kpi-val">38</div><div class="kpi-lbl">Negocios activos</div></div>
+            <div class="kpi"><div class="kpi-val">7</div><div class="kpi-lbl">En trial</div></div>
+            <div class="kpi"><div class="kpi-val">2,841</div><div class="kpi-lbl">Pedidos (30d)</div></div>
+          </div>
+          <div class="charts-row">
+            <div class="chart-box">
+              <div class="chart-title">Negocios por plan</div>
+              <div class="donut-row">
+                <div class="donut-circle"></div>
+                <div class="donut-legend">
+                  <div class="legend-item"><div class="legend-dot" style="background:#FF6B35"></div>Pro — 21</div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#7C3AED"></div>Plus — 10</div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#6B7280"></div>Básico — 7</div>
+                </div>
+              </div>
+            </div>
+            <div class="chart-box">
+              <div class="chart-title">Nuevos negocios (30d)</div>
+              <div class="bar-mini-row">
+                <div class="bar-mini" style="height:35%"></div>
+                <div class="bar-mini" style="height:60%"></div>
+                <div class="bar-mini" style="height:45%"></div>
+                <div class="bar-mini" style="height:80%"></div>
+                <div class="bar-mini" style="height:55%"></div>
+                <div class="bar-mini" style="height:100%"></div>
+                <div class="bar-mini" style="height:70%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="biz-table">
+            <div class="biz-header">
+              <div class="biz-col-hdr">Negocio</div>
+              <div class="biz-col-hdr">Plan</div>
+              <div class="biz-col-hdr">Estado</div>
+              <div class="biz-col-hdr">Vence</div>
+            </div>
+            <div class="biz-row">
+              <div><div class="biz-name">La Fonda de Ana</div><div class="biz-slug">fonda-de-ana</div></div>
+              <div><span class="biz-plan plan-pro">Pro</span></div>
+              <div class="biz-status status-active">Activo</div>
+              <div class="biz-date">31 jul</div>
+            </div>
+            <div class="biz-row">
+              <div><div class="biz-name">Cocina Lupita</div><div class="biz-slug">cocina-lupita</div></div>
+              <div><span class="biz-plan plan-basic">Básico</span></div>
+              <div class="biz-status status-trial">Trial</div>
+              <div class="biz-date">20 jun</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Stats sidebar + businesses main -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <span class="badge">B</span>
+      KPIs en sidebar + lista de negocios como pantalla principal
+      <span style="margin-left:auto;font-size:11px;color:#9CA3AF;font-weight:400">Todo visible sin scroll</span>
+    </div>
+    <div class="preview">
+      <div class="shell">
+        <div class="sidebar">
+          <div class="sidebar-logo">
+            <div class="sidebar-logo-text">PideFacil</div>
+            <div class="sidebar-logo-sub">Super Admin</div>
+          </div>
+          <div class="sidebar-item active"><span class="dot"></span> Negocios</div>
+          <div class="sidebar-item"><span class="dot"></span> Planes</div>
+          <div class="sidebar-item"><span class="dot"></span> Suscripciones</div>
+          <div class="sidebar-item"><span class="dot"></span> Métricas</div>
+        </div>
+        <div class="main" style="display:flex;gap:10px;padding:12px;">
+          <div class="stats-col">
+            <div style="font-size:10px;font-weight:800;color:#1A1A2E;margin-bottom:4px;">Resumen</div>
+            <div class="stat-card orange"><div class="stat-num">$14,200</div><div class="stat-lbl">MRR</div></div>
+            <div class="stat-card"><div class="stat-num">38</div><div class="stat-lbl">Activos</div></div>
+            <div class="stat-card"><div class="stat-num">7</div><div class="stat-lbl">En trial</div></div>
+            <div class="stat-card"><div class="stat-num">2</div><div class="stat-lbl">Suspendidos</div></div>
+          </div>
+          <div class="right-panel">
+            <div style="font-size:10px;font-weight:800;color:#1A1A2E;">Todos los negocios</div>
+            <div class="biz-table">
+              <div class="biz-header">
+                <div class="biz-col-hdr">Negocio</div>
+                <div class="biz-col-hdr">Plan</div>
+                <div class="biz-col-hdr">Estado</div>
+                <div class="biz-col-hdr">Vence</div>
+              </div>
+              <div class="biz-row">
+                <div><div class="biz-name">La Fonda de Ana</div><div class="biz-slug">fonda-de-ana</div></div>
+                <div><span class="biz-plan plan-pro">Pro</span></div>
+                <div class="biz-status status-active">Activo</div>
+                <div class="biz-date">31 jul</div>
+              </div>
+              <div class="biz-row">
+                <div><div class="biz-name">Cocina Lupita</div><div class="biz-slug">cocina-lupita</div></div>
+                <div><span class="biz-plan plan-basic">Básico</span></div>
+                <div class="biz-status status-trial">Trial</div>
+                <div class="biz-date">20 jun</div>
+              </div>
+              <div class="biz-row">
+                <div><div class="biz-name">El Rincón</div><div class="biz-slug">el-rincon</div></div>
+                <div><span class="biz-plan plan-plus">Plus</span></div>
+                <div class="biz-status status-active">Activo</div>
+                <div class="biz-date">15 ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Minimal — only businesses list, no dashboard -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-label">
+      <span class="badge">C</span>
+      Sin dashboard separado — KPIs en la misma lista de negocios
+      <span style="margin-left:auto;font-size:11px;color:#9CA3AF;font-weight:400">Minimalista, más rápido de construir</span>
+    </div>
+    <div class="preview">
+      <div class="shell">
+        <div class="sidebar">
+          <div class="sidebar-logo">
+            <div class="sidebar-logo-text">PideFacil</div>
+            <div class="sidebar-logo-sub">Super Admin</div>
+          </div>
+          <div class="sidebar-item active"><span class="dot"></span> Negocios</div>
+          <div class="sidebar-item"><span class="dot"></span> Planes</div>
+          <div class="sidebar-item"><span class="dot"></span> Suscripciones</div>
+        </div>
+        <div class="main">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="page-title" style="margin-bottom:0">Negocios</div>
+            <div style="display:flex;gap:16px;">
+              <div style="text-align:right"><div style="font-size:14px;font-weight:900;color:#FF6B35">38</div><div style="font-size:9px;color:#9CA3AF">activos</div></div>
+              <div style="text-align:right"><div style="font-size:14px;font-weight:900;color:#1A1A2E">$14,200</div><div style="font-size:9px;color:#9CA3AF">MRR</div></div>
+            </div>
+          </div>
+          <div class="biz-table">
+            <div class="biz-header">
+              <div class="biz-col-hdr">Negocio</div>
+              <div class="biz-col-hdr">Plan</div>
+              <div class="biz-col-hdr">Estado</div>
+              <div class="biz-col-hdr">Vence</div>
+            </div>
+            <div class="biz-row">
+              <div>
+                <div class="biz-name">La Fonda de Ana</div>
+                <div class="biz-slug">fonda-de-ana</div>
+              </div>
+              <div><span class="biz-plan plan-pro">Pro</span></div>
+              <div class="biz-status status-active">Activo</div>
+              <div class="biz-date">31 jul</div>
+            </div>
+            <div class="biz-row">
+              <div>
+                <div class="biz-name">Cocina Lupita</div>
+                <div class="biz-slug">cocina-lupita</div>
+              </div>
+              <div><span class="biz-plan plan-basic">Básico</span></div>
+              <div class="biz-status status-trial">Trial</div>
+              <div class="biz-date">20 jun</div>
+            </div>
+            <div class="biz-row">
+              <div>
+                <div class="biz-name">El Rincón</div>
+                <div class="biz-slug">el-rincon</div>
+              </div>
+              <div><span class="biz-plan plan-plus">Plus</span></div>
+              <div class="biz-status status-active">Activo</div>
+              <div class="biz-date">15 ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

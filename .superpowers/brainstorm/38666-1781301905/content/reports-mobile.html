@@ -1,0 +1,138 @@
+<style>
+  .q { font-size: 13px; color: #6B7280; margin-bottom: 20px; }
+  .options { display: flex; gap: 16px; }
+  .option { border: 2px solid #E5E7EB; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.15s; flex: 1; }
+  .option:hover { border-color: #FF6B35; }
+  .option.selected { border-color: #FF6B35; box-shadow: 0 4px 20px rgba(255,107,53,0.25); }
+  .option-label { background: #1A1A2E; color: white; padding: 8px 14px; font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .badge { background: #FF6B35; border-radius: 5px; padding: 2px 7px; font-size: 11px; }
+  .preview { padding: 12px; background: #F9FAFB; display: flex; justify-content: center; }
+
+  /* Phone shell */
+  .phone { width: 200px; background: #1A1A2E; border-radius: 28px; padding: 12px 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .phone-screen { background: #111827; border-radius: 20px; overflow: hidden; min-height: 340px; }
+  .phone-header { background: #1A1A2E; padding: 10px 12px 6px; display: flex; align-items: center; justify-content: space-between; }
+  .phone-title { color: white; font-size: 13px; font-weight: 800; }
+  .phone-sub { color: #6B7280; font-size: 9px; }
+  .phone-body { padding: 8px; }
+
+  /* KPI cards */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .kpi-card { background: #1F2937; border-radius: 10px; padding: 8px 10px; }
+  .kpi-val { font-size: 17px; font-weight: 900; color: #FF6B35; }
+  .kpi-lbl { font-size: 9px; color: #9CA3AF; margin-top: 1px; }
+  .kpi-card.accent { background: #FF6B35; }
+  .kpi-card.accent .kpi-val { color: white; }
+  .kpi-card.accent .kpi-lbl { color: rgba(255,255,255,0.7); }
+
+  /* Section header */
+  .section-hdr { color: #6B7280; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin: 8px 0 5px; }
+
+  /* Product row */
+  .prod-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .prod-rank { color: #FF6B35; font-size: 10px; font-weight: 900; width: 12px; }
+  .prod-name { color: white; font-size: 10px; flex: 1; }
+  .prod-bar-track { width: 50px; height: 6px; background: #374151; border-radius: 3px; overflow: hidden; }
+  .prod-bar-fill { height: 100%; background: #FF6B35; border-radius: 3px; }
+  .prod-count { color: #9CA3AF; font-size: 9px; width: 16px; text-align: right; }
+
+  /* Date chips */
+  .date-row { display: flex; gap: 4px; margin-bottom: 8px; }
+  .date-chip { font-size: 9px; padding: 3px 7px; border-radius: 10px; background: #1F2937; color: #9CA3AF; font-weight: 600; }
+  .date-chip.active { background: #FF6B35; color: white; }
+
+  /* Status summary */
+  .status-row { display: flex; gap: 4px; }
+  .status-pill { flex: 1; background: #1F2937; border-radius: 8px; padding: 5px 4px; text-align: center; }
+  .status-num { color: white; font-size: 13px; font-weight: 900; }
+  .status-lbl { color: #6B7280; font-size: 8px; margin-top: 1px; }
+  .status-pill.done .status-num { color: #10B981; }
+  .status-pill.cancel .status-num { color: #EF4444; }
+</style>
+
+<h2>Reportes en la app móvil</h2>
+<p class="q">¿Cómo debe verse el resumen de reportes en el teléfono del operador?</p>
+
+<div class="options">
+
+  <!-- Option A: Compact summary tab -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="option-label"><span class="badge">A</span> Tab "Reportes" con scroll</div>
+    <div class="preview">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-header">
+            <div>
+              <div class="phone-title">Reportes</div>
+              <div class="phone-sub">Hoy · Lunes 12 jun</div>
+            </div>
+          </div>
+          <div class="phone-body">
+            <div class="date-row">
+              <div class="date-chip active">Hoy</div>
+              <div class="date-chip">7d</div>
+              <div class="date-chip">30d</div>
+            </div>
+            <div class="kpi-grid">
+              <div class="kpi-card accent">
+                <div class="kpi-val">$1,840</div>
+                <div class="kpi-lbl">Ventas totales</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-val">23</div>
+                <div class="kpi-lbl">Pedidos</div>
+              </div>
+            </div>
+            <div class="status-row" style="margin-bottom:8px">
+              <div class="status-pill done"><div class="status-num">18</div><div class="status-lbl">Entregados</div></div>
+              <div class="status-pill"><div class="status-num">2</div><div class="status-lbl">En prep.</div></div>
+              <div class="status-pill cancel"><div class="status-num">3</div><div class="status-lbl">Cancelados</div></div>
+            </div>
+            <div class="section-hdr">Top productos</div>
+            <div class="prod-row"><div class="prod-rank">1</div><div class="prod-name">Enchiladas</div><div class="prod-bar-track"><div class="prod-bar-fill" style="width:90%"></div></div><div class="prod-count">18</div></div>
+            <div class="prod-row"><div class="prod-rank">2</div><div class="prod-name">Arroz</div><div class="prod-bar-track"><div class="prod-bar-fill" style="width:65%"></div></div><div class="prod-count">13</div></div>
+            <div class="prod-row"><div class="prod-rank">3</div><div class="prod-name">Jamaica</div><div class="prod-bar-track"><div class="prod-bar-fill" style="width:45%"></div></div><div class="prod-count">9</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Dashboard card on Inicio tab -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="option-label"><span class="badge">B</span> Card de resumen en tab Inicio</div>
+    <div class="preview">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-header">
+            <div>
+              <div class="phone-title">Inicio</div>
+              <div class="phone-sub">Buenos días, Ana</div>
+            </div>
+          </div>
+          <div class="phone-body">
+            <!-- Orders pending section -->
+            <div class="section-hdr">Pedidos activos</div>
+            <div style="background:#1F2937;border-radius:10px;padding:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+              <span style="color:white;font-size:10px;">2 pedidos en curso</span>
+              <span style="background:#FF6B35;color:white;font-size:9px;padding:2px 6px;border-radius:6px;font-weight:700">Ver</span>
+            </div>
+            <!-- Summary card -->
+            <div class="section-hdr">Resumen de hoy</div>
+            <div style="background:#1F2937;border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
+                <div><div style="color:#FF6B35;font-size:20px;font-weight:900">$1,840</div><div style="color:#9CA3AF;font-size:9px">ventas</div></div>
+                <div style="text-align:right"><div style="color:white;font-size:16px;font-weight:900">23</div><div style="color:#9CA3AF;font-size:9px">pedidos</div></div>
+              </div>
+              <div style="display:flex;gap:4px;">
+                <div style="flex:1;background:#111827;border-radius:6px;padding:5px;text-align:center"><div style="color:#10B981;font-size:12px;font-weight:900">18</div><div style="color:#6B7280;font-size:8px">entregados</div></div>
+                <div style="flex:1;background:#111827;border-radius:6px;padding:5px;text-align:center"><div style="color:#EF4444;font-size:12px;font-weight:900">3</div><div style="color:#6B7280;font-size:8px">cancelados</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

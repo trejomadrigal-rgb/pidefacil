@@ -1,0 +1,119 @@
+<h2>¿Cómo elige el color el dueño del negocio?</h2>
+<p class="subtitle">El mismo menú se ve diferente según el color elegido. ¿Paletas fijas o color libre?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#fafafa;border-bottom:1px solid #eee;">
+      <!-- Paletas predefinidas -->
+      <div style="font-family:sans-serif;width:300px;margin:0 auto;">
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Elige un tema</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <!-- Naranja (default) -->
+          <div style="border-radius:12px;overflow:hidden;border:2.5px solid #FF6B35;box-shadow:0 0 0 3px rgba(255,107,53,0.2);">
+            <div style="height:36px;background:linear-gradient(135deg,#FF6B35,#1A1A2E);"></div>
+            <div style="padding:6px 8px;background:#fff;">
+              <div style="font-size:10px;font-weight:700;color:#1A1A2E;">🔥 Naranja</div>
+              <div style="font-size:9px;color:#888;">Clásico PideFacil</div>
+            </div>
+          </div>
+          <!-- Verde -->
+          <div style="border-radius:12px;overflow:hidden;border:1.5px solid #eee;">
+            <div style="height:36px;background:linear-gradient(135deg,#27AE60,#1A2E1A);"></div>
+            <div style="padding:6px 8px;background:#fff;">
+              <div style="font-size:10px;font-weight:700;color:#1A1A2E;">🌿 Verde</div>
+              <div style="font-size:9px;color:#888;">Fresco y natural</div>
+            </div>
+          </div>
+          <!-- Rojo -->
+          <div style="border-radius:12px;overflow:hidden;border:1.5px solid #eee;">
+            <div style="height:36px;background:linear-gradient(135deg,#E74C3C,#2E1A1A);"></div>
+            <div style="padding:6px 8px;background:#fff;">
+              <div style="font-size:10px;font-weight:700;color:#1A1A2E;">🌶️ Rojo</div>
+              <div style="font-size:9px;color:#888;">Picante y bold</div>
+            </div>
+          </div>
+          <!-- Azul -->
+          <div style="border-radius:12px;overflow:hidden;border:1.5px solid #eee;">
+            <div style="height:36px;background:linear-gradient(135deg,#2980B9,#1A1A2E);"></div>
+            <div style="padding:6px 8px;background:#fff;">
+              <div style="font-size:10px;font-weight:700;color:#1A1A2E;">💙 Azul</div>
+              <div style="font-size:9px;color:#888;">Profesional</div>
+            </div>
+          </div>
+          <!-- Morado -->
+          <div style="border-radius:12px;overflow:hidden;border:1.5px solid #eee;">
+            <div style="height:36px;background:linear-gradient(135deg,#8E44AD,#1A1A2E);"></div>
+            <div style="padding:6px 8px;background:#fff;">
+              <div style="font-size:10px;font-weight:700;color:#1A1A2E;">💜 Morado</div>
+              <div style="font-size:9px;color:#888;">Elegante</div>
+            </div>
+          </div>
+          <!-- Rosa -->
+          <div style="border-radius:12px;overflow:hidden;border:1.5px solid #eee;">
+            <div style="height:36px;background:linear-gradient(135deg,#E91E8C,#2E1A2A);"></div>
+            <div style="padding:6px 8px;background:#fff;">
+              <div style="font-size:10px;font-weight:700;color:#1A1A2E;">🌸 Rosa</div>
+              <div style="font-size:9px;color:#888;">Antojitos dulces</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;background:#F7F8FA;border-radius:8px;padding:8px 10px;font-size:10px;color:#888;">
+          ✓ Siempre se ven bien · Sin riesgo de colores ilegibles
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Paletas predefinidas (6–8 temas)</h3>
+      <p>El dueño elige entre opciones curadas. Rápido, siempre se ve bien, sin posibilidad de colores feos o ilegibles. Implementación simple.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#fafafa;border-bottom:1px solid #eee;">
+      <!-- Color picker libre -->
+      <div style="font-family:sans-serif;width:300px;margin:0 auto;">
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Color de marca</div>
+        <!-- Simulación de color picker -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+          <div style="width:44px;height:44px;border-radius:10px;background:#FF6B35;border:2px solid rgba(0,0,0,0.1);flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="background:#fff;border:1.5px solid #ddd;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;color:#333;display:flex;justify-content:space-between;align-items:center;">
+              <span>#FF6B35</span>
+              <span style="font-size:16px;">🎨</span>
+            </div>
+            <div style="font-size:10px;color:#aaa;margin-top:3px;padding-left:2px;">Escribe un hex o usa el selector</div>
+          </div>
+        </div>
+        <!-- Preview en tiempo real -->
+        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;">Vista previa en tiempo real</div>
+        <div style="border-radius:10px;overflow:hidden;border:1px solid #eee;">
+          <div style="background:#1A1A2E;padding:8px 10px;display:flex;align-items:center;gap:8px;">
+            <div style="width:28px;height:28px;background:#FF6B35;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:12px;">R</div>
+            <div style="font-size:11px;font-weight:700;color:#fff;">La Cocina de Doña Rosa</div>
+          </div>
+          <div style="background:#fff;padding:8px 10px;display:flex;align-items:center;gap:8px;">
+            <div style="width:4px;background:#FF6B35;align-self:stretch;border-radius:2px;"></div>
+            <div style="flex:1;">
+              <div style="font-size:11px;font-weight:700;color:#1A1A2E;">Sopa de Lima</div>
+              <div style="font-size:12px;font-weight:800;color:#FF6B35;">$45</div>
+            </div>
+            <div style="width:22px;height:22px;background:#1A1A2E;border-radius:5px;display:flex;align-items:center;justify-content:center;color:#FF6B35;font-weight:800;font-size:14px;">+</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;background:#FFF3F3;border-radius:8px;padding:7px 10px;font-size:10px;color:#E74C3C;">
+          ⚠️ Colores muy claros pueden ser ilegibles — requiere validación de contraste
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Color libre (hex picker)</h3>
+      <p>El dueño escribe cualquier color hex o usa un selector. Máxima flexibilidad para que coincida con su marca real. Requiere validar contraste mínimo.</p>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;background:#F0F4FF;border:1px solid #C5D0F0;border-radius:10px;padding:12px 16px;max-width:680px;margin-left:auto;margin-right:auto;font-size:12px;color:#444;line-height:1.7;">
+  <strong>En ambos casos</strong> el color se guarda en <code>Business.menuColor</code> y se pasa como CSS variable <code>--brand</code> al menú público. El header oscuro (#1A1A2E) siempre permanece igual — solo cambia el color de acento.
+</div>
