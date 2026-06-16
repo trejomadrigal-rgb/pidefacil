@@ -393,20 +393,15 @@ jobs:
           done
 
           echo ""
-          echo "=== Baileys version ==="
+          echo "=== Redis connectivity from Evolution API container ==="
           if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker exec "$EVO_CONTAINER" node -e "try{const p=require('/evolution/node_modules/baileys/package.json');console.log('baileys:',p.name,p.version)}catch(e){try{const p=require('/evolution/node_modules/@whiskeysockets/baileys/package.json');console.log('@whiskeysockets/baileys:',p.version)}catch(e2){console.log('not found:',e2.message)}}" 2>&1 || echo "(node exec failed)"
+            sudo docker exec "$EVO_CONTAINER" node -e "const net=require('net');const c=net.createConnection(6379,'evolution-redis',()=>{console.log('Redis TCP OK');c.end();process.exit(0)});c.on('error',e=>{ console.log('Redis TCP ERROR:',e.message);process.exit(1)});setTimeout(()=>{console.log('Redis TCP TIMEOUT');process.exit(2)},5000)" 2>&1 || echo "(node redis test failed)"
           fi
 
           echo ""
-          echo "=== Redis keys ==="
-          REDIS_CONTAINER=$(sudo docker ps --filter "name=api-evolution-redis-1" -q | head -1)
-          if [ -n "$REDIS_CONTAINER" ]; then
-            ALL_KEYS=$(sudo docker exec "$REDIS_CONTAINER" redis-cli KEYS "*" 2>/dev/null)
-            echo "Total keys: $(echo "$ALL_KEYS" | grep -c . || echo 0)"
-            echo "$ALL_KEYS" | head -20
-          else
-            echo "(redis container not found)"
+          echo "=== Evolution API env check (REDIS_ENABLED) ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker exec "$EVO_CONTAINER" node -e "console.log('REDIS_ENABLED:',process.env.REDIS_ENABLED);console.log('REDIS_URI:',process.env.REDIS_URI ? process.env.REDIS_URI.replace(/:\/\/.*@/,'://***@') : 'not set');console.log('DATABASE_CONNECTION_URI set:',!!process.env.DATABASE_CONNECTION_URI)" 2>&1 || echo "(env check failed)"
           fi
 
           echo ""
