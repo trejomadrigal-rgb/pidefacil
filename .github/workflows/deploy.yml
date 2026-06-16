@@ -100,6 +100,17 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}'
 
+      - name: Set Web env vars (NEXT_PUBLIC_API_URL)
+        run: |
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/b10i6rz52rphphtcnxll73np/envs/bulk' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+              ]
+            }' && echo "✅ Web env vars updated"
+
       - name: Deploy Web
         run: |
           curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
