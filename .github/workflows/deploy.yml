@@ -529,10 +529,10 @@ jobs:
 
           echo ""
           echo "=== 9. Test web app URL — /dona-rosa ==="
-          curl -sf -o /dev/null -w "HTTP %{http_code}" \
-            http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
-            && echo "" || echo "(curl failed)"
-          echo "Primeras 200 chars de la respuesta:"
-          curl -sf http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
-            | head -c 200 || echo "(no response)"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa)
+          echo "HTTP status: ${HTTP_CODE}"
+          echo "Primeras 300 chars de la respuesta HTML:"
+          curl -s http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
+            | grep -o '<title>[^<]*\|Negocio no encontrado\|La Cocina\|dona-rosa\|menuColor\|PideFacil' | head -5 || echo "(sin coincidencias)"
 
