@@ -371,7 +371,19 @@ jobs:
           fi
 
           echo ""
-          echo "=== Try POST /instance/create debug-qr ==="
+          echo "=== WebSocket test from Evolution API container ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker exec "$EVO_CONTAINER" node -e "
+const ws = require('ws');
+const c = new ws('wss://web.whatsapp.com/', {handshakeTimeout:8000});
+c.on('open', () => { console.log('WSS OPEN'); c.close(); process.exit(0); });
+c.on('error', e => { console.log('WSS ERROR:', e.message); process.exit(1); });
+setTimeout(() => { console.log('WSS TIMEOUT'); process.exit(2); }, 10000);
+" 2>&1 || echo "(ws test failed or ws module not available)"
+          fi
+
+          echo ""
+          echo "=== Create instance + check connectionState ==="
           curl -s -X DELETE http://localhost:18080/instance/delete/debug-qr \
             -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
             -d '{"deleteFiles":false}' 2>/dev/null || true
@@ -380,19 +392,17 @@ jobs:
             -d '{"instanceName":"debug-qr","qrcode":true,"integration":"WHATSAPP-BAILEYS"}')
           echo "Create: $CREATE_RESP"
 
-          echo ""
-          echo "=== Poll GET /instance/connect/debug-qr (5 attempts x 5s) ==="
           for i in 1 2 3 4 5; do
             sleep 5
-            RESP=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connect/debug-qr)
-            echo "Attempt $i: $RESP" | cut -c1-200
-            echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); b=d.get('base64') or (d.get('qrcode') or {}).get('base64',''); print('QR found!' if b else 'no QR yet')" 2>/dev/null || true
+            STATE=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connectionState/debug-qr)
+            CONNECT=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connect/debug-qr)
+            echo "Attempt $i — state: $STATE | connect: $(echo $CONNECT | cut -c1-100)"
           done
 
           echo ""
-          echo "=== Evolution API container logs (last 30, LOG_LEVEL=INFO override) ==="
+          echo "=== Evolution API logs since start ==="
           if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker logs "$EVO_CONTAINER" --tail=30 2>&1 || true
+            sudo docker logs "$EVO_CONTAINER" 2>&1 | tail -50 || true
           fi
 
           echo ""
