@@ -74,17 +74,27 @@ export class WhatsappService {
     const qr = createData.qrcode?.base64 ?? '';
     if (qr) return { status: 'connecting', qr };
 
-    // Fallback: wait for QR to be generated then fetch it
-    await new Promise((r) => setTimeout(r, 2500));
-    const qrData = await this.evo<{ base64?: string }>('GET', `/instance/connect/${biz.slug}`);
-    return { status: 'connecting', qr: qrData.base64 ?? '' };
+    // Fallback: poll for QR (WA connection + QR generation takes a few seconds)
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const qrData = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.slug}`);
+        const fetched = qrData.base64 ?? qrData.qrcode?.base64 ?? '';
+        if (fetched) return { status: 'connecting', qr: fetched };
+      } catch { /* not ready yet */ }
+    }
+    return { status: 'connecting', qr: '' };
   }
 
   async getQrByBusinessId(businessId: string): Promise<string | null> {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
     if (!biz?.whatsappSession) return null;
-    const data = await this.evo<{ base64?: string }>('GET', `/instance/connect/${biz.whatsappSession}`);
-    return data.base64 ?? null;
+    try {
+      const data = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.whatsappSession}`);
+      return data.base64 ?? data.qrcode?.base64 ?? null;
+    } catch {
+      return null;
+    }
   }
 
   async getConnectionState(businessId: string): Promise<'open' | 'connecting' | 'close' | 'not_configured'> {

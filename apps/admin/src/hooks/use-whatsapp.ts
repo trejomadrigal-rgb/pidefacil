@@ -14,6 +14,8 @@ export const useWhatsappQr = (enabled: boolean) =>
     queryFn: api.getWhatsappQr,
     enabled,
     refetchInterval: enabled ? 5_000 : false,
+    retry: false,
+    refetchIntervalInBackground: true,
   });
 
 export const useConnectWhatsapp = () => {

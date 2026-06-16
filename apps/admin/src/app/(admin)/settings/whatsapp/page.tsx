@@ -100,7 +100,7 @@ export default function WhatsappPage() {
             <li>Escanea este código QR</li>
           </ol>
 
-          <p className="text-xs text-gray-400 mb-4">El código se actualiza cada 20 segundos.</p>
+          <p className="text-xs text-gray-400 mb-4">El código se actualiza cada 5 segundos.</p>
 
           <button
             onClick={handleDisconnect}
