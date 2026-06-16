@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBusinessMenu, getDebugAPIURL } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,10 +35,16 @@ export async function GET(req: NextRequest) {
     getBizResult = { threw: true, error: String(e) };
   }
 
+  const apiDebug = getDebugAPIURL();
+  const menu = await getBusinessMenu(slug);
+
   return NextResponse.json({
     slug, url,
-    env_API_URL: process.env.API_URL,
+    route_env_API_URL: process.env.API_URL,
+    apiModule: apiDebug,
     directResult,
     getBizResult,
+    getBusinessMenu_null: menu === null,
+    menu_name: menu?.business?.name ?? null,
   });
 }

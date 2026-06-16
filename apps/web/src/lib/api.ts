@@ -6,6 +6,15 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
   'http://localhost:3000';
 
+// Temporary debug export — remove after fixing 404 issue
+export function getDebugAPIURL() {
+  return {
+    API_URL,
+    env_API_URL: process.env.API_URL,
+    env_NEXT_PUBLIC: process.env.NEXT_PUBLIC_API_URL,
+  };
+}
+
 export interface BusinessPublic {
   id: string;
   name: string;
