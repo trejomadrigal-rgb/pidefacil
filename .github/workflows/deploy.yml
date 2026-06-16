@@ -371,45 +371,28 @@ jobs:
           fi
 
           echo ""
-          echo "=== WebSocket test from Evolution API container ==="
-          if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker exec "$EVO_CONTAINER" node -e "
-const ws = require('ws');
-const c = new ws('wss://web.whatsapp.com/', {handshakeTimeout:8000});
-c.on('open', () => { console.log('WSS OPEN'); c.close(); process.exit(0); });
-c.on('error', e => { console.log('WSS ERROR:', e.message); process.exit(1); });
-setTimeout(() => { console.log('WSS TIMEOUT'); process.exit(2); }, 10000);
-" 2>&1 || echo "(ws test failed or ws module not available)"
-          fi
+          echo "=== Create instance + poll all QR endpoints ==="
+          curl -s -X DELETE "http://localhost:18080/instance/delete/debug-qr" -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" -d '{"deleteFiles":false}' 2>/dev/null || true
+          CREATE=$(curl -s -X POST "http://localhost:18080/instance/create" -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" -d '{"instanceName":"debug-qr","qrcode":true,"integration":"WHATSAPP-BAILEYS"}')
+          echo "Create: ${CREATE:0:300}"
 
-          echo ""
-          echo "=== Create instance + check connectionState ==="
-          curl -s -X DELETE http://localhost:18080/instance/delete/debug-qr \
-            -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
-            -d '{"deleteFiles":false}' 2>/dev/null || true
-          CREATE_RESP=$(curl -s -X POST http://localhost:18080/instance/create \
-            -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
-            -d '{"instanceName":"debug-qr","qrcode":true,"integration":"WHATSAPP-BAILEYS"}')
-          echo "Create: $CREATE_RESP"
-
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3 4 5 6; do
             sleep 5
-            STATE=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connectionState/debug-qr)
-            CONNECT=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connect/debug-qr)
-            echo "Attempt $i — state: $STATE | connect: $(echo $CONNECT | cut -c1-100)"
+            CSTATE=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" "http://localhost:18080/instance/connectionState/debug-qr")
+            CONN=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" "http://localhost:18080/instance/connect/debug-qr")
+            QCODE=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" "http://localhost:18080/instance/qrcode/debug-qr" 2>/dev/null || echo '(no qrcode endpoint)')
+            echo "[$i] state=${CSTATE:0:60} | connect=${CONN:0:60} | qrcode=${QCODE:0:60}"
           done
 
           echo ""
-          echo "=== Evolution API logs since start ==="
+          echo "=== Evolution API full logs ==="
           if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker logs "$EVO_CONTAINER" 2>&1 | tail -50 || true
+            sudo docker logs "$EVO_CONTAINER" 2>&1 | tail -80 || true
           fi
 
           echo ""
           echo "=== Cleanup ==="
-          curl -s -X DELETE http://localhost:18080/instance/delete/debug-qr \
-            -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
-            -d '{"deleteFiles":false}' || true
+          curl -s -X DELETE "http://localhost:18080/instance/delete/debug-qr" -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" -d '{"deleteFiles":false}' || true
 
       - name: Print NestJS API [WA] logs
         run: |
