@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getBusinessMenu, getPublicBranches } from '@/lib/api';
+
+export const dynamic = 'force-dynamic';
 import { BusinessHeader } from '@/components/menu/business-header';
 import { ProductList } from '@/components/menu/product-list';
 import { CategoryPills } from '@/components/menu/category-pills';

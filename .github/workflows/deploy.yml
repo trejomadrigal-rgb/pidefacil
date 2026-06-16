@@ -566,3 +566,16 @@ jobs:
               | grep -v "Binary" | head -5 || echo "  (no encontrado)"
           fi
 
+          echo ""
+          echo "=== 12. Prerender manifest y archivos [slug] ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            echo "-- prerender-manifest.json (rutas pre-rendered) --"
+            sudo docker exec "$WEB_CONTAINER" cat /app/apps/web/.next/prerender-manifest.json 2>/dev/null \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); routes=list(d.get('routes',{}).keys()); print('Pre-rendered routes:', routes[:10])" \
+              || echo "  (no encontrado)"
+            echo "-- Archivos en .next/server/app/[slug]/ --"
+            sudo docker exec "$WEB_CONTAINER" ls -la '/app/apps/web/.next/server/app/[slug]/' 2>/dev/null || echo "  (directorio no encontrado)"
+            echo "-- Archivos .html en .next/server/app/ --"
+            sudo docker exec "$WEB_CONTAINER" find /app/apps/web/.next/server/app -name "*.html" 2>/dev/null | head -10 || echo "  (no hay archivos .html)"
+          fi
+
