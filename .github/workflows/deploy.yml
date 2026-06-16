@@ -198,7 +198,11 @@ jobs:
           sudo docker exec \
             -e API_URL='http://localhost:3000' \
             "${API_CONTAINER}" \
-            node /tmp/seed-demo.mjs
+            node /tmp/seed-demo.mjs || {
+            echo "❌ Seed failed — last 50 API container log lines:"
+            sudo docker logs --tail=50 "${API_CONTAINER}"
+            exit 1
+          }
           echo "✅ Demo seed OK"
 
   setup-whatsapp:
