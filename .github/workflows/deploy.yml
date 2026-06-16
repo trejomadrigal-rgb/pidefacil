@@ -354,40 +354,47 @@ jobs:
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
         run: |
-          echo "=== Evolution API containers ==="
-          sudo docker ps | grep -i evol || echo "(no evolution containers running)"
+          echo "=== Network connectivity from VPS host ==="
+          curl -sv --max-time 8 https://web.whatsapp.com/ 2>&1 | grep -E 'Connected|Failed|SSL|TLS|HTTP|curl:|<|>' | head -15 || echo "(curl to whatsapp failed)"
 
           echo ""
-          echo "=== Evolution API last 50 log lines ==="
-          EVO_CONTAINER=$(sudo docker ps --filter "name=evolution-api" -q | head -1)
+          echo "=== Network connectivity from Evolution API container ==="
+          EVO_CONTAINER=$(sudo docker ps --filter "name=api-evolution-api-1" -q | head -1)
           if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker logs "$EVO_CONTAINER" --tail=50 2>&1
+            sudo docker exec "$EVO_CONTAINER" curl -sv --max-time 8 https://web.whatsapp.com/ 2>&1 | grep -E 'Connected|Failed|SSL|TLS|HTTP|curl:|<|>' | head -15 || echo "(curl from container failed)"
           else
-            echo "(evolution-api container not found)"
+            echo "(evolution container not found)"
           fi
 
           echo ""
-          echo "=== Call GET /instance/fetchInstances ==="
-          curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/fetchInstances | python3 -c "import sys,json; data=json.load(sys.stdin); print(json.dumps(data, indent=2))" 2>/dev/null || echo "(fetchInstances failed)"
-
-          echo ""
-          echo "=== Try POST /instance/create test-debug ==="
+          echo "=== Try POST /instance/create debug-qr ==="
+          curl -s -X DELETE http://localhost:18080/instance/delete/debug-qr \
+            -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
+            -d '{"deleteFiles":false}' 2>/dev/null || true
           CREATE_RESP=$(curl -s -X POST http://localhost:18080/instance/create \
-            -H "Content-Type: application/json" \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
-            -d '{"instanceName":"debug-test","qrcode":true,"integration":"WHATSAPP-BAILEYS"}')
-          echo "Create response: $CREATE_RESP"
+            -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
+            -d '{"instanceName":"debug-qr","qrcode":true,"integration":"WHATSAPP-BAILEYS"}')
+          echo "Create: $CREATE_RESP"
 
           echo ""
-          echo "=== Try GET /instance/connect/debug-test (wait 3s) ==="
-          sleep 3
-          curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connect/debug-test | python3 -c "import sys,json; data=json.load(sys.stdin); print(json.dumps(data, indent=2))" 2>/dev/null || echo "(connect call failed)"
+          echo "=== Poll GET /instance/connect/debug-qr (5 attempts x 5s) ==="
+          for i in 1 2 3 4 5; do
+            sleep 5
+            RESP=$(curl -s -H "apikey: ${EVOLUTION_API_KEY}" http://localhost:18080/instance/connect/debug-qr)
+            echo "Attempt $i: $RESP" | cut -c1-200
+            echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); b=d.get('base64') or (d.get('qrcode') or {}).get('base64',''); print('QR found!' if b else 'no QR yet')" 2>/dev/null || true
+          done
 
           echo ""
-          echo "=== Cleanup debug instance ==="
-          curl -s -X DELETE http://localhost:18080/instance/delete/debug-test \
-            -H "Content-Type: application/json" \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
+          echo "=== Evolution API container logs (last 30, LOG_LEVEL=INFO override) ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker logs "$EVO_CONTAINER" --tail=30 2>&1 || true
+          fi
+
+          echo ""
+          echo "=== Cleanup ==="
+          curl -s -X DELETE http://localhost:18080/instance/delete/debug-qr \
+            -H "Content-Type: application/json" -H "apikey: ${EVOLUTION_API_KEY}" \
             -d '{"deleteFiles":false}' || true
 
       - name: Print NestJS API [WA] logs
