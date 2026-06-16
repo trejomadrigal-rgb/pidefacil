@@ -101,34 +101,19 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}'
 
-      - name: Set Web env vars (NEXT_PUBLIC_API_URL + API_URL internal)
+      - name: Set Web env vars (NEXT_PUBLIC_API_URL)
         run: |
-          # API_URL uses the Coolify container label to find the API container hostname at deploy time.
-          # This lets the web container reach the API via the internal Docker network
-          # instead of going through the external sslip.io URL (which may not loop back correctly).
-          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
-          if [ -n "$API_CONTAINER" ]; then
-            API_INTERNAL_HOST=$(sudo docker inspect "$API_CONTAINER" --format '{{.Config.Hostname}}')
-            echo "API internal hostname: ${API_INTERNAL_HOST}"
-          else
-            API_INTERNAL_HOST=""
-            echo "⚠️  API container not found, will use public URL as fallback"
-          fi
-
-          API_INTERNAL_URL=""
-          if [ -n "$API_INTERNAL_HOST" ]; then
-            API_INTERNAL_URL="http://${API_INTERNAL_HOST}:3000"
-          fi
-
+          # Diagnostic confirmed web→API via public URL works from inside Docker.
+          # Use the stable public URL for both client and server-side fetches.
           curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/b10i6rz52rphphtcnxll73np/envs/bulk' \
             -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
             -H 'Content-Type: application/json' \
-            -d "{
-              \"data\": [
-                {\"key\": \"NEXT_PUBLIC_API_URL\", \"value\": \"http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io\", \"is_preview\": false},
-                {\"key\": \"API_URL\", \"value\": \"${API_INTERNAL_URL:-http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io}\", \"is_preview\": false}
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
+                {"key": "API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
               ]
-            }" && echo "✅ Web env vars updated (API_URL=${API_INTERNAL_URL:-public_fallback})"
+            }' && echo "✅ Web env vars updated"
 
       - name: Deploy Web
         run: |
@@ -541,4 +526,13 @@ jobs:
           if [ -n "$WEB_CONTAINER" ]; then
             sudo docker inspect "$WEB_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E 'API_URL|NEXT_PUBLIC' || echo "(no API_URL vars encontradas)"
           fi
+
+          echo ""
+          echo "=== 9. Test web app URL — /dona-rosa ==="
+          curl -sf -o /dev/null -w "HTTP %{http_code}" \
+            http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
+            && echo "" || echo "(curl failed)"
+          echo "Primeras 200 chars de la respuesta:"
+          curl -sf http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
+            | head -c 200 || echo "(no response)"
 
