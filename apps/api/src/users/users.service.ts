@@ -63,6 +63,14 @@ export class UsersService {
     });
   }
 
+  async resetPassword(businessId: string, userId: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, businessId } });
+    if (!user) throw new UserNotFoundException();
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
   async deactivateUser(businessId: string, userId: string, requestingUserId: string) {
     if (userId === requestingUserId) {
       throw new UnprocessableEntityException('You cannot deactivate your own account');
