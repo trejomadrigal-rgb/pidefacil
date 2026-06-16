@@ -187,18 +187,24 @@ jobs:
           echo "✅ Super admin seed OK → ${SA_EMAIL}"
 
       - name: Wait for API container to be healthy
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          echo "Waiting for API to be healthy (up to 3 min)..."
-          for i in $(seq 1 36); do
-            if curl -sf http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/health > /dev/null 2>&1; then
-              echo "✅ API healthy after $((i * 5))s"
+          echo "Waiting for API to be healthy (up to 8 min)..."
+          for i in $(seq 1 96); do
+            STATUS=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              "http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
+            if [ "$STATUS" = "running" ]; then
+              echo "✅ Coolify reports API running after $((i * 5))s"
+              sleep 5
               break
             fi
-            if [ $i -eq 36 ]; then
-              echo "❌ API did not become healthy in time"
+            if [ $i -eq 96 ]; then
+              echo "❌ API did not become healthy in 8 min (last status: $STATUS)"
               exit 1
             fi
-            echo "  attempt $i/36..."
+            echo "  attempt $i/96, status=$STATUS..."
             sleep 5
           done
 
