@@ -15,6 +15,7 @@ on:
           - setup-whatsapp
           - seed-data
           - fix-admin-url
+          - read-logs
 
 jobs:
   test:
@@ -343,3 +344,20 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
             && echo "✅ API redeploy triggered"
+
+  read-logs:
+    name: Read API container logs (WhatsApp debug)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'read-logs'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Print last 100 lines of API container logs
+        run: |
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          echo "Container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+          echo "--- Last 100 lines ---"
+          sudo docker logs "$API_CONTAINER" --tail=100 2>&1
+          echo "--- [WA] lines only ---"
+          sudo docker logs "$API_CONTAINER" --tail=500 2>&1 | grep '\[WA\]' || echo "(no [WA] lines found)"
