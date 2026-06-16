@@ -11,7 +11,7 @@ services:
       retries: 10
 
   evolution-api:
-    image: atendai/evolution-api:v2.2.3
+    image: atendai/evolution-api:latest
     restart: always
     ports:
       - "18080:8080"
@@ -29,7 +29,7 @@ services:
       DATABASE_CONNECTION_URI: "${DATABASE_CONNECTION_URI}"
       REDIS_ENABLED: "true"
       REDIS_URI: "redis://evolution-redis:6379"
-      LOG_LEVEL: "ERROR"
+      LOG_LEVEL: "LOG"
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
