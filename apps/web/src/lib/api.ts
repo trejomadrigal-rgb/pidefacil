@@ -6,15 +6,6 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
   'http://localhost:3000';
 
-// Temporary debug export — remove after fixing 404 issue
-export function getDebugAPIURL() {
-  return {
-    API_URL,
-    env_API_URL: process.env.API_URL,
-    env_NEXT_PUBLIC: process.env.NEXT_PUBLIC_API_URL,
-  };
-}
-
 export interface BusinessPublic {
   id: string;
   name: string;
@@ -118,7 +109,7 @@ export async function getBusiness(slug: string): Promise<BusinessPublic | null> 
       cache: 'no-store',
     });
     if (!res.ok) return null;
-    return res.json();
+    return await res.json();
   } catch {
     return null;
   }
@@ -130,7 +121,7 @@ export async function getCategories(slug: string): Promise<Category[]> {
       next: { revalidate: 60 },
     });
     if (!res.ok) return [];
-    return res.json();
+    return await res.json();
   } catch {
     return [];
   }
@@ -142,7 +133,9 @@ export async function getFeaturedProduct(slug: string): Promise<Product | null> 
       next: { revalidate: 600 },
     });
     if (!res.ok) return null;
-    return res.json();
+    const text = await res.text();
+    if (!text) return null;
+    return JSON.parse(text) as Product;
   } catch {
     return null;
   }
