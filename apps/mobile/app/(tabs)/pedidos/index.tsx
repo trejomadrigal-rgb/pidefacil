@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity,
   ScrollView, RefreshControl, ActivityIndicator,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -38,37 +39,39 @@ function formatRelativeTime(isoDate: string): string {
   return `hace ${Math.floor(minutes / 60)}h`;
 }
 
-function OrderCard({ order, onPress }: { order: OrderListItem; onPress: () => void }) {
+function OrderCard({ order, onPress, index }: { order: OrderListItem; onPress: () => void; index: number }) {
   const config = STATUS_CONFIG[order.status as OrderStatus];
   return (
-    <TouchableOpacity
-      className="bg-white rounded-2xl p-4 mb-3 mx-4"
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View className="flex-row justify-between items-start mb-2">
-        <Text className="text-brand-500 text-lg font-black">Pedido #{order.orderNumber}</Text>
-        <View style={{ backgroundColor: config?.color ?? '#9CA3AF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>{config?.label ?? order.status}</Text>
-        </View>
-      </View>
-      <View className="flex-row items-center mb-1" style={{ gap: 8 }}>
-        <Text className="text-gray-900 font-semibold text-base flex-1">{order.customerName}</Text>
-        {order.customerTrustLevel && TRUST_BADGE[order.customerTrustLevel] && (
-          <View style={{ backgroundColor: TRUST_BADGE[order.customerTrustLevel]!.bg }} className="rounded-full px-2 py-0.5">
-            <Text className="text-white text-[10px] font-bold">{TRUST_BADGE[order.customerTrustLevel]!.label}</Text>
+    <Animated.View entering={FadeInDown.delay(Math.min(index * 55, 350)).springify().damping(18)}>
+      <TouchableOpacity
+        className="bg-white rounded-2xl p-4 mb-3 mx-4"
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View className="flex-row justify-between items-start mb-2">
+          <Text className="text-brand-500 text-lg font-black">Pedido #{order.orderNumber}</Text>
+          <View style={{ backgroundColor: config?.color ?? '#9CA3AF', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 }}>{config?.label ?? order.status}</Text>
           </View>
-        )}
-      </View>
-      <View className="flex-row justify-between items-center">
-        <Text className="text-gray-500 text-sm">
-          {order.deliveryType === 'PICKUP' ? '🏪 Para recoger' : '🚗 A domicilio'}
-          {' · '}{order.itemCount} {order.itemCount === 1 ? 'producto' : 'productos'}
-        </Text>
-        <Text className="text-gray-400 text-xs">{formatRelativeTime(order.createdAt)}</Text>
-      </View>
-      <Text className="text-brand-900 font-bold text-base mt-2">${order.total.toFixed(2)}</Text>
-    </TouchableOpacity>
+        </View>
+        <View className="flex-row items-center mb-1" style={{ gap: 8 }}>
+          <Text className="text-gray-900 font-semibold text-base flex-1">{order.customerName}</Text>
+          {order.customerTrustLevel && TRUST_BADGE[order.customerTrustLevel] && (
+            <View style={{ backgroundColor: TRUST_BADGE[order.customerTrustLevel]!.bg }} className="rounded-full px-2 py-0.5">
+              <Text className="text-white text-[10px] font-bold">{TRUST_BADGE[order.customerTrustLevel]!.label}</Text>
+            </View>
+          )}
+        </View>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-gray-500 text-sm">
+            {order.deliveryType === 'PICKUP' ? '🏪 Para recoger' : '🚗 A domicilio'}
+            {' · '}{order.itemCount} {order.itemCount === 1 ? 'producto' : 'productos'}
+          </Text>
+          <Text className="text-gray-400 text-xs">{formatRelativeTime(order.createdAt)}</Text>
+        </View>
+        <Text className="text-brand-900 font-bold text-base mt-2">${order.total.toFixed(2)}</Text>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -106,8 +109,12 @@ export default function PedidosScreen() {
   const insets = useSafeAreaInsets();
 
   const renderItem = useCallback(
-    ({ item }: { item: OrderListItem }) => (
-      <OrderCard order={item} onPress={() => router.push(`/(tabs)/pedidos/${item.id}`)} />
+    ({ item, index }: { item: OrderListItem; index: number }) => (
+      <OrderCard
+        order={item}
+        index={index}
+        onPress={() => router.push(`/(tabs)/pedidos/${item.id}`)}
+      />
     ),
     [router],
   );
