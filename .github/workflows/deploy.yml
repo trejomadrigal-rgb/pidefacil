@@ -186,6 +186,22 @@ jobs:
             node /tmp/seed-admin.cjs
           echo "✅ Super admin seed OK → ${SA_EMAIL}"
 
+      - name: Wait for API container to be healthy
+        run: |
+          echo "Waiting for API to be healthy (up to 3 min)..."
+          for i in $(seq 1 36); do
+            if curl -sf http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/health > /dev/null 2>&1; then
+              echo "✅ API healthy after $((i * 5))s"
+              break
+            fi
+            if [ $i -eq 36 ]; then
+              echo "❌ API did not become healthy in time"
+              exit 1
+            fi
+            echo "  attempt $i/36..."
+            sleep 5
+          done
+
       - name: Seed 3 fondas demo (via API container, Node ESM)
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
