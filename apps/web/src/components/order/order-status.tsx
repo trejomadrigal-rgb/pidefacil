@@ -115,17 +115,17 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
 
   if (!order) {
     return (
-      <div className="text-center py-16 px-4">
+      <div className="flex flex-col items-center justify-center py-20 px-8 text-center max-w-sm mx-auto">
         <div className="text-5xl mb-4">😕</div>
         <h2 className="font-bold text-brand-900 mb-2">Pedido no encontrado</h2>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-500 mb-8">
           Verifica el número de folio.
         </p>
         <Link
           href={`/${slug}`}
-          className="inline-block bg-brand-500 text-white rounded-xl px-6 py-3 font-semibold"
+          className="inline-flex items-center justify-center w-full bg-brand-500 text-white rounded-xl py-3 font-bold text-sm"
         >
-          Volver al menú
+          ← Volver al menú
         </Link>
       </div>
     );
@@ -139,7 +139,7 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
   const currentIndex = statusFlow.indexOf(order.status);
 
   return (
-    <div className="px-4 pb-10">
+    <div className="px-4 pt-6 pb-12 max-w-lg mx-auto">
       {/* Header */}
       <div className="text-center mb-6">
         <h1 className="text-xl font-bold text-brand-900">
@@ -253,15 +253,16 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
 
       {/* Polling countdown / terminal message */}
       {isCancelled ? (
-        <div className="text-center py-4">
-          <p className="text-sm text-gray-500 mb-4">
+        <div className="text-center py-8">
+          <p className="text-3xl mb-3">😔</p>
+          <p className="text-sm text-gray-500 mb-5">
             Lo sentimos, este pedido fue cancelado.
           </p>
           <Link
             href={`/${slug}`}
-            className="inline-block bg-brand-500 text-white rounded-xl px-6 py-3 font-semibold"
+            className="inline-flex items-center justify-center w-full bg-brand-500 text-white rounded-xl py-3 font-bold text-sm"
           >
-            Volver al menú
+            ← Volver al menú
           </Link>
         </div>
       ) : !isTerminal ? (
