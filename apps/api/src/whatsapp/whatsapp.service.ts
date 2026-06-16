@@ -59,12 +59,23 @@ export class WhatsappService {
   async connectAndGetQr(businessId: string): Promise<{ status: 'connecting'; qr: string }> {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
     if (!biz) throw new NotFoundException('Negocio no encontrado');
-    await this.evo('POST', '/instance/create', {
+
+    // Remove any existing instance to avoid 409 conflicts on re-connect
+    await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: false }).catch(() => {});
+
+    const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', {
       instanceName: biz.slug,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
     });
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
+
+    // Evolution API v2 returns QR directly in the create response
+    const qr = createData.qrcode?.base64 ?? '';
+    if (qr) return { status: 'connecting', qr };
+
+    // Fallback: wait for QR to be generated then fetch it
+    await new Promise((r) => setTimeout(r, 2500));
     const qrData = await this.evo<{ base64?: string }>('GET', `/instance/connect/${biz.slug}`);
     return { status: 'connecting', qr: qrData.base64 ?? '' };
   }

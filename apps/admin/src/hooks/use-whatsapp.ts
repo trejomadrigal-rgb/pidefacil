@@ -13,14 +13,21 @@ export const useWhatsappQr = (enabled: boolean) =>
     queryKey: ['whatsapp', 'qr'],
     queryFn: api.getWhatsappQr,
     enabled,
-    refetchInterval: enabled ? 20_000 : false,
+    refetchInterval: enabled ? 5_000 : false,
   });
 
 export const useConnectWhatsapp = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.connectWhatsapp,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['whatsapp'] }),
+    onSuccess: (data) => {
+      // Seed QR cache immediately from the connect response so it shows without waiting
+      if (data.qr) {
+        qc.setQueryData(['whatsapp', 'qr'], { qr: data.qr });
+      }
+      qc.setQueryData(['whatsapp', 'status'], { status: 'connecting' });
+      qc.invalidateQueries({ queryKey: ['whatsapp'] });
+    },
   });
 };
 
