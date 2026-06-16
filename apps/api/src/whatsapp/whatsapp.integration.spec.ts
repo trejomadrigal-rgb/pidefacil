@@ -75,13 +75,15 @@ describe('WhatsappModule (integration)', () => {
 
   it('POST /admin/whatsapp/connect → crea sesión y devuelve QR', async () => {
     mockFetch
+      // DELETE /instance/delete/{slug} — cleanup existing instance
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) } as any)
+      // POST /instance/create — returns QR directly in v2
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ instance: { instanceName: `fonda-wa-${suffix}`, status: 'created' } }),
-      } as any)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ code: '2@abc123', base64: 'data:image/png;base64,iVBOR==' }),
+        json: async () => ({
+          instance: { instanceName: `fonda-wa-${suffix}`, status: 'created' },
+          qrcode: { base64: 'data:image/png;base64,iVBOR==' },
+        }),
       } as any);
 
     const res = await request(app.getHttpServer())
