@@ -101,17 +101,24 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}'
 
-      - name: Set Web env vars (NEXT_PUBLIC_API_URL)
+      - name: Set Web env vars (NEXT_PUBLIC_API_URL + Firebase)
         run: |
-          # Diagnostic confirmed web→API via public URL works from inside Docker.
           # Use the stable public URL for both client and server-side fetches.
+          # Firebase web config is public (embedded in browser bundle) — safe to inline.
           curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/b10i6rz52rphphtcnxll73np/envs/bulk' \
             -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
             -H 'Content-Type: application/json' \
             -d '{
               "data": [
                 {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
-                {"key": "API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+                {"key": "API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_API_KEY", "value": "AIzaSyC_DQkm9B6oqFflcyAuNvYmXgw7H8bSqQA", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", "value": "pidefacil-76602.firebaseapp.com", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_DATABASE_URL", "value": "https://pidefacil-76602-default-rtdb.firebaseio.com", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_PROJECT_ID", "value": "pidefacil-76602", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", "value": "pidefacil-76602.firebasestorage.app", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", "value": "203313412606", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_APP_ID", "value": "1:203313412606:web:8bd0b2f8fac5323bf0e8af", "is_preview": false}
               ]
             }' && echo "✅ Web env vars updated"
 
