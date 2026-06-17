@@ -119,9 +119,10 @@ export class WhatsappService {
     await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: false }).catch(() => {});
     this.qrStore.delete(biz.slug);
 
-    // v1.4.8: solo instanceName + qrcode. El campo integration es v2.x.
-    // Webhook configurado globalmente vía WEBHOOK_GLOBAL_* en docker-compose.
-    const payload = { instanceName: biz.slug, qrcode: true };
+    // v1.4.8: requiere token (API key por instancia). Sin él devuelve "Authentication error".
+    // Usamos slug sin guiones; el global apikey funciona como master key para llamadas posteriores.
+    const instanceToken = biz.slug.replace(/-/g, '');
+    const payload = { instanceName: biz.slug, qrcode: true, token: instanceToken };
 
     const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
