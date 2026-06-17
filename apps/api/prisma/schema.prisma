@@ -174,6 +174,7 @@ model Business {
   devices           Device[]
   liquidations      Liquidation[]
   shifts            Shift[]
+  paymentMethods    BusinessPaymentMethod[]
 }
 
 model User {
@@ -360,18 +361,21 @@ model Order {
   paymentMethod     PaymentMethod?
   isPaid            Boolean        @default(false)
   assignedToId      String?
-  liquidationId     String?
+  liquidationId      String?
+  paymentMethodId    String?
+  paymentMethodLabel String?
   transferConfirmed Boolean        @default(false)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  business    Business     @relation(fields: [businessId], references: [id])
-  customer    Customer?    @relation(fields: [customerId], references: [id])
-  branch      Branch?      @relation(fields: [branchId], references: [id])
-  items       OrderItem[]
-  payment     Payment?
-  assignedTo  User?        @relation("OrdersAssigned", fields: [assignedToId], references: [id])
-  liquidation Liquidation? @relation(fields: [liquidationId], references: [id])
+  business            Business               @relation(fields: [businessId], references: [id])
+  customer            Customer?              @relation(fields: [customerId], references: [id])
+  branch              Branch?                @relation(fields: [branchId], references: [id])
+  items               OrderItem[]
+  payment             Payment?
+  assignedTo          User?                  @relation("OrdersAssigned", fields: [assignedToId], references: [id])
+  liquidation         Liquidation?           @relation(fields: [liquidationId], references: [id])
+  customPaymentMethod BusinessPaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
 
   @@unique([businessId, orderNumber])
   @@index([businessId])
@@ -600,4 +604,17 @@ model DeviceToken {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model BusinessPaymentMethod {
+  id                   String   @id @default(cuid())
+  businessId           String
+  label                String
+  requiresConfirmation Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  position             Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders   Order[]
 }
