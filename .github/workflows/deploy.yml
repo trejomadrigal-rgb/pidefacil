@@ -469,14 +469,7 @@ jobs:
 
           echo ""
           echo "=== Conectividad internet desde contenedor (Node.js TCP) ==="
-          sudo docker exec "$EVO_CONTAINER" node -e "
-const net = require('net');
-const s = net.createConnection(443, 'web.whatsapp.com');
-s.setTimeout(8000);
-s.on('connect', () => { console.log('TCP OK: web.whatsapp.com:443 accesible'); s.destroy(); });
-s.on('error', e => console.error('TCP ERROR:', e.code, e.message));
-s.on('timeout', () => { console.log('TCP TIMEOUT after 8s'); s.destroy(); });
-" 2>&1 || echo "Node exec fallo"
+          sudo docker exec "$EVO_CONTAINER" node -e "const net=require('net');const s=net.createConnection(443,'web.whatsapp.com');s.setTimeout(8000);s.on('connect',()=>{console.log('TCP OK: web.whatsapp.com:443 accesible');s.destroy()});s.on('error',e=>console.error('TCP ERROR:',e.code,e.message));s.on('timeout',()=>{console.log('TCP TIMEOUT after 8s');s.destroy()});" 2>&1 || echo "Node exec fallo"
           echo "DNS g.whatsapp.net:"
           sudo docker exec "$EVO_CONTAINER" nslookup g.whatsapp.net 2>&1 | grep -E "Address|Name|error" | head -5
 
