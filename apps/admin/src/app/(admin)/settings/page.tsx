@@ -1,4 +1,5 @@
 import { BusinessForm } from '@/components/settings/business-form';
+import { PaymentMethodsSection } from '@/components/settings/payment-methods-section';
 
 export default function SettingsPage() {
   return (
@@ -8,6 +9,7 @@ export default function SettingsPage() {
         <p className="text-sm text-gray-400 mt-1">Gestiona la información de tu negocio</p>
       </div>
       <BusinessForm />
+      <PaymentMethodsSection />
     </div>
   );
 }
