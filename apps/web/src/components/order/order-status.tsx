@@ -101,7 +101,20 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
         startPolling();
       }
     });
-    return () => stopPolling();
+
+    // Mobile browsers pause setInterval when the tab is in the background.
+    // Re-fetch immediately when the user returns to this tab.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchOrder();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, orderNumber]);
 
