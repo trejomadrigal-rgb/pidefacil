@@ -12,32 +12,24 @@ const WHATSAPP_STATUSES = new Set<OrderStatus>([
   OrderStatus.REJECTED,
 ]);
 
-const PAYMENT_LABEL: Record<string, string> = {
-  CASH: '💵 Efectivo',
-  TRANSFER: '🏦 Transferencia bancaria',
-  CARD: '💳 Tarjeta',
-  OTHER: '💰 Otro',
-};
-
 function buildConfirmedMessage(
   folio: string,
   name: string,
   business: string,
   items: { name: string; quantity: number; price: number }[],
   total: number,
-  paymentMethod: string | null,
+  paymentMethodLabel: string | null,
+  requiresConfirmation: boolean,
 ): string {
   const itemLines = items
     .map((i) => `• ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`)
     .join('\n');
 
-  const payLabel = paymentMethod ? (PAYMENT_LABEL[paymentMethod] ?? paymentMethod) : '';
-  const payLine = payLabel ? `\n💳 *Pago:* ${payLabel}` : '';
+  const payLine = paymentMethodLabel ? `\n💳 *Pago:* ${paymentMethodLabel}` : '';
 
-  const transferNote =
-    paymentMethod === 'TRANSFER' || paymentMethod === 'CARD'
-      ? '\n\n⚠️ *Importante:* Tu pedido pasará a preparación una vez que nos envíes el comprobante de pago. Sin comprobante no iniciaremos la preparación.'
-      : '\n\nYa lo estamos preparando. 🍳';
+  const transferNote = requiresConfirmation
+    ? '\n\n⚠️ *Importante:* Tu pedido pasará a preparación una vez que nos envíes el comprobante de pago. Sin comprobante no iniciaremos la preparación.'
+    : '\n\nYa lo estamos preparando. 🍳';
 
   return (
     `✅ *Pedido #${folio} confirmado*\n\n` +
@@ -218,7 +210,8 @@ export class WhatsappService {
         where: { businessId: order.businessId, orderNumber: order.orderNumber },
         select: {
           total: true,
-          paymentMethod: true,
+          paymentMethodLabel: true,
+          customPaymentMethod: { select: { requiresConfirmation: true } },
           items: { select: { quantity: true, price: true, product: { select: { name: true } } } },
         },
       });
@@ -235,7 +228,8 @@ export class WhatsappService {
         biz.name,
         items,
         Number(fullOrder?.total ?? 0),
-        fullOrder?.paymentMethod ?? null,
+        fullOrder?.paymentMethodLabel ?? null,
+        fullOrder?.customPaymentMethod?.requiresConfirmation ?? false,
       );
     } else {
       const buildMessage = STATUS_MESSAGES[newStatus];
