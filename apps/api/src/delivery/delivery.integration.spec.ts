@@ -71,6 +71,7 @@ describe('DeliveryModule (integration)', () => {
   afterAll(async () => {
     await prisma.orderItem.deleteMany({ where: { order: { businessId } } });
     await prisma.order.deleteMany({ where: { businessId } });
+    await prisma.businessPaymentMethod.deleteMany({ where: { businessId } });
     await prisma.product.deleteMany({ where: { businessId } });
     await prisma.category.deleteMany({ where: { businessId } });
     await prisma.menu.deleteMany({ where: { businessId } });
@@ -113,13 +114,17 @@ describe('DeliveryModule (integration)', () => {
     const product2 = await prisma.product.create({
       data: { businessId, categoryId: category2.id, name: 'Caldo', price: 60, isAvailable: true, noteHints: [] },
     });
+    const paymentMethod = await prisma.businessPaymentMethod.create({
+      data: { businessId, label: 'Transferencia BBVA', requiresConfirmation: true, position: 0 },
+    });
     const transferOrder = await prisma.order.create({
       data: {
         businessId, orderNumber: `TF-${suffix}`,
         status: 'CONFIRMED', subtotal: 60, discount: 0, deliveryFee: 0, total: 60,
         customerName: 'Luis', customerPhone: '5558887777',
         deliveryType: 'DELIVERY', deliveryAddress: 'Calle 2',
-        paymentMethod: 'TRANSFER', transferConfirmed: false,
+        paymentMethodId: paymentMethod.id, paymentMethodLabel: 'Transferencia BBVA',
+        transferConfirmed: false,
         items: { create: { productId: product2.id, quantity: 1, price: 60, subtotal: 60 } },
       },
     });
