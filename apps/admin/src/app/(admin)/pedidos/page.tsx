@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOrders, updateOrderStatus, type ReadyOrder } from '@/api/orders';
-import { Package, ChevronRight } from 'lucide-react';
+import { Package, ChevronRight, Plus } from 'lucide-react';
+import { CreateOrderSheet } from '@/components/orders/create-order-sheet';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -120,6 +121,7 @@ function OrderCard({
 export default function PedidosPage() {
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const qc = useQueryClient();
 
   const { data: orders = [], isLoading } = useQuery<ReadyOrder[]>({
@@ -146,7 +148,16 @@ export default function PedidosPage() {
 
   return (
     <div className="p-6 md:p-8 h-full overflow-auto">
-      <h1 className="font-jakarta text-2xl font-extrabold text-brand-900 mb-6">Pedidos de hoy</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-jakarta text-2xl font-extrabold text-brand-900">Pedidos de hoy</h1>
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-colors"
+        >
+          <Plus size={16} />
+          Nuevo pedido
+        </button>
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -189,6 +200,7 @@ export default function PedidosPage() {
           ))}
         </div>
       )}
+      <CreateOrderSheet open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
