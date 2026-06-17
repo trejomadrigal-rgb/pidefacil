@@ -356,8 +356,10 @@ jobs:
           sudo docker volume rm api_evolution_instances api_evolution_store 2>/dev/null || true
           echo "--- Containers + volumes cleaned ---"
 
-          # v1.4.8 pinned — v2.x tiene Baileys roto (/instance/create devuelve 404)
-          LATEST_TAG="v1.4.8"
+          # 1.8.3 — versión más reciente del 1.x. v1.4.8 retorna "Authentication error"
+          # consistentemente. 1.8.3 puede tener el bug corregido.
+          # v2.x (latest) tiene Baileys roto (/instance/create devuelve 404)
+          LATEST_TAG="1.8.3"
           echo "Evolution API tag a usar: ${LATEST_TAG}"
 
           # Start Redis + Evolution API (bridge mode, port 18080→8080)
