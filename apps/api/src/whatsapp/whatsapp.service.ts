@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -59,6 +59,7 @@ const QR_TTL_MS = 60_000;
 
 @Injectable()
 export class WhatsappService {
+  private readonly logger = new Logger(WhatsappService.name);
   private readonly apiUrl: string;
   private readonly apiKey: string;
   private readonly appUrl: string;
@@ -199,10 +200,17 @@ export class WhatsappService {
       where: { id: order.businessId },
       select: { name: true, slug: true, whatsappSession: true },
     });
-    if (!biz?.whatsappSession) return;
+
+    if (!biz?.whatsappSession) {
+      this.logger.warn(`[WA] Pedido #${order.orderNumber}: negocio sin whatsappSession`);
+      return;
+    }
 
     const state = await this.getConnectionState(order.businessId);
-    if (state !== 'open') return;
+    if (state !== 'open') {
+      this.logger.warn(`[WA] Pedido #${order.orderNumber}: sesión no abierta (estado=${state})`);
+      return;
+    }
 
     const digits = order.customerPhone.replace(/\D/g, '');
     const phone = digits.length === 10 ? `52${digits}` : digits;
@@ -246,6 +254,44 @@ export class WhatsappService {
       text = buildMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
     }
 
-    await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
+    try {
+      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
+      this.logger.log(`[WA] ✅ Pedido #${order.orderNumber} → ${newStatus} enviado a ${phone}`);
+    } catch (err) {
+      this.logger.error(`[WA] ❌ Pedido #${order.orderNumber} → ${newStatus} FALLÓ para ${phone}: ${(err as Error)?.message}`);
+      throw err;
+    }
+  }
+
+  async sendTestMessage(businessId: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+    const biz = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true, whatsappSession: true },
+    });
+
+    if (!biz?.whatsappSession) {
+      return { ok: false, error: 'WhatsApp no configurado. Conecta primero tu cuenta.' };
+    }
+
+    const state = await this.getConnectionState(businessId);
+    if (state !== 'open') {
+      return { ok: false, error: `Sesión no activa (estado: ${state}). Vuelve a conectar WhatsApp.` };
+    }
+
+    const digits = phone.replace(/\D/g, '');
+    const normalized = digits.length === 10 ? `52${digits}` : digits;
+
+    try {
+      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, {
+        number: normalized,
+        text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.`,
+      });
+      this.logger.log(`[WA] Mensaje de prueba enviado a ${normalized}`);
+      return { ok: true };
+    } catch (err) {
+      const msg = (err as Error)?.message ?? 'Error desconocido';
+      this.logger.error(`[WA] Mensaje de prueba FALLÓ para ${normalized}: ${msg}`);
+      return { ok: false, error: msg };
+    }
   }
 }

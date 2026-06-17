@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Post, BadRequestException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -32,6 +32,15 @@ export class WhatsappController {
   async disconnect(@CurrentUser() user: CurrentUserPayload) {
     await this.whatsappService.disconnect(user.businessId);
     return { status: 'disconnected' };
+  }
+
+  @Post('test')
+  async sendTest(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: { phone: string },
+  ) {
+    if (!body?.phone) throw new BadRequestException('Se requiere el número de teléfono');
+    return this.whatsappService.sendTestMessage(user.businessId, body.phone);
   }
 }
 

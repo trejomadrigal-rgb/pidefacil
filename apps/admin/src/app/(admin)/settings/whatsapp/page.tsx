@@ -1,12 +1,15 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import {
   useWhatsappStatus,
   useWhatsappQr,
   useConnectWhatsapp,
   useDisconnectWhatsapp,
 } from '@/hooks/use-whatsapp';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 const MESSAGE_PREVIEWS = [
   { emoji: '✅', label: 'Al confirmar', text: 'Pedido #42 confirmado — Ya lo estamos preparando. 🍳' },
@@ -26,6 +29,26 @@ export default function WhatsappPage() {
   const { data: qrData } = useWhatsappQr(isConnecting);
   const connect = useConnectWhatsapp();
   const disconnect = useDisconnectWhatsapp();
+
+  const [testPhone, setTestPhone] = useState('');
+  const [testLoading, setTestLoading] = useState(false);
+
+  const handleTest = async () => {
+    if (!testPhone.trim()) return;
+    setTestLoading(true);
+    try {
+      const res = await api.post<{ ok: boolean; error?: string }>('/admin/whatsapp/test', { phone: testPhone.trim() });
+      if (res.data.ok) {
+        toast.success('✅ Mensaje enviado — revisa tu WhatsApp');
+      } else {
+        toast.error(res.data.error ?? 'No se pudo enviar el mensaje');
+      }
+    } catch {
+      toast.error('Error al conectar con el servidor');
+    } finally {
+      setTestLoading(false);
+    }
+  };
 
   const handleConnect = async () => {
     await connect.mutateAsync();
@@ -127,6 +150,32 @@ export default function WhatsappPage() {
                 className="text-xs text-red-500 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-50"
               >
                 {disconnect.isPending ? 'Desconectando...' : 'Desconectar'}
+              </button>
+            </div>
+          </div>
+
+          {/* Mensaje de prueba */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+              Probar envío
+            </p>
+            <p className="text-sm text-gray-500 mb-3">
+              Envía un mensaje de prueba para verificar que WhatsApp funciona correctamente.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="tel"
+                placeholder="Ej. 9991234567"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-300"
+              />
+              <button
+                onClick={handleTest}
+                disabled={testLoading || !testPhone.trim()}
+                className="bg-green-500 text-white text-sm font-bold px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-green-600 transition-colors whitespace-nowrap"
+              >
+                {testLoading ? 'Enviando…' : 'Enviar prueba'}
               </button>
             </div>
           </div>

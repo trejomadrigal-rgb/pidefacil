@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -27,6 +27,8 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
@@ -182,7 +184,9 @@ export class OrdersService {
         customerPhone: order.customerPhone,
       },
       newStatus,
-    ).catch(() => {});
+    ).catch((err: unknown) => {
+      this.logger.error(`WhatsApp sendStatusMessage falló para pedido #${order.orderNumber}: ${(err as Error)?.message}`);
+    });
 
     return this.findOne(id, businessId);
   }
