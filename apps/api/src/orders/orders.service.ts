@@ -389,6 +389,18 @@ export class OrdersService {
       total: Number(order.total),
     }).catch(() => {});
 
+    this.whatsappService.sendStatusMessage(
+      {
+        businessId: dto.businessId,
+        orderNumber: order.orderNumber,
+        customerName: dto.customer.name,
+        customerPhone: dto.customer.phone,
+      },
+      OrderStatus.NEW,
+    ).catch((err: unknown) => {
+      this.logger.error(`[WA] NEW msg falló para pedido #${order.orderNumber}: ${(err as Error)?.message}`);
+    });
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,

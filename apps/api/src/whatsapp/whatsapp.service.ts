@@ -4,6 +4,7 @@ import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const WHATSAPP_STATUSES = new Set<OrderStatus>([
+  OrderStatus.NEW,
   OrderStatus.CONFIRMED,
   OrderStatus.READY,
   OrderStatus.OUT_FOR_DELIVERY,
@@ -11,6 +12,15 @@ const WHATSAPP_STATUSES = new Set<OrderStatus>([
   OrderStatus.CANCELLED,
   OrderStatus.REJECTED,
 ]);
+
+function buildNewOrderMessage(folio: string, name: string, business: string, statusUrl: string): string {
+  return (
+    `📩 *Pedido #${folio} recibido*\n\n` +
+    `¡Hola ${name}! Recibimos tu pedido en *${business}*.\n` +
+    `Pronto te llamaremos para confirmarlo. 📞\n\n` +
+    `👉 Ver tu pedido:\n${statusUrl}`
+  );
+}
 
 function buildConfirmedMessage(
   folio: string,
@@ -34,7 +44,7 @@ function buildConfirmedMessage(
 
   return (
     `✅ *Pedido #${folio} confirmado*\n\n` +
-    `¡Hola ${name}! Tu pedido en *${business}* fue recibido.\n\n` +
+    `¡Hola ${name}! Tu pedido en *${business}* fue confirmado.\n\n` +
     `🛒 *Tu pedido:*\n${itemLines}\n\n` +
     `💰 *Total: $${total.toFixed(2)}*${payLine}` +
     transferNote +
@@ -43,8 +53,6 @@ function buildConfirmedMessage(
 }
 
 const STATUS_MESSAGES: Partial<Record<OrderStatus, (folio: string, name: string, business: string, statusUrl: string) => string>> = {
-  [OrderStatus.READY]: (f, _n, b, u) =>
-    `🍽️ *Pedido #${f} listo*\n\n¡Tu pedido en *${b}* está listo para recoger!\n\n👉 ${u}`,
   [OrderStatus.OUT_FOR_DELIVERY]: (f, _n, b, u) =>
     `🚗 *Pedido #${f} en camino*\n\nTu pedido de *${b}* ya va en camino. ¡Prepárate!\n\n👉 ${u}`,
   [OrderStatus.DELIVERED]: (f, n, b, _u) =>
@@ -223,7 +231,9 @@ export class WhatsappService {
 
     let text: string;
 
-    if (newStatus === OrderStatus.CONFIRMED) {
+    if (newStatus === OrderStatus.NEW) {
+      text = buildNewOrderMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
+    } else if (newStatus === OrderStatus.CONFIRMED) {
       const fullOrder = await this.prisma.order.findFirst({
         where: { businessId: order.businessId, orderNumber: order.orderNumber },
         select: {
@@ -250,6 +260,15 @@ export class WhatsappService {
         fullOrder?.customPaymentMethod?.requiresConfirmation ?? false,
         statusUrl,
       );
+    } else if (newStatus === OrderStatus.READY) {
+      const readyOrder = await this.prisma.order.findFirst({
+        where: { businessId: order.businessId, orderNumber: order.orderNumber },
+        select: { deliveryType: true },
+      });
+      const isDelivery = readyOrder?.deliveryType === 'DELIVERY';
+      text = isDelivery
+        ? `📦 *Pedido #${order.orderNumber} listo*\n\nTu pedido de *${biz.name}* está listo y pronto saldrá a entrega. 🛵\n\n👉 Ver tu pedido:\n${statusUrl}`
+        : `🛍️ *Pedido #${order.orderNumber} listo para recoger*\n\n¡Tu pedido en *${biz.name}* está listo! Pasa a recogerlo cuando quieras. 🙌\n\n👉 Ver tu pedido:\n${statusUrl}`;
     } else {
       const buildMessage = STATUS_MESSAGES[newStatus];
       if (!buildMessage) return;
