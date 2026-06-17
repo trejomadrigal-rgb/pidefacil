@@ -346,12 +346,13 @@ jobs:
 
           cd apps/api
 
-          # Clean up previous evolution containers
+          # Clean up previous evolution containers + volumes (token registry contaminado)
           printf "EVOLUTION_API_KEY=x\nDATABASE_CONNECTION_URI=x\n" > .env.whatsapp.tmp
-          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp.tmp down --remove-orphans 2>/dev/null || true
+          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp.tmp down --volumes --remove-orphans 2>/dev/null || true
           rm -f .env.whatsapp.tmp
           sudo docker ps -a --filter "name=evolution" -q | xargs -r sudo docker rm -f 2>/dev/null || true
-          echo "--- Containers cleaned ---"
+          sudo docker volume rm api_evolution_instances api_evolution_store 2>/dev/null || true
+          echo "--- Containers + volumes cleaned ---"
 
           # v1.4.8 pinned — v2.x tiene Baileys roto (/instance/create devuelve 404)
           LATEST_TAG="v1.4.8"
