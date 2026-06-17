@@ -119,21 +119,9 @@ export class WhatsappService {
     await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: false }).catch(() => {});
     this.qrStore.delete(biz.slug);
 
-    const payload: Record<string, unknown> = {
-      instanceName: biz.slug,
-      qrcode: true,
-      integration: 'WHATSAPP-BAILEYS',
-    };
-
-    // Evolution API v2 delivers QR codes via webhook. Configure it when APP_URL is available.
-    if (this.appUrl) {
-      payload.webhook = {
-        url: `${this.appUrl}/whatsapp/webhook`,
-        enabled: true,
-        webhookByEvents: false,
-        events: ['QRCODE_UPDATED', 'CONNECTION_UPDATE'],
-      };
-    }
+    // v1.4.8: solo instanceName + qrcode. El campo integration es v2.x.
+    // Webhook configurado globalmente vía WEBHOOK_GLOBAL_* en docker-compose.
+    const payload = { instanceName: biz.slug, qrcode: true };
 
     const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
