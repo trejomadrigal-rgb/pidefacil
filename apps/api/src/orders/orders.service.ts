@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, OrderStatus, PaymentMethod } from '@prisma/client';
+import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
@@ -80,6 +80,7 @@ export class OrdersService {
       include: {
         items: { include: { product: { select: { name: true } } } },
         customer: { select: { id: true, name: true, phone: true, notes: true, trustLevel: true } },
+        customPaymentMethod: { select: { requiresConfirmation: true } },
       },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado');
@@ -96,6 +97,11 @@ export class OrdersService {
       subtotal: Number(order.subtotal),
       total: Number(order.total),
       createdAt: order.createdAt,
+      paymentMethodLabel: order.paymentMethodLabel ?? null,
+      isPaid: order.isPaid,
+      customPaymentMethod: order.customPaymentMethod
+        ? { requiresConfirmation: order.customPaymentMethod.requiresConfirmation }
+        : null,
       items: order.items.map((i) => ({
         name: i.product.name,
         quantity: i.quantity,
@@ -118,11 +124,14 @@ export class OrdersService {
   async updateStatus(id: string, businessId: string, newStatus: OrderStatus): Promise<OrderDetailDto> {
     // Non-atomic check-then-update: two concurrent requests could both pass the transition
     // check and both write. Acceptable for MVP; fix with optimistic locking post-pilot.
-    const order = await this.prisma.order.findFirst({ where: { id, businessId } });
+    const order = await this.prisma.order.findFirst({
+      where: { id, businessId },
+      include: { customPaymentMethod: { select: { requiresConfirmation: true } } },
+    });
     if (!order) throw new NotFoundException('Pedido no encontrado');
 
     if (newStatus === OrderStatus.OUT_FOR_DELIVERY) {
-      if (order.paymentMethod !== PaymentMethod.CASH && !order.isPaid) {
+      if (order.customPaymentMethod?.requiresConfirmation && !order.isPaid) {
         throw new BadRequestException(
           'El pedido requiere confirmación de pago antes de salir a entrega',
         );
@@ -397,7 +406,9 @@ export class OrdersService {
         id: true, orderNumber: true, status: true, deliveryType: true,
         subtotal: true, discount: true, deliveryFee: true, total: true,
         paymentMethod: true, transferConfirmed: true, assignedToId: true,
+        paymentMethodLabel: true,
         createdAt: true,
+        customPaymentMethod: { select: { requiresConfirmation: true } },
         items: {
           select: {
             quantity: true, subtotal: true,
@@ -419,6 +430,8 @@ export class OrdersService {
       paymentMethod: order.paymentMethod,
       transferConfirmed: order.transferConfirmed,
       assignedToId: order.assignedToId,
+      paymentMethodLabel: order.paymentMethodLabel ?? null,
+      requiresConfirmation: order.customPaymentMethod?.requiresConfirmation ?? false,
       items: order.items.map((i) => ({
         name: i.product.name,
         quantity: i.quantity,
@@ -438,9 +451,13 @@ export class OrdersService {
 
   async confirmTransfer(orderId: string, businessId: string) {
     const order = await this.prisma.order.findFirst({
-      where: { id: orderId, businessId, paymentMethod: 'TRANSFER' },
+      where: { id: orderId, businessId },
+      include: { customPaymentMethod: { select: { requiresConfirmation: true } } },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (!order.customPaymentMethod?.requiresConfirmation) {
+      throw new BadRequestException('Esta forma de pago no requiere confirmación de pago');
+    }
     if (order.transferConfirmed) {
       throw new BadRequestException('La transferencia ya fue confirmada');
     }

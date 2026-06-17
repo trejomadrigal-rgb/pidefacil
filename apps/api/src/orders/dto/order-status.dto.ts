@@ -13,6 +13,8 @@ export class OrderStatusDto {
   paymentMethod!: string | null;
   transferConfirmed!: boolean;
   assignedToId!: string | null;
+  paymentMethodLabel!: string | null;
+  requiresConfirmation!: boolean;
   items!: OrderItemStatusDto[];
   createdAt!: Date;
 }
