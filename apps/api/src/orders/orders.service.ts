@@ -270,6 +270,26 @@ export class OrdersService {
     const subtotal = resolvedItems.reduce((sum, i) => sum + i.subtotal, 0);
     const total = subtotal; // No delivery fee or discount at order creation time
 
+    // Validate payment method if business has any active methods
+    const activeMethodsCount = await this.prisma.businessPaymentMethod.count({
+      where: { businessId: dto.businessId, isActive: true },
+    });
+
+    let resolvedPaymentMethod: { id: string; label: string } | null = null;
+
+    if (activeMethodsCount > 0) {
+      if (!dto.paymentMethodId) {
+        throw new BadRequestException('Selecciona una forma de pago para continuar');
+      }
+      resolvedPaymentMethod = await this.prisma.businessPaymentMethod.findFirst({
+        where: { id: dto.paymentMethodId, businessId: dto.businessId, isActive: true },
+        select: { id: true, label: true },
+      });
+      if (!resolvedPaymentMethod) {
+        throw new BadRequestException('Forma de pago no válida');
+      }
+    }
+
     // Generate orderNumber inside transaction (SERIALIZABLE to prevent duplicate orderNumber on concurrent inserts)
     const order = await this.prisma
       .$transaction(
@@ -299,6 +319,8 @@ export class OrdersService {
               deliveryAddress,
               branchId: dto.branchId ?? null,
               paymentMethod: dto.paymentMethod ?? null,
+              paymentMethodId: resolvedPaymentMethod?.id ?? null,
+              paymentMethodLabel: resolvedPaymentMethod?.label ?? null,
               items: {
                 create: resolvedItems.map((item) => ({
                   productId: item.productId,
