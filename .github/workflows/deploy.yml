@@ -464,9 +464,21 @@ jobs:
           sudo docker inspect "$EVO_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -E 'AUTHENTICATION|DATABASE|WEBHOOK|SERVER_URL' | sed 's/=.*/=***/' || echo "(no se pudo inspeccionar)"
 
           echo ""
-          echo "=== Conectividad WhatsApp desde el contenedor ==="
-          sudo docker exec "$EVO_CONTAINER" curl -s --max-time 10 https://web.whatsapp.com -o /dev/null -w "web.whatsapp.com HTTP:%{http_code} time:%{time_total}s\n" 2>&1 || echo "FALLO: no puede alcanzar web.whatsapp.com"
-          sudo docker exec "$EVO_CONTAINER" nslookup g.whatsapp.net 2>&1 | grep -E "Address|Name|error" | head -5 || echo "DNS fallo"
+          echo "=== Env vars críticos del contenedor (sin masking) ==="
+          sudo docker inspect "$EVO_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -E '^(AUTHENTICATION_INSTANCE_MODE|AUTHENTICATION_TYPE|DATABASE_ENABLED|DATABASE_PROVIDER|DEL_INSTANCE|QRCODE_LIMIT)=' || echo "(no encontrados)"
+
+          echo ""
+          echo "=== Conectividad internet desde contenedor (Node.js TCP) ==="
+          sudo docker exec "$EVO_CONTAINER" node -e "
+const net = require('net');
+const s = net.createConnection(443, 'web.whatsapp.com');
+s.setTimeout(8000);
+s.on('connect', () => { console.log('TCP OK: web.whatsapp.com:443 accesible'); s.destroy(); });
+s.on('error', e => console.error('TCP ERROR:', e.code, e.message));
+s.on('timeout', () => { console.log('TCP TIMEOUT after 8s'); s.destroy(); });
+" 2>&1 || echo "Node exec fallo"
+          echo "DNS g.whatsapp.net:"
+          sudo docker exec "$EVO_CONTAINER" nslookup g.whatsapp.net 2>&1 | grep -E "Address|Name|error" | head -5
 
           echo ""
           echo "=== Estado actual: instancias existentes ==="
