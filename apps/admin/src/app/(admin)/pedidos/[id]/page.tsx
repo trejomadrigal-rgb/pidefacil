@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOrderById, confirmTransfer, updateOrderStatus, type OrderDetail } from '@/api/orders';
+import { toast } from 'sonner';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   NEW:             { label: 'Nuevo',          color: 'bg-blue-100 text-blue-700' },
@@ -97,8 +98,13 @@ export default function OrderDetailPage() {
   const { mutate: doUpdateStatus, isPending: updatingStatus, variables: pendingVars } = useMutation({
     mutationFn: (status: string) => updateOrderStatus(id, status),
     onSuccess: () => {
+      toast.success('Estatus actualizado');
       qc.invalidateQueries({ queryKey: ['order', id] });
       qc.invalidateQueries({ queryKey: ['orders'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'No se pudo actualizar el estatus');
     },
   });
 

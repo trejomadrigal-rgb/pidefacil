@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOrders, updateOrderStatus, type ReadyOrder } from '@/api/orders';
 import { Package, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   NEW:              { label: 'Nuevo',          color: 'bg-blue-100 text-blue-700' },
@@ -130,6 +131,11 @@ export default function PedidosPage() {
   const { mutate: advance } = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => updateOrderStatus(id, status),
     onMutate: ({ id }) => setLoadingId(id),
+    onSuccess: () => toast.success('Estatus actualizado'),
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'No se pudo actualizar el estatus');
+    },
     onSettled: () => {
       setLoadingId(null);
       qc.invalidateQueries({ queryKey: ['orders'] });
