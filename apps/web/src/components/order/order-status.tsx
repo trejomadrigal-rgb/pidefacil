@@ -8,7 +8,7 @@ import { formatPrice } from '@/lib/utils';
 import { ChatPanel } from './chat-panel';
 
 const TERMINAL_STATUSES = ['DELIVERED', 'CANCELLED', 'REJECTED', 'FINISHED'];
-const POLL_INTERVAL = 15_000;
+const POLL_INTERVAL = 5_000;
 
 const STATUS_CONFIG: Record<
   string,
