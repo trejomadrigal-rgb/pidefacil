@@ -34,7 +34,7 @@ export interface OrderDetail {
   discount: number;
   notes: string | null;
   createdAt: string;
-  items: { id: string; quantity: number; price: number; subtotal: number; product: { name: string } }[];
+  items: { name: string; quantity: number; price: number; subtotal: number; notes: string | null }[];
   customer: { id: string; name: string; phone: string; notes: string | null; trustLevel: string } | null;
   customPaymentMethod: { requiresConfirmation: boolean } | null;
 }
@@ -54,6 +54,10 @@ export const getPendingTransferOrders = (): Promise<ReadyOrder[]> =>
 // GET /orders?status=X — all active orders (today), optional status filter
 export const getOrders = (status?: string): Promise<ReadyOrder[]> =>
   api.get(`/orders${status ? `?status=${status}` : ''}`).then((r) => r.data);
+
+// PATCH /orders/:id/status — advance order to next status
+export const updateOrderStatus = (id: string, status: string): Promise<OrderDetail> =>
+  api.patch(`/orders/${id}/status`, { status }).then((r) => r.data);
 
 // PATCH /orders/:id/confirm-transfer — confirm bank transfer and move order to IN_PREPARATION
 export const confirmTransfer = (orderId: string) =>

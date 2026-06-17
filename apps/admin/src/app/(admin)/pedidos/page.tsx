@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getOrders, type ReadyOrder } from '@/api/orders';
-import { Package } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getOrders, updateOrderStatus, type ReadyOrder } from '@/api/orders';
+import { Package, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -18,56 +18,125 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   CANCELLED:        { label: 'Cancelado',      color: 'bg-red-100 text-red-600' },
 };
 
+// Primary next action for each status
+function getQuickAction(order: ReadyOrder): { label: string; nextStatus: string; color: string } | null {
+  switch (order.status) {
+    case 'NEW':
+      return { label: 'Aceptar', nextStatus: 'UNDER_REVIEW', color: 'bg-brand-500 text-white' };
+    case 'UNDER_REVIEW':
+      return { label: 'Confirmar', nextStatus: 'CONFIRMED', color: 'bg-indigo-500 text-white' };
+    case 'CONFIRMED':
+      return { label: 'En preparación', nextStatus: 'IN_PREPARATION', color: 'bg-orange-500 text-white' };
+    case 'IN_PREPARATION':
+      return { label: 'Listo ✓', nextStatus: 'READY', color: 'bg-green-500 text-white' };
+    case 'READY':
+      if (order.deliveryType === 'DELIVERY') {
+        return { label: 'Salió', nextStatus: 'OUT_FOR_DELIVERY', color: 'bg-purple-500 text-white' };
+      }
+      return { label: 'Entregado ✓', nextStatus: 'DELIVERED', color: 'bg-gray-600 text-white' };
+    case 'OUT_FOR_DELIVERY':
+      return { label: 'Entregado ✓', nextStatus: 'DELIVERED', color: 'bg-gray-600 text-white' };
+    default:
+      return null;
+  }
+}
+
 const TABS = [
-  { label: 'Activos',         status: undefined },
-  { label: 'Nuevos',          status: 'NEW' },
-  { label: 'En preparación',  status: 'IN_PREPARATION' },
-  { label: 'Listos',          status: 'READY' },
-  { label: 'En camino',       status: 'OUT_FOR_DELIVERY' },
+  { label: 'Activos',        status: undefined },
+  { label: 'Nuevos',         status: 'NEW' },
+  { label: 'En preparación', status: 'IN_PREPARATION' },
+  { label: 'Listos',         status: 'READY' },
+  { label: 'En camino',      status: 'OUT_FOR_DELIVERY' },
 ];
 
-function OrderCard({ order }: { order: ReadyOrder }) {
+function OrderCard({
+  order,
+  loadingId,
+  onAdvance,
+}: {
+  order: ReadyOrder;
+  loadingId: string | null;
+  onAdvance: (id: string, nextStatus: string) => void;
+}) {
   const cfg = STATUS_CONFIG[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-600' };
   const time = new Date(order.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const action = getQuickAction(order);
+  const isLoading = loadingId === order.id;
 
   return (
-    <Link
-      href={`/pedidos/${order.id}`}
-      className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow"
-    >
-      <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center flex-shrink-0">
-        <Package size={18} className="text-brand-500" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-brand-900 text-sm">#{order.orderNumber}</span>
-          <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', cfg.color)}>
-            {cfg.label}
-          </span>
+    <div className="bg-white rounded-2xl p-4 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center flex-shrink-0">
+          <Package size={18} className="text-brand-500" />
         </div>
-        <p className="text-sm text-gray-700 truncate mt-0.5">{order.customerName}</p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {order.deliveryType === 'DELIVERY' ? '🛵 Delivery' : '🏠 Recoger'} · {order.itemCount} producto{order.itemCount !== 1 ? 's' : ''}
-        </p>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-brand-900 text-sm">#{order.orderNumber}</span>
+            <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-bold', cfg.color)}>
+              {cfg.label}
+            </span>
+          </div>
+          <p className="text-sm text-gray-700 truncate mt-0.5">{order.customerName}</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {order.deliveryType === 'DELIVERY' ? '🛵 Delivery' : '🏠 Recoger'} · {order.itemCount} producto{order.itemCount !== 1 ? 's' : ''} · {time}
+          </p>
+        </div>
+
+        <div className="text-right flex-shrink-0">
+          <p className="font-black text-brand-500 text-base">${order.total.toFixed(2)}</p>
+        </div>
       </div>
 
-      <div className="text-right flex-shrink-0">
-        <p className="font-black text-brand-500 text-base">${order.total.toFixed(2)}</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">{time}</p>
+      {/* Actions row */}
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+        <Link
+          href={`/pedidos/${order.id}`}
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          Ver detalle <ChevronRight size={12} />
+        </Link>
+
+        <div className="ml-auto">
+          {action && (
+            <button
+              disabled={isLoading}
+              onClick={() => onAdvance(order.id, action.nextStatus)}
+              className={cn(
+                'px-4 py-1.5 rounded-xl text-xs font-bold transition-opacity disabled:opacity-50',
+                action.color,
+              )}
+            >
+              {isLoading ? '…' : action.label}
+            </button>
+          )}
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
 export default function PedidosPage() {
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const { data: orders = [], isLoading } = useQuery<ReadyOrder[]>({
     queryKey: ['orders', activeTab],
     queryFn: () => getOrders(activeTab),
     refetchInterval: 30_000,
   });
+
+  const { mutate: advance } = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => updateOrderStatus(id, status),
+    onMutate: ({ id }) => setLoadingId(id),
+    onSettled: () => {
+      setLoadingId(null);
+      qc.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+
+  const handleAdvance = (id: string, nextStatus: string) => advance({ id, status: nextStatus });
 
   return (
     <div className="p-6 md:p-8 h-full overflow-auto">
@@ -105,7 +174,12 @@ export default function PedidosPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard
+              key={order.id}
+              order={order}
+              loadingId={loadingId}
+              onAdvance={handleAdvance}
+            />
           ))}
         </div>
       )}
