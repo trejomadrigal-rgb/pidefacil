@@ -62,3 +62,23 @@ export const updateOrderStatus = (id: string, status: string): Promise<OrderDeta
 // PATCH /orders/:id/confirm-transfer — confirm bank transfer and move order to IN_PREPARATION
 export const confirmTransfer = (orderId: string) =>
   api.patch(`/orders/${orderId}/confirm-transfer`).then((r) => r.data);
+
+export interface CreateManualOrderPayload {
+  businessId: string;
+  customer: { name: string; phone: string };
+  deliveryType: 'PICKUP' | 'DELIVERY';
+  address?: { street: string; references?: string };
+  notes?: string;
+  paymentMethodId?: string;
+  items: { productId: string; variantId?: string; quantity: number }[];
+}
+
+export interface CreateManualOrderResult {
+  id: string;
+  orderNumber: string;
+  status: string;
+}
+
+// POST /public/orders — crear pedido manual desde admin (mismo endpoint que el QR)
+export const createManualOrder = (payload: CreateManualOrderPayload): Promise<CreateManualOrderResult> =>
+  api.post('/public/orders', payload).then((r) => r.data);
