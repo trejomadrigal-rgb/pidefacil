@@ -369,12 +369,28 @@ jobs:
 
           # Connect evolution-api to Coolify's internal network so it can resolve the PG hostname
           if [ -n "${PG_NETWORK}" ]; then
-            sudo docker network connect "${PG_NETWORK}" api-evolution-api-1
+            sudo docker network connect "${PG_NETWORK}" api-evolution-api-1 2>/dev/null || true
             echo "Connected to Coolify network: ${PG_NETWORK}"
-            sudo docker restart api-evolution-api-1
-            echo "Waiting for restart..."
-            sleep 20
           fi
+
+          # Ensure the compose network has internet access (masquerade for Docker bridge)
+          # The compose network may not have NAT masquerade on this VPS — add it explicitly
+          COMPOSE_NET_ID=$(sudo docker inspect api-evolution-api-1 \
+            --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
+            | tr ' ' '\n' | grep -v '^$' | grep -v "${PG_NETWORK}" | head -1)
+          COMPOSE_SUBNET=$(sudo docker network inspect "${COMPOSE_NET_ID}" \
+            --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}' 2>/dev/null || true)
+          echo "Compose network: ${COMPOSE_NET_ID}, subnet: ${COMPOSE_SUBNET}"
+          if [ -n "${COMPOSE_SUBNET}" ]; then
+            sudo iptables -t nat -I POSTROUTING 1 -s "${COMPOSE_SUBNET}" ! -d "${COMPOSE_SUBNET}" -j MASQUERADE 2>/dev/null || true
+            echo "Added iptables masquerade for ${COMPOSE_SUBNET}"
+          fi
+          # Blanket Docker masquerade (covers 172.16–31, 192.168.x)
+          sudo iptables -t nat -I POSTROUTING 1 -s 172.16.0.0/12 ! -d 172.16.0.0/12 -j MASQUERADE 2>/dev/null || true
+
+          sudo docker restart api-evolution-api-1
+          echo "Waiting for restart after network + iptables fix..."
+          sleep 25
 
           curl -sf -H "apikey: ${EVOLUTION_API_KEY}" \
             http://localhost:18080/instance/fetchInstances \
