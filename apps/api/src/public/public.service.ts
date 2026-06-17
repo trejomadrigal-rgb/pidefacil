@@ -275,6 +275,44 @@ export class PublicService {
     });
   }
 
+  async getOrderStatus(slug: string, orderNumber: string) {
+    const business = await this.prisma.business.findUnique({ where: { slug } });
+    if (!business) throw new NotFoundException('Negocio no encontrado');
+
+    const order = await this.prisma.order.findFirst({
+      where: { businessId: business.id, orderNumber },
+      select: {
+        id: true, orderNumber: true, status: true, deliveryType: true,
+        total: true, paymentMethod: true, transferConfirmed: true, assignedToId: true,
+        paymentMethodLabel: true, createdAt: true,
+        customPaymentMethod: { select: { requiresConfirmation: true } },
+        items: {
+          select: { quantity: true, subtotal: true, product: { select: { name: true } } },
+        },
+      },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total: Number(order.total),
+      deliveryType: order.deliveryType,
+      paymentMethod: order.paymentMethod,
+      transferConfirmed: order.transferConfirmed,
+      assignedToId: order.assignedToId,
+      paymentMethodLabel: order.paymentMethodLabel ?? null,
+      requiresConfirmation: order.customPaymentMethod?.requiresConfirmation ?? false,
+      createdAt: order.createdAt,
+      items: order.items.map((i) => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        subtotal: Number(i.subtotal),
+      })),
+    };
+  }
+
   async invalidateCache(slug: string): Promise<void> {
     await this.redis.del(
       `public:business:${slug}`,

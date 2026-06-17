@@ -51,4 +51,12 @@ export class PublicController {
   getPaymentMethods(@Param('slug') slug: string) {
     return this.publicService.getPaymentMethods(slug);
   }
+
+  @Get(':slug/orders/:orderNumber')
+  getOrderStatus(
+    @Param('slug') slug: string,
+    @Param('orderNumber') orderNumber: string,
+  ) {
+    return this.publicService.getOrderStatus(slug, orderNumber);
+  }
 }
