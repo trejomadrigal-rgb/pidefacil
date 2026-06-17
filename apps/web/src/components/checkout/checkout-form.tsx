@@ -43,6 +43,36 @@ interface CheckoutFormProps {
   onSubmitted?: () => void;
 }
 
+const NOTE_TAGS = [
+  'Sin picante',
+  'Sin cebolla',
+  'Sin cilantro',
+  'Extra salsa',
+  'Sin chile',
+  'Poca sal',
+  'Sin queso',
+  'Para llevar',
+];
+
+function toggleTag(current: string | undefined, tag: string): string {
+  const value = current ?? '';
+  const lower = value.toLowerCase();
+  const tagLower = tag.toLowerCase();
+
+  if (lower.includes(tagLower)) {
+    return value
+      .replace(new RegExp(`,?\\s*${tag}\\s*,?`, 'i'), (match) => {
+        if (match.startsWith(',') && match.endsWith(',')) return ', ';
+        return '';
+      })
+      .replace(/^,\s*/, '')
+      .replace(/,\s*$/, '')
+      .trim();
+  }
+
+  return value.trim() ? `${value.trim()}, ${tag}` : tag;
+}
+
 export function CheckoutForm({ slug, businessId, businessPhone, paymentMethods, onSubmitted }: CheckoutFormProps) {
   const { items, total, clearCart, branchId } = useCartStore();
   const router = useRouter();
@@ -61,6 +91,7 @@ export function CheckoutForm({ slug, businessId, businessPhone, paymentMethods, 
   });
 
   const deliveryType = watch('deliveryType');
+  const notesValue = watch('notes');
 
   // Pre-fill from localStorage on mount
   useEffect(() => {
@@ -296,11 +327,31 @@ export function CheckoutForm({ slug, businessId, businessPhone, paymentMethods, 
 
       {/* Notes */}
       <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+        <p className="text-xs text-gray-400 mb-2">Personaliza tu pedido</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {NOTE_TAGS.map((tag) => {
+            const isActive = (notesValue ?? '').toLowerCase().includes(tag.toLowerCase());
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setValue('notes', toggleTag(notesValue, tag), { shouldValidate: false })}
+                className={`text-xs rounded-full px-3 py-1 transition-colors ${
+                  isActive
+                    ? 'border border-brand-500 bg-brand-50 text-brand-700'
+                    : 'border border-gray-200 bg-white text-gray-600'
+                }`}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
         <textarea
           {...register('notes')}
-          placeholder="Notas del pedido (opcional)"
+          placeholder="O escribe tus indicaciones..."
           rows={2}
-          className="w-full text-sm resize-none focus:outline-none"
+          className="w-full text-sm resize-none focus:outline-none text-gray-700 placeholder:text-gray-400"
         />
       </div>
 
