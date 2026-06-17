@@ -339,10 +339,12 @@ jobs:
           EVO_DB_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:5432/evolution_api"
           echo "EVO_DB_URL target: evolution_api on ${PG_HOST}"
 
-          # Step 5: Create evolution_api database in PG
+          # Step 5: Drop + recreate evolution_api database (limpia tokens huérfanos)
           sudo docker exec "${PG_CONTAINER}" \
-            psql -U "${PG_USER}" -c "CREATE DATABASE evolution_api;" 2>&1 \
-            | grep -v "already exists" || true
+            psql -U "${PG_USER}" -c "DROP DATABASE IF EXISTS evolution_api;" 2>&1 || true
+          sudo docker exec "${PG_CONTAINER}" \
+            psql -U "${PG_USER}" -c "CREATE DATABASE evolution_api;" 2>&1 || true
+          echo "--- evolution_api DB recreated ---"
 
           cd apps/api
 
