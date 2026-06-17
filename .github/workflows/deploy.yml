@@ -353,10 +353,8 @@ jobs:
           sudo docker ps -a --filter "name=evolution" -q | xargs -r sudo docker rm -f 2>/dev/null || true
           echo "--- Containers cleaned ---"
 
-          # Buscar el tag más reciente de Evolution API en DockerHub
-          LATEST_TAG=$(curl -sf "https://hub.docker.com/v2/repositories/atendai/evolution-api/tags?page_size=50&ordering=-name" \
-            | python3 -c "import sys,json,re; data=json.load(sys.stdin); tags=[t['name'] for t in data.get('results',[]) if re.match(r'^v\d+\.\d+\.\d+\$',t['name'])]; tags.sort(key=lambda t:[int(x) for x in t[1:].split('.')],reverse=True); print(tags[0] if tags else 'latest')" \
-            2>/dev/null || echo "latest")
+          # v1.4.8 pinned — v2.x tiene Baileys roto (/instance/create devuelve 404)
+          LATEST_TAG="v1.4.8"
           echo "Evolution API tag a usar: ${LATEST_TAG}"
 
           # Start Redis + Evolution API (bridge mode, port 18080→8080)
