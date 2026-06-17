@@ -617,4 +617,6 @@ model BusinessPaymentMethod {
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   orders   Order[]
+
+  @@index([businessId])
 }
