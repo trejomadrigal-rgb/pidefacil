@@ -83,15 +83,27 @@ export class WhatsappService {
   }
 
   private async evo<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const res = await fetch(`${this.apiUrl}${path}`, {
-      method,
-      headers: this.headers(),
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) {
-      throw new Error(`Evolution API error: ${res.status} ${res.statusText}`);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(`${this.apiUrl}${path}`, {
+        method,
+        headers: this.headers(),
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`Evolution API error: ${res.status} ${res.statusText}`);
+      }
+      return res.json() as Promise<T>;
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') {
+        throw new Error(`Evolution API timeout: ${this.apiUrl}${path} no respondió en 10s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    return res.json() as Promise<T>;
   }
 
   /** Called by the webhook endpoint when Evolution API POSTs a QRCODE_UPDATED event. */
