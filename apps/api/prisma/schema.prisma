@@ -153,6 +153,8 @@ model Business {
   logoUrl         String?
   coverUrl        String?
   address         String?
+  description     String?
+  hours           String?
   menuColor       String?
   timezone        String         @default("America/Mexico_City")
   status          BusinessStatus @default(ACTIVE)

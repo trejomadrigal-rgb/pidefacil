@@ -1,4 +1,4 @@
-import { IsIn, IsString, IsOptional, MinLength, MaxLength, Matches, IsUrl } from 'class-validator';
+import { IsIn, IsString, IsOptional, MinLength, MaxLength, Matches, IsUrl, ValidateIf } from 'class-validator';
 
 const MENU_COLORS = ['naranja','verde','rojo','azul','morado','rosa','dorado','turquesa'] as const;
 
@@ -17,6 +17,7 @@ export class UpdateBusinessDto {
   slug?: string;
 
   @IsOptional()
+  @ValidateIf(o => !!o.phone)
   @IsString()
   @MinLength(10)
   @MaxLength(20)
@@ -28,10 +29,12 @@ export class UpdateBusinessDto {
   whatsapp?: string;
 
   @IsOptional()
+  @ValidateIf(o => !!o.logoUrl)
   @IsUrl()
   logoUrl?: string;
 
   @IsOptional()
+  @ValidateIf(o => !!o.coverUrl)
   @IsUrl()
   coverUrl?: string;
 
@@ -39,6 +42,16 @@ export class UpdateBusinessDto {
   @IsString()
   @MaxLength(200)
   address?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  hours?: string;
 
   @IsOptional()
   @IsString()
