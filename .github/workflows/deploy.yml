@@ -388,7 +388,8 @@ jobs:
               "data": [
                 {"key": "EVOLUTION_API_URL", "value": "http://api-evolution-api-1:8080", "is_preview": false},
                 {"key": "EVOLUTION_API_KEY", "value": "${{ secrets.EVOLUTION_API_KEY }}", "is_preview": false},
-                {"key": "APP_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+                {"key": "APP_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
+                {"key": "WEB_URL", "value": "http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io", "is_preview": false}
               ]
             }' && echo "✅ Env vars updated"
 

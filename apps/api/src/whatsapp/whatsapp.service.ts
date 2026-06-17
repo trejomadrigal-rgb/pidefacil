@@ -20,6 +20,7 @@ function buildConfirmedMessage(
   total: number,
   paymentMethodLabel: string | null,
   requiresConfirmation: boolean,
+  statusUrl: string,
 ): string {
   const itemLines = items
     .map((i) => `• ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`)
@@ -36,20 +37,21 @@ function buildConfirmedMessage(
     `¡Hola ${name}! Tu pedido en *${business}* fue recibido.\n\n` +
     `🛒 *Tu pedido:*\n${itemLines}\n\n` +
     `💰 *Total: $${total.toFixed(2)}*${payLine}` +
-    transferNote
+    transferNote +
+    `\n\n👉 Ver estado de tu pedido:\n${statusUrl}`
   );
 }
 
-const STATUS_MESSAGES: Partial<Record<OrderStatus, (folio: string, name: string, business: string) => string>> = {
-  [OrderStatus.READY]: (f, _n, b) =>
-    `🍽️ *Pedido #${f} listo*\n\n¡Tu pedido en *${b}* está listo para recoger!`,
-  [OrderStatus.OUT_FOR_DELIVERY]: (f, _n, b) =>
-    `🚗 *Pedido #${f} en camino*\n\nTu pedido de *${b}* ya va en camino. ¡Prepárate!`,
-  [OrderStatus.DELIVERED]: (f, n, b) =>
+const STATUS_MESSAGES: Partial<Record<OrderStatus, (folio: string, name: string, business: string, statusUrl: string) => string>> = {
+  [OrderStatus.READY]: (f, _n, b, u) =>
+    `🍽️ *Pedido #${f} listo*\n\n¡Tu pedido en *${b}* está listo para recoger!\n\n👉 ${u}`,
+  [OrderStatus.OUT_FOR_DELIVERY]: (f, _n, b, u) =>
+    `🚗 *Pedido #${f} en camino*\n\nTu pedido de *${b}* ya va en camino. ¡Prepárate!\n\n👉 ${u}`,
+  [OrderStatus.DELIVERED]: (f, n, b, _u) =>
     `🎉 *Pedido #${f} entregado*\n\n¡Buen provecho, ${n}! Gracias por pedir en *${b}*.`,
-  [OrderStatus.CANCELLED]: (f, _n, b) =>
+  [OrderStatus.CANCELLED]: (f, _n, b, _u) =>
     `❌ *Pedido #${f} cancelado*\n\nLo sentimos, tu pedido en *${b}* fue cancelado. Disculpa el inconveniente.`,
-  [OrderStatus.REJECTED]: (f, _n, b) =>
+  [OrderStatus.REJECTED]: (f, _n, b, _u) =>
     `❌ *Pedido #${f} cancelado*\n\nLo sentimos, tu pedido en *${b}* fue cancelado. Disculpa el inconveniente.`,
 };
 
@@ -60,6 +62,7 @@ export class WhatsappService {
   private readonly apiUrl: string;
   private readonly apiKey: string;
   private readonly appUrl: string;
+  private readonly webUrl: string;
 
   // Instance name → { qr base64, expiry }. Evolution API v2 delivers QR via webhook.
   private readonly qrStore = new Map<string, { qr: string; expiresAt: number }>();
@@ -71,6 +74,7 @@ export class WhatsappService {
     this.apiUrl = this.config.get<string>('EVOLUTION_API_URL') ?? '';
     this.apiKey = this.config.get<string>('EVOLUTION_API_KEY') ?? '';
     this.appUrl = this.config.get<string>('APP_URL') ?? '';
+    this.webUrl = this.config.get<string>('WEB_URL') ?? '';
   }
 
   private headers() {
@@ -193,7 +197,7 @@ export class WhatsappService {
 
     const biz = await this.prisma.business.findUnique({
       where: { id: order.businessId },
-      select: { name: true, whatsappSession: true },
+      select: { name: true, slug: true, whatsappSession: true },
     });
     if (!biz?.whatsappSession) return;
 
@@ -202,6 +206,10 @@ export class WhatsappService {
 
     const digits = order.customerPhone.replace(/\D/g, '');
     const phone = digits.length === 10 ? `52${digits}` : digits;
+
+    const statusUrl = this.webUrl
+      ? `${this.webUrl}/${biz.slug}/pedido/${order.orderNumber}`
+      : '';
 
     let text: string;
 
@@ -230,11 +238,12 @@ export class WhatsappService {
         Number(fullOrder?.total ?? 0),
         fullOrder?.paymentMethodLabel ?? null,
         fullOrder?.customPaymentMethod?.requiresConfirmation ?? false,
+        statusUrl,
       );
     } else {
       const buildMessage = STATUS_MESSAGES[newStatus];
       if (!buildMessage) return;
-      text = buildMessage(order.orderNumber, order.customerName, biz.name);
+      text = buildMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
     }
 
     await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
