@@ -82,9 +82,9 @@ export class WhatsappService {
     return { 'Content-Type': 'application/json', apikey: this.apiKey };
   }
 
-  private async evo<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async evo<T>(method: string, path: string, body?: unknown, timeoutMs = 20_000): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await fetch(`${this.apiUrl}${path}`, {
         method,
@@ -98,7 +98,7 @@ export class WhatsappService {
       return res.json() as Promise<T>;
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') {
-        throw new Error(`Evolution API timeout: ${this.apiUrl}${path} no respondió en 10s`);
+        throw new Error(`Evolution API timeout: ${this.apiUrl}${path} no respondió en ${timeoutMs / 1000}s`);
       }
       throw err;
     } finally {
@@ -135,7 +135,7 @@ export class WhatsappService {
       };
     }
 
-    const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload);
+    const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
 
     // Some Evolution API versions return QR directly in the create response
