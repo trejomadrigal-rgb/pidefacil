@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut, BarChart2, MapPin, DollarSign, MessageSquare, Truck } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut, BarChart2, MapPin, DollarSign, MessageSquare, Truck, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
@@ -13,6 +13,7 @@ import { useUnreadCount } from '@/hooks/use-notifications';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/pedidos', icon: ClipboardList, label: 'Pedidos' },
   { href: '/menus', icon: UtensilsCrossed, label: 'Menús' },
   { href: '/sucursales', icon: MapPin, label: 'Sucursales' },
   { href: '/clientes', icon: Users2, label: 'Clientes' },
