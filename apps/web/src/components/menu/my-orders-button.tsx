@@ -104,7 +104,7 @@ export function MyOrdersButton({ slug }: Props) {
                   Ingresa tu número de celular para ver tus pedidos de hoy.
                 </p>
 
-                <div className="flex gap-2 mb-5">
+                <div className="flex flex-col gap-2 mb-5">
                   <input
                     type="tel"
                     inputMode="numeric"
@@ -113,14 +113,14 @@ export function MyOrdersButton({ slug }: Props) {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500"
                   />
                   <button
                     onClick={handleSearch}
                     disabled={phone.replace(/\D/g, '').length < 10 || loading}
-                    className="bg-brand-500 disabled:opacity-40 text-white rounded-xl px-4 py-3 font-bold text-sm flex-shrink-0"
+                    className="w-full bg-brand-500 disabled:opacity-40 text-white rounded-xl px-4 py-3 font-bold text-sm"
                   >
-                    {loading ? '...' : 'Buscar'}
+                    {loading ? 'Buscando…' : 'Buscar mis pedidos'}
                   </button>
                 </div>
 

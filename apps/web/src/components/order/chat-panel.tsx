@@ -21,6 +21,7 @@ export function ChatPanel({ orderId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!rtdb) return;
     const messagesRef = ref(rtdb, `chats/${orderId}/messages`);
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
@@ -37,7 +38,7 @@ export function ChatPanel({ orderId }: Props) {
   }, [orderId]);
 
   const sendMessage = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !rtdb) return;
     await push(ref(rtdb, `chats/${orderId}/messages`), {
       from: 'CUSTOMER',
       text: text.trim(),
