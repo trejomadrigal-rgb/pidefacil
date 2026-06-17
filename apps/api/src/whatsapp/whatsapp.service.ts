@@ -116,7 +116,7 @@ export class WhatsappService {
     if (!biz) throw new NotFoundException('Negocio no encontrado');
 
     // Remove any existing instance to avoid 409 conflicts on re-connect
-    await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: false }).catch(() => {});
+    await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: true }).catch(() => {});
     this.qrStore.delete(biz.slug);
 
     // v1.4.8: requiere token único por intento. DELETE no libera el token del registro,
@@ -186,7 +186,7 @@ export class WhatsappService {
   async disconnect(businessId: string): Promise<void> {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
     if (biz?.whatsappSession) {
-      await this.evo('DELETE', `/instance/delete/${biz.whatsappSession}`, { deleteFiles: false }).catch(() => {});
+      await this.evo('DELETE', `/instance/delete/${biz.whatsappSession}`, { deleteFiles: true }).catch(() => {});
       this.qrStore.delete(biz.whatsappSession);
       await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: null } });
     }
