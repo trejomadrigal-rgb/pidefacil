@@ -444,45 +444,76 @@ jobs:
           fi
 
           echo ""
-          echo "=== Test A: crear SIN integration field (v1.4.8 compatible) ==="
-          curl -s -X DELETE "http://localhost:18080/instance/delete/wh-test" \
-            -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
-            -d '{"deleteFiles":false}' 2>/dev/null || true
-          sleep 2
-          echo "Respuesta create (sin integration):"
-          RESP_A=$(curl -s -w "\nHTTP:%{http_code}" -X POST "http://localhost:18080/instance/create" \
-            -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
-            -d '{"instanceName":"wh-test","qrcode":true}')
-          echo "$RESP_A"
-          sleep 2
-          echo "Respuesta /instance/connect/wh-test:"
-          curl -s -w "\nHTTP:%{http_code}" "http://localhost:18080/instance/connect/wh-test" \
-            -H "apikey: ${EVOLUTION_API_KEY}" | python3 -c "import sys,json; raw=sys.stdin.read(); lines=raw.rsplit('HTTP:',1); body=lines[0]; code=lines[1] if len(lines)>1 else '?'; d=json.loads(body) if body.strip() else {}; print('HTTP',code,'has_base64:', bool(d.get('base64') or d.get('qrcode',{}).get('base64')),'keys:',list(d.keys())[:5])" 2>/dev/null || true
+          echo "=== Estado actual: instancias existentes ==="
+          curl -s "http://localhost:18080/instance/fetchInstances" \
+            -H "apikey: ${EVOLUTION_API_KEY}" | python3 -c "
+import sys,json
+try:
+  d=json.load(sys.stdin)
+  instances = d if isinstance(d,list) else d.get('data',d.get('instances',[]))
+  if instances:
+    for i in instances: print('  INSTANCE:', i.get('instance',{}).get('instanceName',i.get('instanceName','?')), '| state:', i.get('instance',{}).get('state',i.get('state','?')), '| token:', str(i.get('hash',{}).get('apikey',i.get('token','?')))[:20])
+  else:
+    print('  (sin instancias)')
+except: print('  (parse error):', sys.stdin.read()[:200])
+" 2>/dev/null || true
 
           echo ""
-          echo "=== Test B: crear CON integration field (v2.x) para comparar ==="
-          curl -s -X DELETE "http://localhost:18080/instance/delete/wh-test2" \
+          echo "=== Limpiando TODAS las instancias antes de test ==="
+          INSTANCES=$(curl -s "http://localhost:18080/instance/fetchInstances" -H "apikey: ${EVOLUTION_API_KEY}" 2>/dev/null)
+          echo "$INSTANCES" | python3 -c "
+import sys,json,subprocess
+try:
+  d=json.load(sys.stdin)
+  instances = d if isinstance(d,list) else d.get('data',d.get('instances',[]))
+  for i in instances:
+    name = i.get('instance',{}).get('instanceName',i.get('instanceName',''))
+    if name:
+      print('Deleting:', name)
+except: pass
+" 2>/dev/null || true
+
+          echo ""
+          echo "=== Test C: crear CON token explícito único ==="
+          TS=$(date +%s)
+          curl -s -X DELETE "http://localhost:18080/instance/delete/whtest${TS}" \
             -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
             -d '{"deleteFiles":false}' 2>/dev/null || true
-          sleep 2
-          echo "Respuesta create (con integration):"
+          sleep 1
+          echo "Creando instancia whtest${TS} con token=tok${TS}:"
           curl -s -w "\nHTTP:%{http_code}" -X POST "http://localhost:18080/instance/create" \
             -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
-            -d '{"instanceName":"wh-test2","qrcode":true,"integration":"WHATSAPP-BAILEYS"}'
-          sleep 2
+            -d "{\"instanceName\":\"whtest${TS}\",\"qrcode\":true,\"token\":\"tok${TS}\"}"
+          echo ""
 
           echo ""
-          echo "=== Esperando 25s para que Baileys genere QR del Test A ==="
-          sleep 25
-          echo "--- Logs NestJS [WH] después del test ---"
-          sudo docker logs "$API_CONTAINER" --since 1m 2>&1 | grep '\[WH\]' || echo "(sin eventos webhook en ~30s)"
-          echo "--- Logs Evolution API después del test ---"
-          sudo docker logs "$EVO_CONTAINER" --since 1m 2>&1 | tail -20
+          echo "=== Logs Evolution API (todos desde inicio) ==="
+          sudo docker logs "$EVO_CONTAINER" 2>&1 | grep -v "^$" | tail -40
 
-          curl -s -X DELETE "http://localhost:18080/instance/delete/wh-test" \
-            -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
-            -d '{"deleteFiles":false}' 2>/dev/null || true
-          curl -s -X DELETE "http://localhost:18080/instance/delete/wh-test2" \
+          echo ""
+          echo "=== Esperando 20s para QR ==="
+          sleep 20
+          echo "GET /instance/connect/whtest${TS}:"
+          curl -s -w "\nHTTP:%{http_code}" "http://localhost:18080/instance/connect/whtest${TS}" \
+            -H "apikey: ${EVOLUTION_API_KEY}" | python3 -c "
+import sys,json
+raw=sys.stdin.read()
+parts=raw.rsplit('HTTP:',1)
+body=parts[0]; code=parts[1] if len(parts)>1 else '?'
+try:
+  d=json.loads(body)
+  print('HTTP',code,'has_base64:', bool(d.get('base64') or (d.get('qrcode') or {}).get('base64')))
+  print('keys:', list(d.keys())[:8])
+except: print('HTTP',code,'raw:', body[:100])
+" 2>/dev/null || true
+
+          echo ""
+          echo "--- Logs NestJS [WH] ---"
+          sudo docker logs "$API_CONTAINER" --since 2m 2>&1 | grep '\[WH\]' || echo "(sin eventos webhook)"
+          echo "--- Logs Evolution API últimos 30s ---"
+          sudo docker logs "$EVO_CONTAINER" --since 30s 2>&1 | tail -20
+
+          curl -s -X DELETE "http://localhost:18080/instance/delete/whtest${TS}" \
             -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" \
             -d '{"deleteFiles":false}' 2>/dev/null || true
 
