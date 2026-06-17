@@ -196,6 +196,28 @@ export default function OrderDetailScreen() {
           </View>
         </Animated.View>
 
+        {/* Forma de pago */}
+        {(order.paymentMethodLabel || order.customPaymentMethod) && (
+          <Animated.View entering={FadeInDown.delay(200).springify().damping(18)} className="bg-white rounded-2xl p-4 mb-3">
+            <Text className="text-gray-400 text-xs font-semibold uppercase mb-2">Forma de pago</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-gray-900 font-medium text-sm">
+                {order.paymentMethodLabel ?? '—'}
+              </Text>
+              {order.customPaymentMethod?.requiresConfirmation && !order.isPaid && (
+                <View className="bg-amber-100 rounded-full px-2 py-0.5">
+                  <Text className="text-amber-700 text-xs font-bold">⏳ Pago pendiente</Text>
+                </View>
+              )}
+              {order.isPaid && (
+                <View className="bg-green-100 rounded-full px-2 py-0.5">
+                  <Text className="text-green-700 text-xs font-bold">✅ Pagado</Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+        )}
+
         {/* Acciones */}
         <Animated.View entering={FadeInDown.delay(220).springify().damping(18)} style={{ gap: 12, marginBottom: 8 }}>
           <SpringButton

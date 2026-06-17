@@ -46,6 +46,9 @@ export interface OrderDetail {
   createdAt: string;
   items: OrderItem[];
   customer: CustomerSnippet | null;
+  paymentMethodLabel: string | null;
+  isPaid: boolean;
+  customPaymentMethod: { requiresConfirmation: boolean } | null;
 }
 
 export const getOrders = async (): Promise<OrderListItem[]> => {
