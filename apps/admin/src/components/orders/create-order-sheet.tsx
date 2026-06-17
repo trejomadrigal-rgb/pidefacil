@@ -46,6 +46,7 @@ function QuantityControl({
     <div className="flex items-center gap-2">
       <button
         type="button"
+        aria-label="Disminuir cantidad"
         onClick={() => onChange(Math.max(0, value - 1))}
         className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
       >
@@ -54,6 +55,7 @@ function QuantityControl({
       <span className="w-4 text-center text-sm font-semibold">{value}</span>
       <button
         type="button"
+        aria-label="Aumentar cantidad"
         onClick={() => onChange(value + 1)}
         className="w-7 h-7 rounded-full bg-brand-500 text-white flex items-center justify-center hover:bg-brand-600"
       >
