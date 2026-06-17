@@ -264,6 +264,17 @@ export class PublicService {
     };
   }
 
+  async getPaymentMethods(slug: string) {
+    const business = await this.prisma.business.findUnique({ where: { slug } });
+    if (!business) return [];
+
+    return this.prisma.businessPaymentMethod.findMany({
+      where: { businessId: business.id, isActive: true },
+      orderBy: { position: 'asc' },
+      select: { id: true, label: true, requiresConfirmation: true },
+    });
+  }
+
   async invalidateCache(slug: string): Promise<void> {
     await this.redis.del(
       `public:business:${slug}`,

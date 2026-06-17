@@ -46,4 +46,9 @@ export class PublicController {
   ) {
     return this.publicService.getOrdersByPhone(slug, phone ?? '');
   }
+
+  @Get(':slug/payment-methods')
+  getPaymentMethods(@Param('slug') slug: string) {
+    return this.publicService.getPaymentMethods(slug);
+  }
 }
