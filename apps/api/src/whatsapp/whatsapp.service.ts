@@ -257,7 +257,7 @@ export class WhatsappService {
     }
 
     try {
-      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
+      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, textMessage: { text } });
       this.logger.log(`[WA] ✅ Pedido #${order.orderNumber} → ${newStatus} enviado a ${phone}`);
     } catch (err) {
       this.logger.error(`[WA] ❌ Pedido #${order.orderNumber} → ${newStatus} FALLÓ para ${phone}: ${(err as Error)?.message}`);
@@ -286,7 +286,7 @@ export class WhatsappService {
     try {
       await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, {
         number: normalized,
-        text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.`,
+        textMessage: { text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.` },
       });
       this.logger.log(`[WA] Mensaje de prueba enviado a ${normalized}`);
       return { ok: true };
