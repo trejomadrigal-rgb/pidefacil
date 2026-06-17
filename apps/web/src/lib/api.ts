@@ -73,6 +73,7 @@ export interface CreateOrderPayload {
   notes?: string;
   deliveryNotes?: string;
   items: CreateOrderItem[];
+  paymentMethodId?: string;
 }
 
 export interface OrderCreatedResponse {
@@ -101,6 +102,8 @@ export interface OrderStatusResponse {
   paymentMethod: string | null;
   transferConfirmed: boolean;
   assignedToId: string | null;
+  paymentMethodLabel: string | null;
+  requiresConfirmation: boolean;
 }
 
 export async function getBusiness(slug: string): Promise<BusinessPublic | null> {
@@ -152,6 +155,24 @@ export async function getBusinessMenu(slug: string): Promise<MenuPublic | null> 
     return { business, categories, featuredProduct };
   } catch {
     return null;
+  }
+}
+
+export interface PublicPaymentMethod {
+  id: string;
+  label: string;
+  requiresConfirmation: boolean;
+}
+
+export async function getPaymentMethods(slug: string): Promise<PublicPaymentMethod[]> {
+  try {
+    const res = await fetch(`${API_URL}/public/business/${slug}/payment-methods`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
   }
 }
 

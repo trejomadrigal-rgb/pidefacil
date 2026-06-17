@@ -242,11 +242,11 @@ export function OrderStatus({ slug, orderNumber }: OrderStatusProps) {
       </div>
 
       {/* Transfer pending message */}
-      {order.paymentMethod === 'TRANSFER' && !order.transferConfirmed && !isTerminal && (
+      {order.requiresConfirmation && !order.transferConfirmed && !isTerminal && (
         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-4">
           <p className="text-sm font-bold text-orange-800 mb-1">⏳ Pago pendiente</p>
           <p className="text-sm text-orange-700">
-            Tu pedido está confirmado. Por favor envía tu pago por transferencia y manda el comprobante por WhatsApp al negocio.
+            Tu pedido está confirmado. Por favor envía tu comprobante de pago por WhatsApp al negocio.
           </p>
         </div>
       )}

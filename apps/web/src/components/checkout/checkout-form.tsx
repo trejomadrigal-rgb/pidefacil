@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCartStore } from '@/store/cart.store';
-import { createOrder } from '@/lib/api';
+import { createOrder, type PublicPaymentMethod } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 
 const PROFILE_KEY = 'pidefacil_guest_profile';
@@ -39,13 +39,15 @@ interface CheckoutFormProps {
   slug: string;
   businessId: string;
   businessPhone?: string;
+  paymentMethods: PublicPaymentMethod[];
   onSubmitted?: () => void;
 }
 
-export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: CheckoutFormProps) {
+export function CheckoutForm({ slug, businessId, businessPhone, paymentMethods, onSubmitted }: CheckoutFormProps) {
   const { items, total, clearCart, branchId } = useCartStore();
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState('');
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('');
 
   const {
     register,
@@ -81,6 +83,10 @@ export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: C
 
   const onSubmit = async (values: FormValues) => {
     setErrorMsg('');
+    if (paymentMethods.length > 0 && !selectedPaymentMethodId) {
+      setErrorMsg('Selecciona una forma de pago para continuar');
+      return;
+    }
     try {
       const result = await createOrder({
         businessId,
@@ -93,6 +99,7 @@ export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: C
             : undefined,
         notes: values.notes,
         deliveryNotes: values.deliveryNotes || undefined,
+        paymentMethodId: selectedPaymentMethodId || undefined,
         items: items.map((i) => ({
           productId: i.productId,
           variantId: i.variantId,
@@ -241,6 +248,51 @@ export function CheckoutForm({ slug, businessId, businessPhone, onSubmitted }: C
           </div>
         )}
       </div>
+
+      {/* Payment method */}
+      {paymentMethods.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <h2 className="font-bold text-brand-900 mb-3">¿Cómo vas a pagar?</h2>
+          <div className="space-y-2">
+            {paymentMethods.map((method) => (
+              <label
+                key={method.id}
+                className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
+                  selectedPaymentMethodId === method.id
+                    ? 'border-brand-500 bg-brand-50'
+                    : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={method.id}
+                  checked={selectedPaymentMethodId === method.id}
+                  onChange={() => setSelectedPaymentMethodId(method.id)}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-4 h-4 rounded-full border-2 mt-0.5 flex-shrink-0 ${
+                    selectedPaymentMethodId === method.id
+                      ? 'border-brand-500 bg-brand-500'
+                      : 'border-gray-300'
+                  }`}
+                />
+                <div>
+                  <p className={`text-sm font-semibold ${selectedPaymentMethodId === method.id ? 'text-brand-900' : 'text-gray-700'}`}>
+                    {method.label}
+                  </p>
+                  {method.requiresConfirmation && (
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Se te pedirá comprobante antes de preparar tu pedido
+                    </p>
+                  )}
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">

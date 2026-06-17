@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { CheckoutForm } from '@/components/checkout/checkout-form';
-import { getBusiness, type BusinessPublic } from '@/lib/api';
+import { getBusiness, getPaymentMethods, type BusinessPublic, type PublicPaymentMethod } from '@/lib/api';
 
 export default function CheckoutPage() {
   const params = useParams<{ slug: string }>();
@@ -43,10 +43,14 @@ export default function CheckoutPage() {
 
 function CheckoutFormWrapper({ slug, onSubmitted }: { slug: string; onSubmitted: () => void }) {
   const [business, setBusiness] = useState<BusinessPublic | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PublicPaymentMethod[]>([]);
 
   useEffect(() => {
-    getBusiness(slug)
-      .then((data) => setBusiness(data))
+    Promise.all([getBusiness(slug), getPaymentMethods(slug)])
+      .then(([b, pm]) => {
+        setBusiness(b);
+        setPaymentMethods(pm);
+      })
       .catch(() => {});
   }, [slug]);
 
@@ -58,5 +62,5 @@ function CheckoutFormWrapper({ slug, onSubmitted }: { slug: string; onSubmitted:
     );
   }
 
-  return <CheckoutForm slug={slug} businessId={business.id} businessPhone={business.phone} onSubmitted={onSubmitted} />;
+  return <CheckoutForm slug={slug} businessId={business.id} businessPhone={business.phone} paymentMethods={paymentMethods} onSubmitted={onSubmitted} />;
 }
