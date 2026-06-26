@@ -265,13 +265,13 @@ jobs:
           echo "Container status: $EVO_STATUS"
           sudo docker ps -a --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
-          # Si está running pero con config incorrecta (sin caché local o LOG_LEVEL=ERROR), recrear
+          # Si está running pero con config incorrecta (sin Redis o con LOG_LEVEL=ERROR), recrear
           if [ "$EVO_STATUS" = "running" ]; then
             EVO_ENV=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
-            HAS_CACHE=$(echo "$EVO_ENV" | grep -c "CACHE_LOCAL_ENABLED=true" || true)
+            HAS_REDIS=$(echo "$EVO_ENV" | grep -c "CACHE_REDIS_ENABLED=true" || true)
             HAS_ERROR_LOG=$(echo "$EVO_ENV" | grep -c "LOG_LEVEL=ERROR" || true)
-            if [ "$HAS_CACHE" = "0" ] || [ "$HAS_ERROR_LOG" != "0" ]; then
-              echo "Container running con config incorrecta (cache=$HAS_CACHE, error_log=$HAS_ERROR_LOG) — eliminando para recrear..."
+            if [ "$HAS_REDIS" = "0" ] || [ "$HAS_ERROR_LOG" != "0" ]; then
+              echo "Container running con config incorrecta (redis=$HAS_REDIS, error_log=$HAS_ERROR_LOG) — eliminando para recrear con Redis..."
               sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
               EVO_STATUS="not_found"
             fi
@@ -368,10 +368,40 @@ jobs:
                 EVO_DB_URL=""
               fi
 
+              # Crear Redis dedicado para Evolution si no existe
+              REDIS_EVO_STATUS=$(sudo docker inspect evolution-v2-redis-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$REDIS_EVO_STATUS" ] && REDIS_EVO_STATUS="not_found"
+              echo "Redis Evolution status: $REDIS_EVO_STATUS"
+              if [ "$REDIS_EVO_STATUS" != "running" ]; then
+                sudo docker rm -f evolution-v2-redis-1 2>/dev/null || true
+                sudo docker run -d \
+                  --name evolution-v2-redis-1 \
+                  --network coolify \
+                  --restart unless-stopped \
+                  redis:7-alpine \
+                  && echo "✅ Redis para Evolution iniciado" \
+                  || echo "⚠️  Redis no se pudo iniciar"
+                sleep 5
+              else
+                echo "✅ Redis ya está running"
+              fi
+
+              # Obtener nombre del API container para webhook interno
+              API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+              if [ -z "$API_C" ]; then
+                API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+              fi
+              if [ -n "$API_C" ]; then
+                API_CNAME=$(sudo docker inspect "$API_C" --format '{{.Name}}' 2>/dev/null | sed 's|^/||')
+                WEBHOOK_URL="http://${API_CNAME}:3000/whatsapp/webhook"
+              else
+                WEBHOOK_URL="http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/whatsapp/webhook"
+              fi
+              echo "Webhook URL: $WEBHOOK_URL"
+
               # Eliminar container anterior si existe en estado error/restarting
               sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
 
-              # Iniciar Evolution v2 con PostgreSQL + caché local (sin Redis)
+              # Iniciar Evolution v2 con PostgreSQL + Redis + webhook global
               sudo docker run -d \
                 --name evolution-v2-evolution-api-1 \
                 --network coolify \
@@ -387,10 +417,15 @@ jobs:
                 -e DATABASE_PROVIDER=postgresql \
                 -e DATABASE_URL="${EVO_DB_URL}" \
                 -e DATABASE_CONNECTION_URI="${EVO_DB_URL}" \
-                -e CACHE_REDIS_ENABLED=false \
-                -e CACHE_LOCAL_ENABLED=true \
+                -e CACHE_REDIS_ENABLED=true \
+                -e CACHE_REDIS_URI="redis://evolution-v2-redis-1:6379" \
+                -e CACHE_LOCAL_ENABLED=false \
+                -e WEBHOOK_GLOBAL_ENABLED=true \
+                -e WEBHOOK_GLOBAL_URL="${WEBHOOK_URL}" \
+                -e WEBHOOK_GLOBAL_EVENTS_QRCODE_UPDATED=true \
+                -e WEBHOOK_GLOBAL_EVENTS_CONNECTION_UPDATE=true \
                 atendai/evolution-api:v2.2.3 \
-                && echo "✅ Evolution v2 container iniciado" \
+                && echo "✅ Evolution v2 container iniciado con Redis + webhook" \
                 || (echo "❌ docker run falló" && exit 1)
               echo "Esperando 30s para que arranque..."
               sleep 30
@@ -462,6 +497,103 @@ jobs:
             -H 'Content-Type: application/json' \
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
             && echo "✅ API redeploy disparado"
+
+  restart-evolution:
+    name: Reiniciar Evolution v2 + Redis (forzado)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'restart-evolution'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Eliminar y recrear Evolution v2 + Redis dedicado
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "=== Eliminando containers Evolution + Redis ==="
+          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
+          sudo docker rm -f evolution-v2-redis-1 2>/dev/null || true
+
+          echo ""
+          echo "=== Obtener DB URL del NestJS API ==="
+          COOLIFY_ENV=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' 2>/dev/null || echo "[]")
+          RAW_DB_URL=$(echo "$COOLIFY_ENV" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d if isinstance(d,list) else d.get('data',[]);[print(i.get('value','')) for i in items if i.get('key')=='DATABASE_URL']" 2>/dev/null | head -1 || true)
+          PG_HOST=$(echo "$RAW_DB_URL" | python3 -c "import sys,re;m=re.search(r'@([^:/]+)',sys.stdin.read().strip());print(m.group(1) if m else '')" 2>/dev/null)
+          PG_USER=$(echo "$RAW_DB_URL" | python3 -c "import sys,re;m=re.search(r'//([^:]+):',sys.stdin.read().strip());print(m.group(1) if m else '')" 2>/dev/null)
+          PG_PASS=$(echo "$RAW_DB_URL" | python3 -c "import sys,re;m=re.search(r'//[^:]+:([^@]+)@',sys.stdin.read().strip());print(m.group(1) if m else '')" 2>/dev/null)
+          EVO_DB_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:5432/evolution_api"
+          echo "PG host: $PG_HOST"
+
+          # Crear DB evolution_api si no existe
+          PG_CONTAINER=$(sudo docker ps --filter "name=$PG_HOST" -q 2>/dev/null | head -1 || true)
+          if [ -n "$PG_CONTAINER" ]; then
+            sudo docker exec "$PG_CONTAINER" psql -U "$PG_USER" -c "CREATE DATABASE evolution_api;" 2>/dev/null \
+              && echo "✅ evolution_api DB creada" || echo "ℹ️  ya existe"
+          fi
+
+          echo ""
+          echo "=== Iniciando Redis dedicado para Evolution ==="
+          sudo docker run -d \
+            --name evolution-v2-redis-1 \
+            --network coolify \
+            --restart unless-stopped \
+            redis:7-alpine \
+            && echo "✅ Redis iniciado" || echo "❌ Redis falló"
+          sleep 5
+
+          echo ""
+          echo "=== Obtener nombre del API container para webhook ==="
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_C" ]; then
+            API_CNAME=$(sudo docker inspect "$API_C" --format '{{.Name}}' 2>/dev/null | sed 's|^/||')
+            WEBHOOK_URL="http://${API_CNAME}:3000/whatsapp/webhook"
+          else
+            WEBHOOK_URL="http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/whatsapp/webhook"
+          fi
+          echo "Webhook URL: $WEBHOOK_URL"
+
+          echo ""
+          echo "=== Iniciando Evolution v2 con Redis + webhook ==="
+          sudo docker run -d \
+            --name evolution-v2-evolution-api-1 \
+            --network coolify \
+            --restart unless-stopped \
+            -e AUTHENTICATION_API_KEY="${EVOLUTION_API_KEY}" \
+            -e AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true \
+            -e AUTHENTICATION_TYPE=apikey \
+            -e DEL_INSTANCE=false \
+            -e QRCODE_LIMIT=30 \
+            -e TELEMETRY_ENABLED=false \
+            -e LOG_LEVEL=WARN \
+            -e DATABASE_ENABLED=true \
+            -e DATABASE_PROVIDER=postgresql \
+            -e DATABASE_URL="${EVO_DB_URL}" \
+            -e DATABASE_CONNECTION_URI="${EVO_DB_URL}" \
+            -e CACHE_REDIS_ENABLED=true \
+            -e CACHE_REDIS_URI="redis://evolution-v2-redis-1:6379" \
+            -e CACHE_LOCAL_ENABLED=false \
+            -e WEBHOOK_GLOBAL_ENABLED=true \
+            -e WEBHOOK_GLOBAL_URL="${WEBHOOK_URL}" \
+            -e WEBHOOK_GLOBAL_EVENTS_QRCODE_UPDATED=true \
+            -e WEBHOOK_GLOBAL_EVENTS_CONNECTION_UPDATE=true \
+            atendai/evolution-api:v2.2.3 \
+            && echo "✅ Evolution v2 iniciado" || (echo "❌ docker run falló" && exit 1)
+
+          echo "Esperando 30s para que arranque..."
+          sleep 30
+
+          EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
+          echo "Evolution status: $EVO_STATUS"
+          sudo docker logs evolution-v2-evolution-api-1 --tail=20 2>&1 || true
+
+          if [ "$EVO_STATUS" = "running" ]; then
+            echo "✅ Evolution v2 corriendo con Redis + webhook"
+          else
+            echo "❌ Evolution no está running — revisa los logs"
+            exit 1
+          fi
 
   check-webhook-logs:
     name: Diagnosticar WhatsApp + Evolution v2

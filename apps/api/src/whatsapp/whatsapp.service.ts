@@ -138,8 +138,8 @@ export class WhatsappService {
     if (immediateQr) return { status: 'connecting', qr: immediateQr };
 
     // Poll the REST endpoint briefly as fallback (works on some versions)
-    for (let i = 0; i < 3; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
+    for (let i = 0; i < 6; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
 
       // Check webhook-delivered QR first
       const stored = this.qrStore.get(biz.slug);
