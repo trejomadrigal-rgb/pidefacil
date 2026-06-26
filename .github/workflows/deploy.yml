@@ -524,9 +524,9 @@ jobs:
           fi
 
           echo ""
-          echo "=== Logs Evolution v2 (últimos 5 min) ==="
+          echo "=== Logs Evolution v2 completos (últimos 10 min, sin filtro) ==="
           if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker logs "$EVO_CONTAINER" --since 5m 2>&1 | tail -40
+            sudo docker logs "$EVO_CONTAINER" --since 10m 2>&1 | grep -v "^$" | tail -60
           fi
 
           echo ""
@@ -553,16 +553,16 @@ jobs:
               echo ""
               echo "=== GET /instance/connect/${INST_NAME} (respuesta raw) ==="
               sudo docker exec "$API_CONTAINER" \
-                wget -qO- --timeout=10 \
+                wget -O- --timeout=10 \
                 --header="apikey: ${EVOLUTION_API_KEY}" \
-                "http://evolution-v2-evolution-api-1:8080/instance/connect/${INST_NAME}" 2>&1 | head -3
+                "http://evolution-v2-evolution-api-1:8080/instance/connect/${INST_NAME}" 2>&1 | head -5 || true
 
               echo ""
               echo "=== GET /instance/connectionState/${INST_NAME} ==="
               sudo docker exec "$API_CONTAINER" \
-                wget -qO- --timeout=8 \
+                wget -O- --timeout=8 \
                 --header="apikey: ${EVOLUTION_API_KEY}" \
-                "http://evolution-v2-evolution-api-1:8080/instance/connectionState/${INST_NAME}" 2>&1
+                "http://evolution-v2-evolution-api-1:8080/instance/connectionState/${INST_NAME}" 2>&1 | head -3 || true
             fi
           fi
 
