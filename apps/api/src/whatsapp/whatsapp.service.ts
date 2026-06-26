@@ -124,14 +124,10 @@ export class WhatsappService {
     if (!biz) throw new NotFoundException('Negocio no encontrado');
 
     // Remove any existing instance to avoid 409 conflicts on re-connect
-    await this.evo('DELETE', `/instance/delete/${biz.slug}`, { deleteFiles: true }).catch(() => {});
+    await this.evo('DELETE', `/instance/delete/${biz.slug}`).catch(() => {});
     this.qrStore.delete(biz.slug);
 
-    // v1.4.8: requiere token único por intento. DELETE no libera el token del registro,
-    // por eso usamos timestamp para garantizar unicidad aunque haya tokens huérfanos.
-    // El global apikey funciona como master key para todas las llamadas posteriores.
-    const instanceToken = `${biz.slug.replace(/-/g, '')}${Math.floor(Date.now() / 1000)}`;
-    const payload = { instanceName: biz.slug, qrcode: true, token: instanceToken };
+    const payload = { instanceName: biz.slug, qrcode: true };
 
     const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
@@ -194,7 +190,7 @@ export class WhatsappService {
   async disconnect(businessId: string): Promise<void> {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
     if (biz?.whatsappSession) {
-      await this.evo('DELETE', `/instance/delete/${biz.whatsappSession}`, { deleteFiles: true }).catch(() => {});
+      await this.evo('DELETE', `/instance/delete/${biz.whatsappSession}`).catch(() => {});
       this.qrStore.delete(biz.whatsappSession);
       await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: null } });
     }
@@ -276,7 +272,7 @@ export class WhatsappService {
     }
 
     try {
-      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, textMessage: { text } });
+      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
       this.logger.log(`[WA] ✅ Pedido #${order.orderNumber} → ${newStatus} enviado a ${phone}`);
     } catch (err) {
       this.logger.error(`[WA] ❌ Pedido #${order.orderNumber} → ${newStatus} FALLÓ para ${phone}: ${(err as Error)?.message}`);
@@ -305,7 +301,7 @@ export class WhatsappService {
     try {
       await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, {
         number: normalized,
-        textMessage: { text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.` },
+        text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.`,
       });
       this.logger.log(`[WA] Mensaje de prueba enviado a ${normalized}`);
       return { ok: true };
