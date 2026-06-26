@@ -321,6 +321,41 @@ jobs:
               sleep 30
             else
               echo "Container no encontrado en Coolify ni compose. Iniciando fresh con docker run..."
+
+              # Obtener credenciales de la base de datos desde Coolify
+              COOLIFY_ENV=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+                'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' 2>/dev/null || echo "[]")
+              RAW_DB_URL=$(echo "$COOLIFY_ENV" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d if isinstance(d,list) else d.get('data',[]);[print(i.get('value','')) for i in items if i.get('key')=='DATABASE_URL']" 2>/dev/null | head -1 || true)
+              echo "DB URL (host only): $(echo "$RAW_DB_URL" | sed 's|//[^@]*@|//***:***@|')"
+
+              # Extraer partes del URL para construir el de evolution_api
+              PG_HOST=$(echo "$RAW_DB_URL" | python3 -c "import sys,re;m=re.search(r'@([^:/]+)',sys.stdin.read().strip());print(m.group(1) if m else '')" 2>/dev/null)
+              PG_USER=$(echo "$RAW_DB_URL" | python3 -c "import sys,re;m=re.search(r'//([^:]+):',sys.stdin.read().strip());print(m.group(1) if m else '')" 2>/dev/null)
+              PG_PASS=$(echo "$RAW_DB_URL" | python3 -c "import sys,re;m=re.search(r'//[^:]+:([^@]+)@',sys.stdin.read().strip());print(m.group(1) if m else '')" 2>/dev/null)
+              echo "PG host: $PG_HOST, user: $PG_USER"
+
+              # Crear base de datos evolution_api si no existe
+              if [ -n "$PG_HOST" ]; then
+                PG_CONTAINER=$(sudo docker ps -q | while read cid; do
+                  h=$(sudo docker inspect "$cid" --format '{{.Config.Hostname}}' 2>/dev/null)
+                  [ "$h" = "$PG_HOST" ] && echo "$cid" && break
+                done)
+                echo "PG container: $PG_CONTAINER"
+                if [ -n "$PG_CONTAINER" ]; then
+                  sudo docker exec "$PG_CONTAINER" psql -U "$PG_USER" -c "CREATE DATABASE evolution_api;" 2>/dev/null \
+                    && echo "✅ evolution_api DB creada" \
+                    || echo "ℹ️  evolution_api ya existe (o error)"
+                fi
+                EVO_DB_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:5432/evolution_api"
+              else
+                echo "⚠️  No se pudo obtener DB URL — Evolution v2 puede no persistir datos"
+                EVO_DB_URL=""
+              fi
+
+              # Eliminar container anterior si existe en estado error/restarting
+              sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
+
+              # Iniciar Evolution v2 con PostgreSQL
               sudo docker run -d \
                 --name evolution-v2-evolution-api-1 \
                 --network coolify \
@@ -332,6 +367,10 @@ jobs:
                 -e QRCODE_LIMIT=30 \
                 -e TELEMETRY_ENABLED=false \
                 -e LOG_LEVEL=ERROR \
+                -e DATABASE_ENABLED=true \
+                -e DATABASE_PROVIDER=postgresql \
+                -e DATABASE_URL="${EVO_DB_URL}" \
+                -e DATABASE_CONNECTION_URI="${EVO_DB_URL}" \
                 atendai/evolution-api:v2.2.3 \
                 && echo "✅ Evolution v2 container iniciado" \
                 || (echo "❌ docker run falló" && exit 1)
@@ -343,9 +382,18 @@ jobs:
             echo "Status tras búsqueda: $EVO_STATUS"
           fi
 
+          # Dar tiempo extra si está en 'restarting' (puede tardar en iniciar)
+          if [ "$EVO_STATUS" = "restarting" ]; then
+            echo "Container en restarting — esperando 30s más..."
+            sleep 30
+            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$EVO_STATUS" ] && EVO_STATUS="not_found"
+            echo "Status final: $EVO_STATUS"
+          fi
+
           if [ "$EVO_STATUS" != "running" ]; then
             echo "❌ Evolution v2 no está running (status=$EVO_STATUS)"
-            sudo docker logs evolution-v2-evolution-api-1 --tail 20 2>&1 || true
+            echo "=== Últimos logs ==="
+            sudo docker logs evolution-v2-evolution-api-1 --tail 30 2>&1 || true
             exit 1
           fi
 
