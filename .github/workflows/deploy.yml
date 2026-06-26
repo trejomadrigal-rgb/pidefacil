@@ -343,10 +343,7 @@ jobs:
 
               # Crear base de datos evolution_api si no existe
               if [ -n "$PG_HOST" ]; then
-                PG_CONTAINER=$(sudo docker ps -q | while read cid; do
-                  h=$(sudo docker inspect "$cid" --format '{{.Config.Hostname}}' 2>/dev/null)
-                  [ "$h" = "$PG_HOST" ] && echo "$cid" && break
-                done)
+                PG_CONTAINER=$(sudo docker ps --filter "name=$PG_HOST" -q 2>/dev/null | head -1 || true)
                 echo "PG container: $PG_CONTAINER"
                 if [ -n "$PG_CONTAINER" ]; then
                   sudo docker exec "$PG_CONTAINER" psql -U "$PG_USER" -c "CREATE DATABASE evolution_api;" 2>/dev/null \
