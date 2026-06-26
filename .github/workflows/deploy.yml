@@ -748,7 +748,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'test-evolution-api'
     runs-on: [self-hosted, linux, deploy]
     steps:
-      - name: DELETE + CREATE + polling QR usando curl/node
+      - name: DELETE + CREATE + polling QR usando node
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
         run: |
@@ -758,50 +758,61 @@ jobs:
           fi
           EVO_C="evolution-v2-evolution-api-1"
           echo "API container: $(sudo docker inspect $API_C --format '{{.Name}}' 2>/dev/null)"
-          echo "Evolution container: $EVO_C"
 
           echo ""
-          echo "=== 1. DELETE /instance/delete/dona-rosa (desde Evolution container) ==="
-          sudo docker exec "$EVO_C" curl -s -w "\nHTTP_STATUS:%{http_code}" -X DELETE \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
-            "http://localhost:8080/instance/delete/dona-rosa" 2>&1 || true
+          echo "=== DELETE + CREATE + GET connect via node en Evolution container ==="
+          sudo docker exec -e "EVO_KEY=${EVOLUTION_API_KEY}" "$EVO_C" node -e "
+const http = require('http');
+const KEY = process.env.EVO_KEY || '';
 
-          sleep 2
+function req(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const opts = {hostname:'localhost',port:8080,path,method,
+      headers:{'Content-Type':'application/json','apikey':KEY}};
+    const r = http.request(opts, res => {
+      let d = ''; res.on('data',c=>d+=c); res.on('end',()=>resolve({s:res.statusCode,b:d}));
+    });
+    r.on('error', reject);
+    if (body) r.write(JSON.stringify(body));
+    r.end();
+  });
+}
+
+(async () => {
+  console.log('--- DELETE /instance/delete/dona-rosa ---');
+  const del = await req('DELETE','/instance/delete/dona-rosa');
+  console.log('HTTP', del.s, '|', del.b.substring(0,300));
+
+  await new Promise(r=>setTimeout(r,2000));
+
+  console.log('--- POST /instance/create ---');
+  const create = await req('POST','/instance/create',{instanceName:'dona-rosa',qrcode:true,integration:'WHATSAPP-BAILEYS'});
+  console.log('HTTP', create.s, '|', create.b.substring(0,500));
+
+  await new Promise(r=>setTimeout(r,12000));
+
+  console.log('--- GET /instance/connect/dona-rosa (t+14s) ---');
+  const conn = await req('GET','/instance/connect/dona-rosa');
+  console.log('HTTP', conn.s, '|', conn.b.substring(0,1000));
+
+  await new Promise(r=>setTimeout(r,10000));
+
+  console.log('--- GET /instance/connect/dona-rosa (t+24s) ---');
+  const conn2 = await req('GET','/instance/connect/dona-rosa');
+  console.log('HTTP', conn2.s, '|', conn2.b.substring(0,1000));
+
+  console.log('--- GET /instance/connectionState/dona-rosa ---');
+  const state = await req('GET','/instance/connectionState/dona-rosa');
+  console.log('HTTP', state.s, '|', state.b);
+})().catch(e=>{console.error('ERROR:',e.message);process.exit(1)});
+          " 2>&1
 
           echo ""
-          echo "=== 2. POST /instance/create (desde Evolution container) ==="
-          sudo docker exec "$EVO_C" curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            -H "Content-Type: application/json" \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
-            -d '{"instanceName":"dona-rosa","qrcode":true,"integration":"WHATSAPP-BAILEYS"}' \
-            "http://localhost:8080/instance/create" 2>&1
-
-          echo ""
-          echo "=== 3. Esperar 10s y GET /instance/connect/dona-rosa ==="
-          sleep 10
-          sudo docker exec "$EVO_C" curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
-            "http://localhost:8080/instance/connect/dona-rosa" 2>&1
-
-          echo ""
-          echo "=== 4. Esperar 10s más y GET /instance/connect/dona-rosa ==="
-          sleep 10
-          sudo docker exec "$EVO_C" curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
-            "http://localhost:8080/instance/connect/dona-rosa" 2>&1
-
-          echo ""
-          echo "=== 5. GET /instance/connectionState/dona-rosa ==="
-          sudo docker exec "$EVO_C" curl -s \
-            -H "apikey: ${EVOLUTION_API_KEY}" \
-            "http://localhost:8080/instance/connectionState/dona-rosa" 2>&1
-
-          echo ""
-          echo "=== 6. Logs Evolution v2 (últimas 80 líneas) ==="
+          echo "=== Logs Evolution v2 (últimas 80 líneas) ==="
           sudo docker logs "$EVO_C" --tail=80 2>&1
 
           echo ""
-          echo "=== 7. Logs NestJS (últimas 30 líneas, sin filtro) ==="
+          echo "=== Logs NestJS (últimas 30 líneas, sin filtro) ==="
           sudo docker logs "$API_C" --tail=30 2>&1
 
   diagnose-web:
