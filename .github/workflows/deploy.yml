@@ -759,53 +759,48 @@ jobs:
           EVO_C="evolution-v2-evolution-api-1"
           echo "API container: $(sudo docker inspect $API_C --format '{{.Name}}' 2>/dev/null)"
 
+          # Escribir script en archivo temporal (evita problemas de comillas en YAML)
+          cat > /tmp/evo-test.js << 'NODESCRIPT'
+          const http = require('http');
+          const KEY = process.env.EVO_KEY || '';
+          function req(method, path, body) {
+            return new Promise((resolve, reject) => {
+              const opts = {hostname:'localhost',port:8080,path,method,
+                headers:{'Content-Type':'application/json','apikey':KEY}};
+              const r = http.request(opts, res => {
+                let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve({s:res.statusCode,b:d}));
+              });
+              r.on('error', reject);
+              if (body) r.write(JSON.stringify(body));
+              r.end();
+            });
+          }
+          (async () => {
+            console.log('--- DELETE ---');
+            const del = await req('DELETE','/instance/delete/dona-rosa');
+            console.log('HTTP', del.s, del.b.substring(0,300));
+            await new Promise(r=>setTimeout(r,2000));
+            console.log('--- POST /instance/create ---');
+            const create = await req('POST','/instance/create',{instanceName:'dona-rosa',qrcode:true,integration:'WHATSAPP-BAILEYS'});
+            console.log('HTTP', create.s, create.b.substring(0,500));
+            await new Promise(r=>setTimeout(r,12000));
+            console.log('--- GET /instance/connect (t+14s) ---');
+            const conn = await req('GET','/instance/connect/dona-rosa');
+            console.log('HTTP', conn.s, conn.b.substring(0,1000));
+            await new Promise(r=>setTimeout(r,10000));
+            console.log('--- GET /instance/connect (t+24s) ---');
+            const conn2 = await req('GET','/instance/connect/dona-rosa');
+            console.log('HTTP', conn2.s, conn2.b.substring(0,1000));
+            console.log('--- GET /instance/connectionState ---');
+            const state = await req('GET','/instance/connectionState/dona-rosa');
+            console.log('HTTP', state.s, state.b);
+          })().catch(e=>{console.error('ERROR:',e.message);process.exit(1)});
+          NODESCRIPT
+
           echo ""
-          echo "=== DELETE + CREATE + GET connect via node en Evolution container ==="
-          sudo docker exec -e "EVO_KEY=${EVOLUTION_API_KEY}" "$EVO_C" node -e "
-const http = require('http');
-const KEY = process.env.EVO_KEY || '';
-
-function req(method, path, body) {
-  return new Promise((resolve, reject) => {
-    const opts = {hostname:'localhost',port:8080,path,method,
-      headers:{'Content-Type':'application/json','apikey':KEY}};
-    const r = http.request(opts, res => {
-      let d = ''; res.on('data',c=>d+=c); res.on('end',()=>resolve({s:res.statusCode,b:d}));
-    });
-    r.on('error', reject);
-    if (body) r.write(JSON.stringify(body));
-    r.end();
-  });
-}
-
-(async () => {
-  console.log('--- DELETE /instance/delete/dona-rosa ---');
-  const del = await req('DELETE','/instance/delete/dona-rosa');
-  console.log('HTTP', del.s, '|', del.b.substring(0,300));
-
-  await new Promise(r=>setTimeout(r,2000));
-
-  console.log('--- POST /instance/create ---');
-  const create = await req('POST','/instance/create',{instanceName:'dona-rosa',qrcode:true,integration:'WHATSAPP-BAILEYS'});
-  console.log('HTTP', create.s, '|', create.b.substring(0,500));
-
-  await new Promise(r=>setTimeout(r,12000));
-
-  console.log('--- GET /instance/connect/dona-rosa (t+14s) ---');
-  const conn = await req('GET','/instance/connect/dona-rosa');
-  console.log('HTTP', conn.s, '|', conn.b.substring(0,1000));
-
-  await new Promise(r=>setTimeout(r,10000));
-
-  console.log('--- GET /instance/connect/dona-rosa (t+24s) ---');
-  const conn2 = await req('GET','/instance/connect/dona-rosa');
-  console.log('HTTP', conn2.s, '|', conn2.b.substring(0,1000));
-
-  console.log('--- GET /instance/connectionState/dona-rosa ---');
-  const state = await req('GET','/instance/connectionState/dona-rosa');
-  console.log('HTTP', state.s, '|', state.b);
-})().catch(e=>{console.error('ERROR:',e.message);process.exit(1)});
-          " 2>&1
+          echo "=== DELETE + CREATE + GET connect via node ==="
+          sudo docker cp /tmp/evo-test.js "$EVO_C":/tmp/evo-test.js
+          sudo docker exec -e "EVO_KEY=${EVOLUTION_API_KEY}" "$EVO_C" node /tmp/evo-test.js 2>&1
 
           echo ""
           echo "=== Logs Evolution v2 (últimas 80 líneas) ==="
