@@ -265,11 +265,13 @@ jobs:
           echo "Container status: $EVO_STATUS"
           sudo docker ps -a --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
-          # Si está running pero sin caché local (Redis disconnected), recrear
+          # Si está running pero con config incorrecta (sin caché local o LOG_LEVEL=ERROR), recrear
           if [ "$EVO_STATUS" = "running" ]; then
-            HAS_CACHE=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -c "CACHE_LOCAL_ENABLED=true" || true)
-            if [ "$HAS_CACHE" = "0" ]; then
-              echo "Container running pero sin CACHE_LOCAL_ENABLED — eliminando para recrear..."
+            EVO_ENV=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
+            HAS_CACHE=$(echo "$EVO_ENV" | grep -c "CACHE_LOCAL_ENABLED=true" || true)
+            HAS_ERROR_LOG=$(echo "$EVO_ENV" | grep -c "LOG_LEVEL=ERROR" || true)
+            if [ "$HAS_CACHE" = "0" ] || [ "$HAS_ERROR_LOG" != "0" ]; then
+              echo "Container running con config incorrecta (cache=$HAS_CACHE, error_log=$HAS_ERROR_LOG) — eliminando para recrear..."
               sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
               EVO_STATUS="not_found"
             fi
@@ -380,7 +382,7 @@ jobs:
                 -e DEL_INSTANCE=false \
                 -e QRCODE_LIMIT=30 \
                 -e TELEMETRY_ENABLED=false \
-                -e LOG_LEVEL=ERROR \
+                -e LOG_LEVEL=WARN \
                 -e DATABASE_ENABLED=true \
                 -e DATABASE_PROVIDER=postgresql \
                 -e DATABASE_URL="${EVO_DB_URL}" \
