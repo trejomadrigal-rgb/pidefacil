@@ -577,17 +577,31 @@ jobs:
           fi
 
           echo ""
-          echo "=== Todos los containers con 'evolution' (todos los proyectos) ==="
-          sudo docker ps -a --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Networks}}"
+          echo "=== Containers Redis en red coolify ==="
+          sudo docker ps --filter "network=coolify" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep -i redis || echo "(ninguno)"
 
           echo ""
-          echo "=== Env vars EVOLUTION/REDIS/CACHE de todos los containers evolution ==="
+          echo "=== Todos los containers Redis en el VPS ==="
+          sudo docker ps --filter "ancestor=redis" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" || true
+          sudo docker ps --format "table {{.Names}}\t{{.Image}}" | grep -i redis || echo "(ningún container redis)"
+
+          echo ""
+          echo "=== Buscar Evolution en TODOS los compose files + sus env vars Redis ==="
+          find /data/coolify /root /home /var/lib /artifacts 2>/dev/null \
+            -maxdepth 10 \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) \
+            -exec grep -lE "evolution.api|evolution-api|atendai|evolution_api" {} \; 2>/dev/null | head -5 | while read f; do
+            echo "=== Compose: $f ==="
+            grep -i "REDIS\|CACHE\|evolution\|DATABASE\|LOG_LEVEL" "$f" 2>/dev/null | grep -iv "PASSWORD\|SECRET\|TOKEN\|PASS" | head -20
+          done
+
+          echo ""
+          echo "=== Env vars EVOLUTION/REDIS de todos containers evolution ==="
           for cid in $(sudo docker ps -a --filter "name=evolution" -q 2>/dev/null); do
             NAME=$(sudo docker inspect "$cid" --format '{{.Name}}' 2>/dev/null)
             echo "--- Container: $NAME ---"
             sudo docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
-              | grep -iE "EVOLUTION|REDIS|CACHE|DATABASE|AUTH|QRCODE|WEBHOOK|LOG" \
-              | grep -iv "API_KEY\|PASSWORD\|SECRET\|TOKEN\|PASS" || echo "(sin vars relevantes)"
+              | grep -iE "REDIS|CACHE" \
+              | grep -iv "API_KEY\|PASSWORD\|SECRET\|TOKEN\|PASS" || echo "(sin vars redis/cache)"
           done
 
           echo ""
