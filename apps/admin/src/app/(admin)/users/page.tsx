@@ -418,7 +418,14 @@ function UserTable({
 }) {
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm table-fixed">
+        <colgroup>
+          <col className="w-[22%]" />
+          <col className="w-[36%]" />
+          <col className="w-[14%]" />
+          <col className="w-[12%]" />
+          <col className="w-[16%]" />
+        </colgroup>
         <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
           <tr>
             <th className="px-4 py-3 text-left">Nombre</th>
