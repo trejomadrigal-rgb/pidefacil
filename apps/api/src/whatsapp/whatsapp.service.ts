@@ -124,46 +124,45 @@ export class WhatsappService {
     const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
     if (!biz) throw new NotFoundException('Negocio no encontrado');
 
-    // Remove any existing instance to avoid 409 conflicts on re-connect
-    const delResult = await this.evo('DELETE', `/instance/delete/${biz.slug}`).catch((e: Error) => {
-      this.logger.warn(`[WA] DELETE instance/${biz.slug}: ${e.message}`);
-      return null;
-    });
-    this.logger.log(`[WA] DELETE instance/${biz.slug}: ${JSON.stringify(delResult)}`);
-    this.qrStore.delete(biz.slug);
+    // Prefix to avoid collisions with other tenants on the shared gateway
+    const instanceName = `pf_${biz.slug}`;
 
-    const payload = { instanceName: biz.slug, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
+    // Remove any existing instance to avoid 409 conflicts on re-connect
+    await this.evo('DELETE', `/instance/delete/${instanceName}`).catch((e: Error) => {
+      this.logger.warn(`[WA] DELETE instance/${instanceName}: ${e.message}`);
+    });
+    this.qrStore.delete(instanceName);
+
+    const payload = { instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
     this.logger.log(`[WA] POST /instance/create payload: ${JSON.stringify(payload)}`);
 
     let createData: { qrcode?: { base64?: string } };
     try {
       createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
-      this.logger.log(`[WA] POST /instance/create response: ${JSON.stringify(createData)}`);
+      this.logger.log(`[WA] POST /instance/create response keys: ${Object.keys(createData).join(',')}`);
     } catch (err) {
       this.logger.error(`[WA] POST /instance/create FAILED: ${(err as Error).message}`);
       throw err;
     }
 
-    await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
+    await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: instanceName } });
 
-    // Some Evolution API versions return QR directly in the create response
+    // v2: QR may come directly in create response
     const immediateQr = createData.qrcode?.base64 ?? '';
     if (immediateQr) return { status: 'connecting', qr: immediateQr };
 
-    // Poll the REST endpoint briefly as fallback (works on some versions)
+    // Poll GET /instance/connect/{name} — v2 returns { base64 } once Baileys connects
     for (let i = 0; i < 6; i++) {
       await new Promise((r) => setTimeout(r, 3000));
 
-      // Check webhook-delivered QR first
-      const stored = this.qrStore.get(biz.slug);
+      const stored = this.qrStore.get(instanceName);
       if (stored && stored.expiresAt > Date.now()) {
         return { status: 'connecting', qr: stored.qr };
       }
 
       try {
-        const qrData = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.slug}`);
-        const fetched = qrData.base64 ?? qrData.qrcode?.base64 ?? '';
-        if (fetched) return { status: 'connecting', qr: fetched };
+        const qrData = await this.evo<{ base64?: string }>('GET', `/instance/connect/${instanceName}`);
+        if (qrData.base64) return { status: 'connecting', qr: qrData.base64 };
       } catch { /* not ready yet */ }
     }
 
@@ -178,10 +177,9 @@ export class WhatsappService {
     const stored = this.qrStore.get(biz.whatsappSession);
     if (stored && stored.expiresAt > Date.now()) return stored.qr;
 
-    // Fallback: REST endpoint (works on some Evolution API versions)
     try {
-      const data = await this.evo<{ base64?: string; qrcode?: { base64?: string } }>('GET', `/instance/connect/${biz.whatsappSession}`);
-      return data.base64 ?? data.qrcode?.base64 ?? null;
+      const data = await this.evo<{ base64?: string }>('GET', `/instance/connect/${biz.whatsappSession}`);
+      return data.base64 ?? null;
     } catch {
       return null;
     }
@@ -286,7 +284,7 @@ export class WhatsappService {
     }
 
     try {
-      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, textMessage: { text } });
+      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
       this.logger.log(`[WA] ✅ Pedido #${order.orderNumber} → ${newStatus} enviado a ${phone}`);
     } catch (err) {
       this.logger.error(`[WA] ❌ Pedido #${order.orderNumber} → ${newStatus} FALLÓ para ${phone}: ${(err as Error)?.message}`);
@@ -315,7 +313,7 @@ export class WhatsappService {
     try {
       await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, {
         number: normalized,
-        textMessage: { text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.` },
+        text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.`,
       });
       this.logger.log(`[WA] Mensaje de prueba enviado a ${normalized}`);
       return { ok: true };

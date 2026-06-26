@@ -252,91 +252,23 @@ jobs:
           echo "✅ Demo seed OK"
 
   setup-whatsapp:
-    name: Configurar Evolution API v1.4.8 (WhatsApp)
+    name: Apuntar pidefacil-api al gateway WhatsApp compartido
     if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'setup-whatsapp' || github.event.inputs.job == '')
     runs-on: [self-hosted, linux, deploy]
     steps:
-      - name: Reinstalar Evolution v1.4.8 limpio + actualizar env vars del API
+      - name: Bajar Evolution propio de pidefacil + apuntar al gateway compartido
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          echo "=== Parando y eliminando Evolution existente (cualquier versión) ==="
-          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
-          sudo docker rm -f evolution-v2-redis-1 2>/dev/null || true
+          echo "=== Bajando Evolution propio de pidefacil (ya no se necesita) ==="
+          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null && echo "Eliminado evolution-v2-evolution-api-1" || echo "No existía"
+          sudo docker rm -f evolution-v2-redis-1 2>/dev/null && echo "Eliminado evolution-v2-redis-1" || echo "No existía"
 
           echo ""
-          echo "=== Limpiando volúmenes de sesiones huérfanas ==="
-          sudo docker volume rm evolution_instances evolution_store 2>/dev/null || true
-
-          echo ""
-          echo "=== Asegurar masquerade para conectividad WhatsApp ==="
-          sudo iptables -t nat -C POSTROUTING -s 172.16.0.0/12 -j MASQUERADE 2>/dev/null \
-            || sudo iptables -t nat -A POSTROUTING -s 172.16.0.0/12 -j MASQUERADE \
-            || echo "ℹ️  iptables sin permiso — masquerade se configura manualmente"
-
-          echo ""
-          echo "=== Obtener webhook URL del API container ==="
-          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
-          if [ -z "$API_C" ]; then
-            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
-          fi
-          if [ -n "$API_C" ]; then
-            API_CNAME=$(sudo docker inspect "$API_C" --format '{{.Name}}' 2>/dev/null | sed 's|^/||')
-            WEBHOOK_URL="http://${API_CNAME}:3000/whatsapp/webhook"
-          else
-            WEBHOOK_URL="http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/whatsapp/webhook"
-          fi
-          echo "Webhook URL: $WEBHOOK_URL"
-
-          echo ""
-          echo "=== Iniciando Evolution v1.4.8 (file storage, sin DB) ==="
-          sudo docker run -d \
-            --name evolution-v2-evolution-api-1 \
-            --network coolify \
-            --restart unless-stopped \
-            -e AUTHENTICATION_API_KEY="${EVOLUTION_API_KEY}" \
-            -e AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true \
-            -e AUTHENTICATION_TYPE=apikey \
-            -e DEL_INSTANCE=false \
-            -e QRCODE_LIMIT=30 \
-            -e LOG_LEVEL=VERBOSE \
-            -e DATABASE_ENABLED=false \
-            -e REDIS_ENABLED=true \
-            -e CACHE_REDIS_URI="redis://evolution-v2-redis-1:6379" \
-            -e WEBHOOK_GLOBAL_ENABLED=true \
-            -e WEBHOOK_GLOBAL_URL="${WEBHOOK_URL}" \
-            -e WEBHOOK_GLOBAL_EVENTS_QRCODE_UPDATED=true \
-            -e WEBHOOK_GLOBAL_EVENTS_CONNECTION_UPDATE=true \
-            atendai/evolution-api:v1.4.8 \
-            && echo "✅ Evolution v1.4.8 iniciado" \
-            || (echo "❌ docker run falló" && exit 1)
-
-          echo ""
-          echo "=== Iniciando Redis dedicado para Evolution ==="
-          sudo docker run -d \
-            --name evolution-v2-redis-1 \
-            --network coolify \
-            --restart unless-stopped \
-            redis:7-alpine \
-            && echo "✅ Redis iniciado" \
-            || echo "ℹ️  Redis ya existe o error"
-
-          echo "Esperando 30s para que arranque..."
-          sleep 30
-
-          EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
-          echo "Evolution status: $EVO_STATUS"
-          if [ "$EVO_STATUS" != "running" ]; then
-            echo "❌ Evolution no está running"
-            sudo docker logs evolution-v2-evolution-api-1 --tail 30 2>&1 || true
-            exit 1
-          fi
-
-          echo ""
-          echo "=== Redes de Evolution ==="
-          sudo docker inspect evolution-v2-evolution-api-1 \
-            --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}'
+          echo "=== Verificando que el gateway compartido está alcanzable ==="
+          GW_STATUS=$(sudo docker inspect wa-gateway-api --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
+          echo "wa-gateway-api status: ${GW_STATUS:-no encontrado}"
 
           echo ""
           echo "=== Actualizando env vars del NestJS API en Coolify ==="
@@ -345,18 +277,24 @@ jobs:
             -H 'Content-Type: application/json' \
             -d "{
               \"data\": [
-                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://evolution-v2-evolution-api-1:8080\", \"is_preview\": false},
-                {\"key\": \"EVOLUTION_API_KEY\",  \"value\": \"${EVOLUTION_API_KEY}\",                   \"is_preview\": false}
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://wa-gateway-api:8080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_KEY\",  \"value\": \"${EVOLUTION_API_KEY}\",       \"is_preview\": false}
               ]
-            }" && echo "✅ Env vars actualizadas"
+            }" && echo "✅ Env vars actualizadas (URL=http://wa-gateway-api:8080)"
 
           echo ""
           echo "=== Asegurar que el API container está en la red coolify ==="
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
           if [ -n "$API_C" ]; then
             echo "API container: $(sudo docker inspect $API_C --format '{{.Name}}')"
             sudo docker network connect coolify "$API_C" 2>/dev/null \
               && echo "✅ API conectada a red coolify" \
               || echo "ℹ️  Ya estaba en red coolify"
+          else
+            echo "⚠️  API container no encontrado — el redeploy aplicará las vars"
           fi
 
       - name: Redeploy NestJS API
@@ -369,88 +307,66 @@ jobs:
             -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
             && echo "✅ API redeploy disparado"
 
-  restart-evolution:
-    name: Reiniciar Evolution v1.4.8 + Redis (forzado)
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'restart-evolution'
-    runs-on: [self-hosted, linux, deploy]
-    steps:
-      - name: Eliminar y recrear Evolution v1.4.8 + Redis limpio
+      - name: Verificar conectividad API → gateway (post-deploy)
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          echo "=== Eliminando containers Evolution + Redis ==="
-          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
-          sudo docker rm -f evolution-v2-redis-1 2>/dev/null || true
-
-          echo ""
-          echo "=== Limpiando volúmenes de sesiones huérfanas ==="
-          sudo docker volume rm evolution_instances evolution_store 2>/dev/null || true
-
-          echo ""
-          echo "=== Asegurar masquerade para conectividad WhatsApp ==="
-          sudo iptables -t nat -C POSTROUTING -s 172.16.0.0/12 -j MASQUERADE 2>/dev/null \
-            || sudo iptables -t nat -A POSTROUTING -s 172.16.0.0/12 -j MASQUERADE \
-            || echo "ℹ️  iptables sin permiso — masquerade se configura manualmente"
-
-          echo ""
-          echo "=== Iniciando Redis dedicado para Evolution ==="
-          sudo docker run -d \
-            --name evolution-v2-redis-1 \
-            --network coolify \
-            --restart unless-stopped \
-            redis:7-alpine \
-            && echo "✅ Redis iniciado" || echo "ℹ️  Redis ya existe o error"
-          sleep 5
-
-          echo ""
-          echo "=== Obtener nombre del API container para webhook ==="
+          echo "Esperando 60s para que el deploy termine..."
+          sleep 60
           API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           if [ -z "$API_C" ]; then
             API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           fi
           if [ -n "$API_C" ]; then
-            API_CNAME=$(sudo docker inspect "$API_C" --format '{{.Name}}' 2>/dev/null | sed 's|^/||')
-            WEBHOOK_URL="http://${API_CNAME}:3000/whatsapp/webhook"
-          else
-            WEBHOOK_URL="http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/whatsapp/webhook"
+            echo "=== Test: pidefacil-api → wa-gateway-api:8080 ==="
+            sudo docker exec "$API_C" \
+              wget -qO- --timeout=8 http://wa-gateway-api:8080/ 2>&1 | head -2 \
+              && echo "✅ Conectividad OK" \
+              || echo "❌ Sin conectividad — verifica que ambos containers están en red coolify"
           fi
-          echo "Webhook URL: $WEBHOOK_URL"
+
+  restart-evolution:
+    name: Verificar conectividad al gateway WhatsApp compartido
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'restart-evolution'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Limpiar Evolution propio (si quedó) + verificar gateway
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "=== Bajando Evolution propio de pidefacil (si quedó huérfano) ==="
+          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null && echo "Eliminado" || echo "No existía"
+          sudo docker rm -f evolution-v2-redis-1 2>/dev/null && echo "Eliminado redis" || echo "No existía"
 
           echo ""
-          echo "=== Iniciando Evolution v1.4.8 (file storage, sin DB) ==="
-          sudo docker run -d \
-            --name evolution-v2-evolution-api-1 \
-            --network coolify \
-            --restart unless-stopped \
-            -e AUTHENTICATION_API_KEY="${EVOLUTION_API_KEY}" \
-            -e AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true \
-            -e AUTHENTICATION_TYPE=apikey \
-            -e DEL_INSTANCE=false \
-            -e QRCODE_LIMIT=30 \
-            -e LOG_LEVEL=VERBOSE \
-            -e DATABASE_ENABLED=false \
-            -e REDIS_ENABLED=true \
-            -e CACHE_REDIS_URI="redis://evolution-v2-redis-1:6379" \
-            -e WEBHOOK_GLOBAL_ENABLED=true \
-            -e WEBHOOK_GLOBAL_URL="${WEBHOOK_URL}" \
-            -e WEBHOOK_GLOBAL_EVENTS_QRCODE_UPDATED=true \
-            -e WEBHOOK_GLOBAL_EVENTS_CONNECTION_UPDATE=true \
-            atendai/evolution-api:v1.4.8 \
-            && echo "✅ Evolution v1.4.8 iniciado" || (echo "❌ docker run falló" && exit 1)
+          echo "=== Estado del gateway compartido ==="
+          GW_STATUS=$(sudo docker inspect wa-gateway-api --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
+          echo "wa-gateway-api: ${GW_STATUS:-no encontrado}"
 
-          echo "Esperando 30s para que arranque..."
-          sleep 30
+          echo ""
+          echo "=== Asegurar env vars correctas en Coolify ==="
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs/bulk' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"data\": [
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://wa-gateway-api:8080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_KEY\",  \"value\": \"${EVOLUTION_API_KEY}\",       \"is_preview\": false}
+              ]
+            }" && echo "✅ Env vars verificadas"
 
-          EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
-          echo "Evolution status: $EVO_STATUS"
-          sudo docker logs evolution-v2-evolution-api-1 --tail=20 2>&1 || true
-
-          if [ "$EVO_STATUS" = "running" ]; then
-            echo "✅ Evolution v1.4.8 corriendo"
-          else
-            echo "❌ Evolution no está running — revisa los logs"
-            exit 1
+          echo ""
+          echo "=== Verificar conectividad API → gateway ==="
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_C" ]; then
+            sudo docker network connect coolify "$API_C" 2>/dev/null || true
+            sudo docker exec "$API_C" wget -qO- --timeout=8 http://wa-gateway-api:8080/ 2>&1 | head -2 \
+              && echo "✅ Conectividad OK" \
+              || echo "❌ Sin conectividad API → gateway"
           fi
 
   check-webhook-logs:
