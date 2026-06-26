@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PdfService } from './pdf.service';
 
 const WHATSAPP_STATUSES = new Set<OrderStatus>([
   OrderStatus.NEW,
@@ -86,6 +87,7 @@ export class WhatsappService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly pdf: PdfService,
   ) {
     this.apiUrl = this.config.get<string>('EVOLUTION_API_URL') ?? '';
     this.apiKey = this.config.get<string>('EVOLUTION_API_KEY') ?? '';
@@ -254,6 +256,7 @@ export class WhatsappService {
         select: {
           total: true,
           paymentMethodLabel: true,
+          notes: true,
           customPaymentMethod: { select: { requiresConfirmation: true } },
           items: { select: { quantity: true, price: true, product: { select: { name: true } } } },
         },
@@ -265,6 +268,41 @@ export class WhatsappService {
         price: Number(i.price),
       }));
 
+      const requiresConfirmation = fullOrder?.customPaymentMethod?.requiresConfirmation ?? false;
+
+      // Send PDF ticket
+      try {
+        const pdfBuffer = await this.pdf.generateConfirmedTicket({
+          folio: order.orderNumber,
+          businessName: biz.name,
+          customerName: order.customerName,
+          items,
+          total: Number(fullOrder?.total ?? 0),
+          paymentMethodLabel: fullOrder?.paymentMethodLabel ?? null,
+          requiresConfirmation,
+          notes: fullOrder?.notes ?? null,
+          statusUrl,
+        });
+
+        const caption = requiresConfirmation
+          ? `✅ Pedido #${order.orderNumber} confirmado — envía tu comprobante de pago para iniciar la preparación.`
+          : `✅ Pedido #${order.orderNumber} confirmado — ya estamos preparando tu pedido.`;
+
+        await this.evo('POST', `/message/sendMedia/${biz.whatsappSession}`, {
+          number: phone,
+          mediatype: 'document',
+          mimetype: 'application/pdf',
+          media: pdfBuffer.toString('base64'),
+          fileName: `Pedido-${order.orderNumber}.pdf`,
+          caption,
+        });
+        this.logger.log(`[WA] ✅ PDF ticket Pedido #${order.orderNumber} → CONFIRMED enviado a ${phone}`);
+        return;
+      } catch (pdfErr) {
+        this.logger.warn(`[WA] PDF fallback a texto: ${(pdfErr as Error).message}`);
+        // Fall through to text fallback
+      }
+
       text = buildConfirmedMessage(
         order.orderNumber,
         order.customerName,
@@ -272,7 +310,7 @@ export class WhatsappService {
         items,
         Number(fullOrder?.total ?? 0),
         fullOrder?.paymentMethodLabel ?? null,
-        fullOrder?.customPaymentMethod?.requiresConfirmation ?? false,
+        requiresConfirmation,
         statusUrl,
       );
     } else if (newStatus === OrderStatus.READY) {
