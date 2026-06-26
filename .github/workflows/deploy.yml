@@ -261,7 +261,7 @@ jobs:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
           echo "=== Estado de Evolution v2 ==="
-          EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
+          EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$EVO_STATUS" ] && EVO_STATUS="not_found"
           echo "Container status: $EVO_STATUS"
           sudo docker ps -a --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
@@ -270,7 +270,7 @@ jobs:
             echo "Container parado — iniciando..."
             sudo docker start evolution-v2-evolution-api-1
             sleep 15
-            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
+            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$EVO_STATUS" ] && EVO_STATUS="not_found"
             echo "Status después de start: $EVO_STATUS"
           fi
 
@@ -301,7 +301,7 @@ jobs:
               exit 1
             fi
 
-            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
+            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$EVO_STATUS" ] && EVO_STATUS="not_found"
             echo "Status final: $EVO_STATUS"
           fi
 
