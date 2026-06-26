@@ -7,5 +7,6 @@ import { PublicModule } from '../public/public.module';
   imports: [PublicModule],
   controllers: [BusinessController],
   providers: [BusinessService],
+  exports: [BusinessService],
 })
 export class BusinessModule {}

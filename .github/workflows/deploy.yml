@@ -4,11 +4,29 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job a ejecutar manualmente'
+        required: false
+        default: 'setup-whatsapp'
+        type: choice
+        options:
+          - setup-whatsapp
+          - restart-evolution
+          - seed-data
+          - fix-admin-url
+          - check-webhook-logs
+          - diagnose-web
+          - test-evolution-api
 
 jobs:
   test:
     name: Integration Tests
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     services:
       postgres:
         image: postgres:16
@@ -40,7 +58,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -74,14 +92,624 @@ jobs:
 
   deploy:
     name: Deploy to Coolify
+    if: github.event_name == 'push'
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, deploy]
     steps:
       - name: Deploy API
-        run: curl -fsSL "${{ secrets.COOLIFY_WEBHOOK_API }}"
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}'
+
+      - name: Set Web env vars (NEXT_PUBLIC_API_URL + Firebase)
+        run: |
+          # Use the stable public URL for both client and server-side fetches.
+          # Firebase web config is public (embedded in browser bundle) — safe to inline.
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/b10i6rz52rphphtcnxll73np/envs/bulk' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
+                {"key": "API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_API_KEY", "value": "AIzaSyC_DQkm9B6oqFflcyAuNvYmXgw7H8bSqQA", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN", "value": "pidefacil-76602.firebaseapp.com", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_DATABASE_URL", "value": "https://pidefacil-76602-default-rtdb.firebaseio.com", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_PROJECT_ID", "value": "pidefacil-76602", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET", "value": "pidefacil-76602.firebasestorage.app", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID", "value": "203313412606", "is_preview": false},
+                {"key": "NEXT_PUBLIC_FIREBASE_APP_ID", "value": "1:203313412606:web:8bd0b2f8fac5323bf0e8af", "is_preview": false}
+              ]
+            }' && echo "✅ Web env vars updated"
 
       - name: Deploy Web
-        run: curl -fsSL "${{ secrets.COOLIFY_WEBHOOK_WEB }}"
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"b10i6rz52rphphtcnxll73np","force":false}'
+
+      - name: Set Admin env vars (NEXT_PUBLIC_API_URL)
+        run: |
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/vh3jq4ik26i989m3xmlkrz20/envs/bulk' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+              ]
+            }' && echo "✅ Admin env vars updated"
 
       - name: Deploy Admin
-        run: curl -fsSL "${{ secrets.COOLIFY_WEBHOOK_ADMIN }}"
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"vh3jq4ik26i989m3xmlkrz20","force":false}'
+
+  fix-admin-url:
+    name: Fix admin NEXT_PUBLIC_API_URL + redeploy
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'fix-admin-url'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Set NEXT_PUBLIC_API_URL in Coolify for admin
+        run: |
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/vh3jq4ik26i989m3xmlkrz20/envs/bulk' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "data": [
+                {"key": "NEXT_PUBLIC_API_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false}
+              ]
+            }' && echo "✅ Env var set"
+
+      - name: Redeploy Admin
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"vh3jq4ik26i989m3xmlkrz20","force":true}' \
+            && echo "✅ Admin redeploy triggered"
+
+  seed-data:
+    name: Seed super admin + 3 fondas demo
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'seed-data'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seed super admin via API container (docker exec)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+          SEED_SUPER_ADMIN_EMAIL: ${{ secrets.SUPER_ADMIN_EMAIL }}
+          SEED_SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD }}
+        run: |
+          # Find the Coolify API container (by label or name pattern)
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -z "$API_CONTAINER" ]; then
+            echo "❌ API container not found"
+            sudo docker ps --format "table {{.Names}}\t{{.Status}}"
+            exit 1
+          fi
+          echo "API container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+
+          SA_EMAIL="${SEED_SUPER_ADMIN_EMAIL:-superadmin@pidefacil.com}"
+          SA_PASS="${SEED_SUPER_ADMIN_PASSWORD:-ChangeMe123!}"
+
+          # Copy seed script from repo into container and execute
+          sudo docker cp apps/api/prisma/seed-admin.cjs "${API_CONTAINER}:/tmp/seed-admin.cjs"
+          sudo docker exec \
+            -e SA_EMAIL="${SA_EMAIL}" \
+            -e SA_PASS="${SA_PASS}" \
+            "${API_CONTAINER}" \
+            node /tmp/seed-admin.cjs
+          echo "✅ Super admin seed OK → ${SA_EMAIL}"
+
+      - name: Wait for API container to be healthy
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "Waiting for API to be healthy (up to 8 min)..."
+          for i in $(seq 1 96); do
+            STATUS=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              "http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
+            if echo "$STATUS" | grep -q "running"; then
+              echo "✅ Coolify reports API running after $((i * 5))s (status=$STATUS)"
+              sleep 5
+              break
+            fi
+            if [ $i -eq 96 ]; then
+              echo "❌ API did not become healthy in 8 min (last status: $STATUS)"
+              exit 1
+            fi
+            echo "  attempt $i/96, status=$STATUS..."
+            sleep 5
+          done
+
+      - name: Seed 3 fondas demo (via API container, Node ESM)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          sudo docker cp apps/api/prisma/seed-demo.mjs "${API_CONTAINER}:/tmp/seed-demo.mjs"
+          sudo docker exec \
+            -e API_URL='http://localhost:3000' \
+            "${API_CONTAINER}" \
+            node /tmp/seed-demo.mjs || {
+            echo "❌ Seed failed — last 50 API container log lines:"
+            sudo docker logs --tail=50 "${API_CONTAINER}"
+            exit 1
+          }
+          echo "✅ Demo seed OK"
+
+  setup-whatsapp:
+    name: Apuntar pidefacil-api al gateway WhatsApp compartido
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'setup-whatsapp' || github.event.inputs.job == '')
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Bajar Evolution propio de pidefacil + apuntar al gateway compartido
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "=== Bajando Evolution propio de pidefacil (ya no se necesita) ==="
+          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null && echo "Eliminado evolution-v2-evolution-api-1" || echo "No existía"
+          sudo docker rm -f evolution-v2-redis-1 2>/dev/null && echo "Eliminado evolution-v2-redis-1" || echo "No existía"
+
+          echo ""
+          echo "=== Verificando que el gateway compartido está alcanzable ==="
+          GW_STATUS=$(sudo docker inspect wa-gateway-api --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
+          echo "wa-gateway-api status: ${GW_STATUS:-no encontrado}"
+
+          echo ""
+          echo "=== Actualizando env vars del NestJS API en Coolify ==="
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs/bulk' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"data\": [
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://wa-gateway-api:8080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_KEY\",  \"value\": \"${EVOLUTION_API_KEY}\",       \"is_preview\": false}
+              ]
+            }" && echo "✅ Env vars actualizadas (URL=http://wa-gateway-api:8080)"
+
+          echo ""
+          echo "=== Asegurar que el API container está en la red coolify ==="
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_C" ]; then
+            echo "API container: $(sudo docker inspect $API_C --format '{{.Name}}')"
+            sudo docker network connect coolify "$API_C" 2>/dev/null \
+              && echo "✅ API conectada a red coolify" \
+              || echo "ℹ️  Ya estaba en red coolify"
+          else
+            echo "⚠️  API container no encontrado — el redeploy aplicará las vars"
+          fi
+
+      - name: Redeploy NestJS API
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
+            && echo "✅ API redeploy disparado"
+
+      - name: Verificar conectividad API → gateway (post-deploy)
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          echo "Esperando 60s para que el deploy termine..."
+          sleep 60
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_C" ]; then
+            echo "=== Test: pidefacil-api → wa-gateway-api:8080 ==="
+            sudo docker exec "$API_C" \
+              wget -qO- --timeout=8 http://wa-gateway-api:8080/ 2>&1 | head -2 \
+              && echo "✅ Conectividad OK" \
+              || echo "❌ Sin conectividad — verifica que ambos containers están en red coolify"
+          fi
+
+  restart-evolution:
+    name: Verificar conectividad al gateway WhatsApp compartido
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'restart-evolution'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Limpiar Evolution propio (si quedó) + verificar gateway
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "=== Bajando Evolution propio de pidefacil (si quedó huérfano) ==="
+          sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null && echo "Eliminado" || echo "No existía"
+          sudo docker rm -f evolution-v2-redis-1 2>/dev/null && echo "Eliminado redis" || echo "No existía"
+
+          echo ""
+          echo "=== Estado del gateway compartido ==="
+          GW_STATUS=$(sudo docker inspect wa-gateway-api --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]')
+          echo "wa-gateway-api: ${GW_STATUS:-no encontrado}"
+
+          echo ""
+          echo "=== Asegurar env vars correctas en Coolify ==="
+          curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs/bulk' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"data\": [
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://wa-gateway-api:8080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_KEY\",  \"value\": \"${EVOLUTION_API_KEY}\",       \"is_preview\": false}
+              ]
+            }" && echo "✅ Env vars verificadas"
+
+          echo ""
+          echo "=== Verificar conectividad API → gateway ==="
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_C" ]; then
+            sudo docker network connect coolify "$API_C" 2>/dev/null || true
+            sudo docker exec "$API_C" wget -qO- --timeout=8 http://wa-gateway-api:8080/ 2>&1 | head -2 \
+              && echo "✅ Conectividad OK" \
+              || echo "❌ Sin conectividad API → gateway"
+          fi
+
+  check-webhook-logs:
+    name: Diagnosticar WhatsApp + Evolution v2
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'check-webhook-logs'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Estado de contenedores + logs NestJS/Evolution v2
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          echo "=== Contenedores evolution en ejecución ==="
+          sudo docker ps --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+          echo ""
+          echo "=== Evolution v2 — redes e imagen ==="
+          EVO_CONTAINER=$(sudo docker ps --filter "name=evolution-v2-evolution-api-1" -q | head -1)
+          if [ -n "$EVO_CONTAINER" ]; then
+            echo "Imagen: $(sudo docker inspect $EVO_CONTAINER --format '{{.Config.Image}}')"
+            sudo docker inspect "$EVO_CONTAINER" \
+              --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}'
+            # Detect host port if exposed
+            HOST_PORT=$(sudo docker inspect "$EVO_CONTAINER" \
+              --format '{{range $p,$v := .NetworkSettings.Ports}}{{if $v}}{{$p}} → {{range $v}}{{.HostPort}}{{end}}{{println}}{{end}}{{end}}' \
+              | grep "8080" | grep -o '[0-9]*$' | head -1)
+            echo "Host port para 8080: ${HOST_PORT:-no expuesto}"
+          else
+            echo "❌ evolution-v2-evolution-api-1 no encontrado"
+          fi
+
+          echo ""
+          echo "=== NestJS API — env vars EVOLUTION ==="
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_CONTAINER" ]; then
+            echo "API container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+            echo "EVOLUTION vars en API:"
+            sudo docker inspect "$API_CONTAINER" \
+              --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+              | grep -i "EVOLUTION" || echo "(EVOLUTION vars no encontradas — redeploy pendiente?)"
+            echo ""
+            echo "Redes del API container:"
+            sudo docker inspect "$API_CONTAINER" \
+              --format '{{range $k,$v := .NetworkSettings.Networks}}  {{$k}} → {{$v.IPAddress}}{{println}}{{end}}'
+          else
+            echo "❌ API container no encontrado"
+          fi
+
+          echo ""
+          echo "=== Logs NestJS — líneas [WH] (últimos 30 min) ==="
+          if [ -n "$API_CONTAINER" ]; then
+            sudo docker logs "$API_CONTAINER" --since 30m 2>&1 | grep '\[WH\]\|WhatsApp\|Evolution\|\[WA\]' | tail -20 \
+              || echo "(sin líneas WhatsApp recientes)"
+          fi
+
+          echo ""
+          echo "=== Logs NestJS — errores recientes (últimos 10 min) ==="
+          if [ -n "$API_CONTAINER" ]; then
+            sudo docker logs "$API_CONTAINER" --since 10m 2>&1 | grep -i "error\|timeout\|ECONNREFUSED\|exception" | tail -20 \
+              || echo "(sin errores recientes)"
+          fi
+
+          echo ""
+          echo "=== Logs Evolution v2 completos (últimos 10 min, sin filtro) ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker logs "$EVO_CONTAINER" --since 10m 2>&1 | grep -v "^$" | tail -60
+          fi
+
+          echo ""
+          echo "=== Test: conectividad API → Evolution v2 ==="
+          if [ -n "$API_CONTAINER" ] && [ -n "$EVO_CONTAINER" ]; then
+            echo "Desde API container → evolution-v2-evolution-api-1:8080:"
+            sudo docker exec "$API_CONTAINER" \
+              wget -qO- --timeout=8 http://evolution-v2-evolution-api-1:8080/ 2>&1 | head -3 \
+              || echo "❌ No hay conectividad API → Evolution v2"
+          fi
+
+          echo ""
+          echo "=== Test: instancias existentes en Evolution v2 ==="
+          if [ -n "$EVO_CONTAINER" ] && [ -n "$API_CONTAINER" ]; then
+            INSTANCES_RAW=$(sudo docker exec "$API_CONTAINER" \
+              wget -qO- --timeout=8 \
+              --header="apikey: ${EVOLUTION_API_KEY}" \
+              http://evolution-v2-evolution-api-1:8080/instance/fetchInstances 2>&1)
+            echo "fetchInstances raw: $INSTANCES_RAW"
+            INST_NAME=$(echo "$INSTANCES_RAW" | python3 -c "import sys,json; d=json.load(sys.stdin); items=d if isinstance(d,list) else d.get('data',[]); print(items[0].get('name','') or items[0].get('instanceName','') if items else '')" 2>/dev/null || true)
+            echo "Primera instancia: $INST_NAME"
+
+            if [ -n "$INST_NAME" ]; then
+              echo ""
+              echo "=== GET /instance/connect/${INST_NAME} (respuesta raw) ==="
+              sudo docker exec "$API_CONTAINER" \
+                wget -O- --timeout=10 \
+                --header="apikey: ${EVOLUTION_API_KEY}" \
+                "http://evolution-v2-evolution-api-1:8080/instance/connect/${INST_NAME}" 2>&1 | head -5 || true
+
+              echo ""
+              echo "=== GET /instance/connectionState/${INST_NAME} ==="
+              sudo docker exec "$API_CONTAINER" \
+                wget -O- --timeout=8 \
+                --header="apikey: ${EVOLUTION_API_KEY}" \
+                "http://evolution-v2-evolution-api-1:8080/instance/connectionState/${INST_NAME}" 2>&1 | head -3 || true
+            fi
+          fi
+
+          echo ""
+          echo "=== Conectividad internet desde Evolution v2 (TCP WhatsApp) ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker exec "$EVO_CONTAINER" node -e \
+              "const net=require('net');const s=net.createConnection(443,'web.whatsapp.com');s.setTimeout(8000);s.on('connect',()=>{console.log('TCP OK: web.whatsapp.com:443');s.destroy()});s.on('error',e=>console.error('TCP ERROR:',e.code,e.message));s.on('timeout',()=>{console.log('TCP TIMEOUT');s.destroy()});" \
+              2>&1 || echo "Node exec falló"
+          fi
+
+          echo ""
+          echo "=== Containers Redis en red coolify ==="
+          sudo docker ps --filter "network=coolify" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | grep -i redis || echo "(ninguno)"
+
+          echo ""
+          echo "=== Todos los containers Redis en el VPS ==="
+          sudo docker ps --filter "ancestor=redis" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" || true
+          sudo docker ps --format "table {{.Names}}\t{{.Image}}" | grep -i redis || echo "(ningún container redis)"
+
+          echo ""
+          echo "=== Buscar Evolution en TODOS los compose files + sus env vars Redis ==="
+          find /data/coolify /root /home /var/lib /artifacts 2>/dev/null \
+            -maxdepth 10 \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) \
+            -exec grep -lE "evolution.api|evolution-api|atendai|evolution_api" {} \; 2>/dev/null | head -5 | while read f; do
+            echo "=== Compose: $f ==="
+            grep -i "REDIS\|CACHE\|evolution\|DATABASE\|LOG_LEVEL" "$f" 2>/dev/null | grep -iv "PASSWORD\|SECRET\|TOKEN\|PASS" | head -20
+          done
+
+          echo ""
+          echo "=== Env vars EVOLUTION/REDIS de todos containers evolution ==="
+          for cid in $(sudo docker ps -a --filter "name=evolution" -q 2>/dev/null); do
+            NAME=$(sudo docker inspect "$cid" --format '{{.Name}}' 2>/dev/null)
+            echo "--- Container: $NAME ---"
+            sudo docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+              | grep -iE "REDIS|CACHE" \
+              | grep -iv "API_KEY\|PASSWORD\|SECRET\|TOKEN\|PASS" || echo "(sin vars redis/cache)"
+          done
+
+          echo ""
+          echo "=== Buscar compose files con 'evolution' en el VPS ==="
+          find /data/coolify /root /home /var/lib /artifacts 2>/dev/null \
+            -maxdepth 8 \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) \
+            -exec grep -lE "evolution.api|evolution-api|atendai" {} \; 2>/dev/null | head -5
+
+  test-evolution-api:
+    name: Probar Evolution API directamente (DELETE + CREATE + QR)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'test-evolution-api'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: DELETE + CREATE + polling QR usando node
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          EVO_C="evolution-v2-evolution-api-1"
+          echo "API container: $(sudo docker inspect $API_C --format '{{.Name}}' 2>/dev/null)"
+
+          # Escribir script en archivo temporal (evita problemas de comillas en YAML)
+          cat > /tmp/evo-test.js << 'NODESCRIPT'
+          const http = require('http');
+          const KEY = process.env.EVO_KEY || '';
+          function req(method, path, body) {
+            return new Promise((resolve, reject) => {
+              const opts = {hostname:'localhost',port:8080,path,method,
+                headers:{'Content-Type':'application/json','apikey':KEY}};
+              const r = http.request(opts, res => {
+                let d=''; res.on('data',c=>d+=c); res.on('end',()=>resolve({s:res.statusCode,b:d}));
+              });
+              r.on('error', reject);
+              if (body) r.write(JSON.stringify(body));
+              r.end();
+            });
+          }
+          (async () => {
+            console.log('--- DELETE ---');
+            const del = await req('DELETE','/instance/delete/dona-rosa');
+            console.log('HTTP', del.s, del.b.substring(0,300));
+            await new Promise(r=>setTimeout(r,2000));
+            console.log('--- POST /instance/create ---');
+            const create = await req('POST','/instance/create',{instanceName:'dona-rosa',qrcode:true,integration:'WHATSAPP-BAILEYS'});
+            console.log('HTTP', create.s, create.b.substring(0,500));
+            await new Promise(r=>setTimeout(r,12000));
+            console.log('--- GET /instance/connect (t+14s) ---');
+            const conn = await req('GET','/instance/connect/dona-rosa');
+            console.log('HTTP', conn.s, conn.b.substring(0,1000));
+            await new Promise(r=>setTimeout(r,10000));
+            console.log('--- GET /instance/connect (t+24s) ---');
+            const conn2 = await req('GET','/instance/connect/dona-rosa');
+            console.log('HTTP', conn2.s, conn2.b.substring(0,1000));
+            console.log('--- GET /instance/connectionState ---');
+            const state = await req('GET','/instance/connectionState/dona-rosa');
+            console.log('HTTP', state.s, state.b);
+          })().catch(e=>{console.error('ERROR:',e.message);process.exit(1)});
+          NODESCRIPT
+
+          echo ""
+          echo "=== DELETE + CREATE + GET connect via node ==="
+          sudo docker cp /tmp/evo-test.js "$EVO_C":/tmp/evo-test.js
+          sudo docker exec -e "EVO_KEY=${EVOLUTION_API_KEY}" "$EVO_C" node /tmp/evo-test.js 2>&1
+
+          echo ""
+          echo "=== Logs Evolution v2 (últimas 80 líneas) ==="
+          sudo docker logs "$EVO_C" --tail=80 2>&1
+
+          echo ""
+          echo "=== Logs NestJS (últimas 30 líneas, sin filtro) ==="
+          sudo docker logs "$API_C" --tail=30 2>&1
+
+  diagnose-web:
+    name: Diagnosticar conectividad web → API
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'diagnose-web'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Verificar business en API y conectividad desde web container
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          echo "=== 1. Verificar que dona-rosa existe en la DB (via API directo) ==="
+          curl -sf http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/public/business/dona-rosa \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print('slug:', d.get('slug'), '| name:', d.get('name'))" \
+            || echo "❌ API no devuelve dona-rosa"
+
+          echo ""
+          echo "=== 2. Containers corriendo ==="
+          sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -v "^NAMES" | head -20
+
+          echo ""
+          echo "=== 3. Encontrar web container ==="
+          WEB_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=b10i6rz52rphphtcnxll73np" -q | head -1)
+          if [ -z "$WEB_CONTAINER" ]; then
+            WEB_CONTAINER=$(sudo docker ps --filter "name=b10i6rz52rphphtcnxll73np" -q | head -1)
+          fi
+          echo "Web container ID: $WEB_CONTAINER"
+          if [ -n "$WEB_CONTAINER" ]; then
+            echo "Web container name: $(sudo docker inspect $WEB_CONTAINER --format '{{.Name}}')"
+            echo "Web container hostname: $(sudo docker inspect $WEB_CONTAINER --format '{{.Config.Hostname}}')"
+            echo "Web container networks: $(sudo docker inspect $WEB_CONTAINER --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}')"
+          fi
+
+          echo ""
+          echo "=== 4. Encontrar API container ==="
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          echo "API container ID: $API_CONTAINER"
+          if [ -n "$API_CONTAINER" ]; then
+            echo "API container name: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+            echo "API container hostname: $(sudo docker inspect $API_CONTAINER --format '{{.Config.Hostname}}')"
+            echo "API container networks: $(sudo docker inspect $API_CONTAINER --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}')"
+            echo "API network aliases: $(sudo docker inspect $API_CONTAINER --format '{{range $k,$v := .NetworkSettings.Networks}}{{range $v.Aliases}}  {{.}} {{end}}{{end}}')"
+          fi
+
+          echo ""
+          echo "=== 5. Test curl desde web container → API URL pública ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker exec "$WEB_CONTAINER" \
+              wget -qO- --timeout=5 http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io/public/business/dona-rosa \
+              2>&1 || echo "❌ wget fallido (posible problema de red interna)"
+          else
+            echo "⚠️  web container no encontrado"
+          fi
+
+          echo ""
+          echo "=== 6. Test curl desde web container → API hostname interno ==="
+          if [ -n "$WEB_CONTAINER" ] && [ -n "$API_CONTAINER" ]; then
+            API_HOSTNAME=$(sudo docker inspect "$API_CONTAINER" --format '{{.Config.Hostname}}')
+            echo "Probando http://${API_HOSTNAME}:3000/public/business/dona-rosa ..."
+            sudo docker exec "$WEB_CONTAINER" \
+              wget -qO- --timeout=5 "http://${API_HOSTNAME}:3000/public/business/dona-rosa" \
+              2>&1 || echo "❌ wget al hostname interno fallido"
+          fi
+
+          echo ""
+          echo "=== 7. Últimas 20 líneas de logs del web container ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker logs "$WEB_CONTAINER" --tail=20 2>&1 || true
+          fi
+
+          echo ""
+          echo "=== 8. API_URL env var en web container ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker inspect "$WEB_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E 'API_URL|NEXT_PUBLIC' || echo "(no API_URL vars encontradas)"
+          fi
+
+          echo ""
+          echo "=== 9. Test web app URL — /dona-rosa ==="
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa)
+          echo "HTTP status: ${HTTP_CODE}"
+          echo "Primeras 300 chars de la respuesta HTML:"
+          curl -s http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io/dona-rosa \
+            | grep -o '<title>[^<]*\|Negocio no encontrado\|La Cocina\|dona-rosa\|menuColor\|PideFacil' | head -5 || echo "(sin coincidencias)"
+
+          echo ""
+          echo "=== 10. Node.js fetch test desde web container (simula Next.js server-side fetch) ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            sudo docker exec "$WEB_CONTAINER" node -e "
+              const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+              const url = API_URL + '/public/business/dona-rosa';
+              console.log('process.env.API_URL:', process.env.API_URL);
+              console.log('process.env.NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+              console.log('Fetching URL:', url);
+              fetch(url, { cache: 'no-store' })
+                .then(r => { console.log('HTTP status:', r.status, r.statusText); return r.text(); })
+                .then(body => console.log('Body (first 200 chars):', body.substring(0, 200)))
+                .catch(e => console.error('FETCH ERROR:', e.message, e.cause?.message || '', e.cause?.code || ''));
+            " 2>&1 || echo "❌ node -e failed"
+          fi
+
+          echo ""
+          echo "=== 11. Verificar 'no-store' en código compilado ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            echo "Grep 'no-store' en .next/server/app:"
+            sudo docker exec "$WEB_CONTAINER" grep -rl "no-store" /app/apps/web/.next/server/app/ 2>/dev/null | head -3 \
+              || echo "  (no encontrado en /app/apps/web/.next/server/app/)"
+            echo "Grep 'revalidate' en .next/server/app:"
+            sudo docker exec "$WEB_CONTAINER" grep -rl "revalidate" /app/apps/web/.next/server/app/ 2>/dev/null | head -3 \
+              || echo "  (no encontrado)"
+            echo "API_URL en código compilado (chunks):"
+            sudo docker exec "$WEB_CONTAINER" grep -r "API_URL\|localhost:3000" /app/apps/web/.next/server/ 2>/dev/null \
+              | grep -v "Binary" | head -5 || echo "  (no encontrado)"
+          fi
+
+          echo ""
+          echo "=== 12. Prerender manifest y archivos [slug] ==="
+          if [ -n "$WEB_CONTAINER" ]; then
+            echo "-- prerender-manifest.json (rutas pre-rendered) --"
+            sudo docker exec "$WEB_CONTAINER" cat /app/apps/web/.next/prerender-manifest.json 2>/dev/null \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); routes=list(d.get('routes',{}).keys()); print('Pre-rendered routes:', routes[:10])" \
+              || echo "  (no encontrado)"
+            echo "-- Archivos en .next/server/app/[slug]/ --"
+            sudo docker exec "$WEB_CONTAINER" ls -la '/app/apps/web/.next/server/app/[slug]/' 2>/dev/null || echo "  (directorio no encontrado)"
+            echo "-- Archivos .html en .next/server/app/ --"
+            sudo docker exec "$WEB_CONTAINER" find /app/apps/web/.next/server/app -name "*.html" 2>/dev/null | head -10 || echo "  (no hay archivos .html)"
+          fi
+
+

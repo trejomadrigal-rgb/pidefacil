@@ -1,5 +1,11 @@
 import { useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Linking, Alert, Pressable } from 'react-native';
+import Animated, {
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOrder } from '../../../src/hooks/use-order';
@@ -8,6 +14,36 @@ import {
   STATUS_CONFIG, NEXT_TRANSITION, CANCEL_TRANSITION, type OrderStatus,
 } from '../../../src/constants/order-status';
 
+function SpringButton({
+  onPress,
+  disabled,
+  style,
+  children,
+}: {
+  onPress: () => void;
+  disabled?: boolean;
+  style: object;
+  children: React.ReactNode;
+}) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPressIn={() => { scale.value = withSpring(0.96, { damping: 20, stiffness: 300 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 20, stiffness: 300 }); }}
+        onPress={onPress}
+        disabled={disabled}
+        style={[style, disabled && { opacity: 0.5 }]}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function OrderDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -15,6 +51,24 @@ export default function OrderDetailScreen() {
   const router = useRouter();
   const { data: order, isLoading, isError, refetch } = useOrder(id);
   const { mutate: updateStatus, isPending } = useUpdateOrderStatus(id);
+
+  const handleWhatsApp = useCallback(async () => {
+    if (!order) return;
+    const digits = order.customerPhone.replace(/\D/g, '');
+    const phone = digits.length === 10 ? `52${digits}` : digits;
+    const text = encodeURIComponent(`Hola, sobre tu pedido #${order.orderNumber} de PideFacil`);
+    const url = `https://wa.me/${phone}?text=${text}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        Alert.alert('WhatsApp no disponible', 'No se encontró WhatsApp en este dispositivo.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp.');
+    }
+  }, [order]);
 
   if (isLoading) {
     return (
@@ -30,9 +84,12 @@ export default function OrderDetailScreen() {
         <Text className="text-red-500 text-base text-center font-medium mb-4">
           Error al cargar el pedido.
         </Text>
-        <TouchableOpacity onPress={() => refetch()} className="bg-brand-500 rounded-2xl px-6 py-3">
-          <Text className="text-white font-bold">Reintentar</Text>
-        </TouchableOpacity>
+        <SpringButton
+          onPress={() => refetch()}
+          style={{ backgroundColor: '#FF6B35', borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12 }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700' }}>Reintentar</Text>
+        </SpringButton>
       </View>
     );
   }
@@ -43,39 +100,34 @@ export default function OrderDetailScreen() {
   const cancelTransition = CANCEL_TRANSITION[status];
 
   const handleStatusChange = (newStatus: OrderStatus, label: string) => {
-    Alert.alert(label, `¿Confirmas "${label.toLowerCase()}" este pedido?`, [
-      { text: 'No', style: 'cancel' },
-      { text: 'Sí, confirmar', onPress: () => updateStatus(newStatus) },
-    ]);
+    const isConfirming = order?.status === 'NEW' && newStatus === 'CONFIRMED';
+    Alert.alert(
+      label,
+      isConfirming
+        ? '¿Confirmas este pedido? Se abrirá WhatsApp para notificar al cliente.'
+        : `¿Confirmas "${label.toLowerCase()}" este pedido?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, confirmar',
+          onPress: () => updateStatus(newStatus, {
+            onSuccess: () => { if (isConfirming) handleWhatsApp(); },
+          }),
+        },
+      ],
+    );
   };
-
-  const handleWhatsApp = useCallback(async () => {
-    const digits = order.customerPhone.replace(/\D/g, '');
-    const phone = digits.length === 10 ? `52${digits}` : digits;
-    const text = encodeURIComponent(`Hola, sobre tu pedido #${order.orderNumber} de PideFacil`);
-    const url = `https://wa.me/${phone}?text=${text}`;
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (!canOpen) {
-        Alert.alert('WhatsApp no disponible', 'No se encontró WhatsApp en este dispositivo.');
-        return;
-      }
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert('Error', 'No se pudo abrir WhatsApp.');
-    }
-  }, [order.customerPhone, order.orderNumber]);
 
   return (
     <ScrollView
       className="flex-1 bg-gray-50"
-      contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
     >
       {/* Header */}
       <View className="bg-brand-900 pb-6 px-4" style={{ paddingTop: insets.top + 16 }}>
-        <TouchableOpacity onPress={() => router.back()} className="mb-3">
+        <Pressable onPress={() => router.back()} className="mb-3">
           <Text className="text-gray-300 text-sm">← Volver</Text>
-        </TouchableOpacity>
+        </Pressable>
         <View className="flex-row items-center" style={{ gap: 12 }}>
           <Text className="text-white text-2xl font-black">Pedido #{order.orderNumber}</Text>
           <View style={{ backgroundColor: statusConfig?.color ?? '#9CA3AF' }} className="rounded-full px-3 py-1">
@@ -96,42 +148,35 @@ export default function OrderDetailScreen() {
         </View>
       )}
 
-      {/* Customer info */}
-      {order.customer && (
-        <View className="bg-white mx-4 mt-4 rounded-2xl p-4">
-          <Text className="text-gray-500 text-xs font-semibold uppercase mb-2">Cliente</Text>
-          <TouchableOpacity onPress={() => router.push(`/(tabs)/clientes/${order.customer!.id}`)}>
-            <Text className="text-brand-500 font-semibold text-base">{order.customer.name}</Text>
-          </TouchableOpacity>
-          <Text className="text-gray-500 text-sm mt-0.5">{order.customer.phone}</Text>
-          {order.customer.notes ? (
-            <Text className="text-gray-600 text-sm mt-2 italic">
-              Indicaciones: {order.customer.notes}
-            </Text>
-          ) : null}
-        </View>
-      )}
-
       <View className="px-4 pt-4">
         {/* Cliente */}
-        <View className="bg-white rounded-2xl p-4 mb-3">
+        <Animated.View entering={FadeInDown.delay(60).springify().damping(18)} className="bg-white rounded-2xl p-4 mb-3">
           <Text className="text-gray-400 text-xs font-semibold uppercase mb-3">Cliente</Text>
-          <Text className="text-gray-900 font-semibold text-base">{order.customerName}</Text>
+          {order.customer ? (
+            <Pressable onPress={() => router.push(`/(tabs)/clientes/${order.customer!.id}`)}>
+              <Text className="text-brand-500 font-semibold text-base">{order.customerName}</Text>
+            </Pressable>
+          ) : (
+            <Text className="text-gray-900 font-semibold text-base">{order.customerName}</Text>
+          )}
           <Text className="text-gray-500 text-sm mt-1">{order.customerPhone}</Text>
           <Text className="text-gray-500 text-sm mt-1">
             {order.deliveryType === 'PICKUP'
               ? '🏪 Para recoger'
               : `🚗 A domicilio: ${order.deliveryAddress ?? ''}`}
           </Text>
+          {order.customer?.notes ? (
+            <Text className="text-gray-600 text-sm mt-1 italic">📌 {order.customer.notes}</Text>
+          ) : null}
           {order.notes ? (
             <Text className="text-amber-600 text-sm mt-2 bg-amber-50 rounded-xl p-2">
               📝 {order.notes}
             </Text>
           ) : null}
-        </View>
+        </Animated.View>
 
         {/* Items */}
-        <View className="bg-white rounded-2xl p-4 mb-3">
+        <Animated.View entering={FadeInDown.delay(140).springify().damping(18)} className="bg-white rounded-2xl p-4 mb-3">
           <Text className="text-gray-400 text-xs font-semibold uppercase mb-3">Productos</Text>
           {order.items.map((item, i) => (
             <View key={i} className="flex-row justify-between items-start mb-3">
@@ -140,7 +185,7 @@ export default function OrderDetailScreen() {
                 {item.notes ? <Text className="text-gray-400 text-xs mt-0.5">{item.notes}</Text> : null}
               </View>
               <View className="items-end">
-                <Text className="text-gray-500 text-xs">${item.unitPrice.toFixed(2)} × {item.quantity}</Text>
+                <Text className="text-gray-500 text-xs">${item.price.toFixed(2)} × {item.quantity}</Text>
                 <Text className="text-gray-900 font-semibold text-sm">${item.subtotal.toFixed(2)}</Text>
               </View>
             </View>
@@ -149,36 +194,61 @@ export default function OrderDetailScreen() {
             <Text className="text-gray-900 font-bold">Total</Text>
             <Text className="text-brand-500 font-black text-lg">${order.total.toFixed(2)}</Text>
           </View>
-        </View>
+        </Animated.View>
+
+        {/* Forma de pago */}
+        {(order.paymentMethodLabel || order.customPaymentMethod) && (
+          <Animated.View entering={FadeInDown.delay(200).springify().damping(18)} className="bg-white rounded-2xl p-4 mb-3">
+            <Text className="text-gray-400 text-xs font-semibold uppercase mb-2">Forma de pago</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-gray-900 font-medium text-sm">
+                {order.paymentMethodLabel ?? '—'}
+              </Text>
+              {order.customPaymentMethod?.requiresConfirmation && !order.isPaid && (
+                <View className="bg-amber-100 rounded-full px-2 py-0.5">
+                  <Text className="text-amber-700 text-xs font-bold">⏳ Pago pendiente</Text>
+                </View>
+              )}
+              {order.isPaid && (
+                <View className="bg-green-100 rounded-full px-2 py-0.5">
+                  <Text className="text-green-700 text-xs font-bold">✅ Pagado</Text>
+                </View>
+              )}
+            </View>
+          </Animated.View>
+        )}
 
         {/* Acciones */}
-        <View className="mb-8" style={{ gap: 12 }}>
-          <TouchableOpacity className="bg-green-500 rounded-2xl py-4 items-center" onPress={handleWhatsApp}>
-            <Text className="text-white font-bold text-base">💬 Contactar por WhatsApp</Text>
-          </TouchableOpacity>
+        <Animated.View entering={FadeInDown.delay(220).springify().damping(18)} style={{ gap: 12, marginBottom: 8 }}>
+          <SpringButton
+            onPress={handleWhatsApp}
+            style={{ backgroundColor: '#22C55E', borderRadius: 16, paddingVertical: 16, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>💬 Contactar por WhatsApp</Text>
+          </SpringButton>
 
           {nextTransition && (
-            <TouchableOpacity
-              className="bg-brand-500 rounded-2xl py-4 items-center"
+            <SpringButton
               onPress={() => handleStatusChange(nextTransition.status, nextTransition.label)}
               disabled={isPending}
+              style={{ backgroundColor: '#FF6B35', borderRadius: 16, paddingVertical: 16, alignItems: 'center' }}
             >
               {isPending
                 ? <ActivityIndicator color="white" />
-                : <Text className="text-white font-bold text-base">{nextTransition.label}</Text>}
-            </TouchableOpacity>
+                : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>{nextTransition.label}</Text>}
+            </SpringButton>
           )}
 
           {cancelTransition && (
-            <TouchableOpacity
-              className="border-2 border-red-400 rounded-2xl py-4 items-center"
+            <SpringButton
               onPress={() => handleStatusChange(cancelTransition.status, cancelTransition.label)}
               disabled={isPending}
+              style={{ borderWidth: 2, borderColor: '#F87171', borderRadius: 16, paddingVertical: 16, alignItems: 'center' }}
             >
-              <Text className="text-red-400 font-bold text-base">{cancelTransition.label}</Text>
-            </TouchableOpacity>
+              <Text style={{ color: '#F87171', fontWeight: '700', fontSize: 16 }}>{cancelTransition.label}</Text>
+            </SpringButton>
           )}
-        </View>
+        </Animated.View>
       </View>
     </ScrollView>
   );

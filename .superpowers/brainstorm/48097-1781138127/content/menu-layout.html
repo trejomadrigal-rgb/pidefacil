@@ -1,0 +1,114 @@
+<h2>Layout principal del menú — /{slug}</h2>
+<p class="subtitle">Es la primera pantalla que ve el cliente al escanear el QR. ¿Cómo se organizan las categorías y productos?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="pills-scroll" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Pills de categoría + scroll continuo (Recomendado)</h3>
+      <p>Barra de pills horizontales pegada arriba. Al scrollear el menú, las pills marcan automáticamente la categoría activa. Toca una pill para saltar a esa sección. Todos los productos visibles en una sola página.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>Patrón familiar (Rappi, Uber Eats, DiDi Food)</li><li>El cliente ve todo el menú de un scroll</li><li>Fácil de navegar por sección</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>Página larga si hay muchas categorías</li></ul></div>
+      </div>
+      <div style="margin-top:12px;border-radius:16px;overflow:hidden;max-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);font-size:11px;">
+        <!-- Header -->
+        <div style="background:#1A1A2E;color:white;padding:12px;">
+          <div style="font-weight:800;font-size:14px;">Cocina Lupita</div>
+          <div style="color:#9CA3AF;font-size:10px;margin-top:2px;">📍 Mérida, Yuc. · Abierto</div>
+        </div>
+        <!-- Barra de búsqueda -->
+        <div style="background:#fff;padding:8px 10px;border-bottom:1px solid #F3F4F6;">
+          <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:20px;padding:6px 12px;color:#9CA3AF;font-size:10px;">🔍 Buscar producto...</div>
+        </div>
+        <!-- Pills de categorías -->
+        <div style="background:#fff;padding:8px 10px;display:flex;gap:6px;overflow:hidden;border-bottom:1px solid #F3F4F6;">
+          <div style="background:#FF6B35;color:white;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:600;white-space:nowrap;">Antojitos</div>
+          <div style="background:#F3F4F6;color:#6B7280;border-radius:20px;padding:4px 10px;font-size:10px;white-space:nowrap;">Bebidas</div>
+          <div style="background:#F3F4F6;color:#6B7280;border-radius:20px;padding:4px 10px;font-size:10px;white-space:nowrap;">Postres</div>
+        </div>
+        <!-- Sección Antojitos -->
+        <div style="background:#F5F5F5;padding:10px 10px 6px;">
+          <div style="font-weight:700;color:#1A1A2E;margin-bottom:8px;">Antojitos</div>
+          <!-- Producto card -->
+          <div style="background:white;border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <div style="width:40px;height:40px;background:#FFF4EF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🌮</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;color:#1A1A2E;">Tacos x3</div>
+              <div style="color:#FF6B35;font-size:10px;font-weight:600;">$35.00</div>
+            </div>
+            <div style="background:#FF6B35;color:white;border-radius:20px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">+</div>
+          </div>
+          <div style="background:white;border-radius:10px;padding:8px;display:flex;gap:8px;align-items:center;">
+            <div style="width:40px;height:40px;background:#FFF4EF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🥙</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;color:#1A1A2E;">Quesadilla</div>
+              <div style="color:#FF6B35;font-size:10px;font-weight:600;">$25.00</div>
+            </div>
+            <div style="background:#FF6B35;color:white;border-radius:20px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">+</div>
+          </div>
+        </div>
+        <!-- Barra carrito -->
+        <div style="background:#FF6B35;color:white;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;">
+          <span>🛒 2 productos</span><span>$60.00 →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tabs de categoría (una a la vez)</h3>
+      <p>Tabs en la parte superior. Cada tab muestra solo los productos de esa categoría en un grid de 2 columnas. Más ordenado visualmente, pero el cliente debe tocar cada tab para explorar.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>Más limpio visualmente</li><li>Grid 2 col aprovecha mejor el espacio</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>El cliente no ve el menú completo de un vistazo</li><li>Más clics para explorar todo</li></ul></div>
+      </div>
+      <div style="margin-top:12px;border-radius:16px;overflow:hidden;max-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);font-size:11px;">
+        <div style="background:#1A1A2E;color:white;padding:12px;">
+          <div style="font-weight:800;font-size:14px;">Cocina Lupita</div>
+          <div style="color:#9CA3AF;font-size:10px;margin-top:2px;">📍 Mérida, Yuc. · Abierto</div>
+        </div>
+        <!-- Tabs -->
+        <div style="background:#fff;display:flex;border-bottom:2px solid #F3F4F6;">
+          <div style="padding:8px 10px;color:#FF6B35;font-weight:700;border-bottom:2px solid #FF6B35;margin-bottom:-2px;font-size:10px;">Antojitos</div>
+          <div style="padding:8px 10px;color:#9CA3AF;font-size:10px;">Bebidas</div>
+          <div style="padding:8px 10px;color:#9CA3AF;font-size:10px;">Postres</div>
+        </div>
+        <!-- Grid 2 col -->
+        <div style="background:#F5F5F5;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div style="background:white;border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:4px;">🌮</div>
+            <div style="font-weight:600;color:#1A1A2E;font-size:10px;">Tacos x3</div>
+            <div style="color:#FF6B35;font-size:10px;font-weight:600;margin:2px 0;">$35.00</div>
+            <div style="background:#FF6B35;color:white;border-radius:8px;padding:3px;font-size:10px;font-weight:700;">+ Agregar</div>
+          </div>
+          <div style="background:white;border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:22px;margin-bottom:4px;">🥙</div>
+            <div style="font-weight:600;color:#1A1A2E;font-size:10px;">Quesadilla</div>
+            <div style="color:#FF6B35;font-size:10px;font-weight:600;margin:2px 0;">$25.00</div>
+            <div style="background:#FF6B35;color:white;border-radius:8px;padding:3px;font-size:10px;font-weight:700;">+ Agregar</div>
+          </div>
+        </div>
+        <div style="background:#FF6B35;color:white;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;font-weight:700;">
+          <span>🛒 1 producto</span><span>$35.00 →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="accordion" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Acordeón de categorías</h3>
+      <p>Cada categoría es una sección colapsable. El cliente expande las que le interesan. Útil para menús muy largos (10+ categorías).</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>Ideal para menús extensos</li><li>Muy ordenado</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>Más clics para ver productos</li><li>Menos visual, más "lista"</li><li>No es el estándar en apps de comida</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

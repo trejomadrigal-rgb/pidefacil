@@ -1,0 +1,75 @@
+<h2>Sección 1 — Pantallas y rutas de apps/web</h2>
+<p class="subtitle">6 rutas en total. Las que tienen 🖥️ se renderizan en servidor (RSC). Las que tienen ⚡ tienen componentes interactivos cliente.</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Mapa de rutas — apps/web (Next.js 15 App Router)</div>
+    <div class="mockup-body" style="padding:20px;font-size:13px;">
+
+      <!-- Ruta 1 -->
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
+        <div style="background:#1A1A2E;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;">GET /{slug}</div>
+        <div>
+          <div style="font-weight:700;color:#1A1A2E;">Página principal del negocio</div>
+          <div style="color:#6B7280;font-size:11px;margin-top:2px;">🖥️ RSC: fetch business + categories + products desde API. ⚡ Pills de categoría, bottom sheet de producto, barra del carrito = Client Components.</div>
+          <div style="background:#FFF4EF;border-radius:6px;padding:6px 10px;margin-top:6px;font-size:11px;color:#FF6B35;">Header negocio · Búsqueda · Pills categorías · Lista productos · Barra carrito flotante</div>
+        </div>
+      </div>
+
+      <!-- Ruta 2 -->
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
+        <div style="background:#1A1A2E;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;">GET /{slug}/checkout</div>
+        <div>
+          <div style="font-weight:700;color:#1A1A2E;">Formulario de pedido</div>
+          <div style="color:#6B7280;font-size:11px;margin-top:2px;">⚡ Client Component puro. Lee el carrito de Zustand. Si carrito vacío → redirect a /{slug}. Formulario: nombre, teléfono, tipo (RECOGER / DELIVERY), dirección, notas. Resumen del pedido + total.</div>
+          <div style="background:#FFF4EF;border-radius:6px;padding:6px 10px;margin-top:6px;font-size:11px;color:#FF6B35;">Resumen items · Datos cliente · Tipo entrega · Botón "Confirmar pedido"</div>
+        </div>
+      </div>
+
+      <!-- Ruta 3 -->
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
+        <div style="background:#10B981;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;">GET /{slug}/pedido-enviado</div>
+        <div>
+          <div style="font-weight:700;color:#1A1A2E;">Confirmación de folio</div>
+          <div style="color:#6B7280;font-size:11px;margin-top:2px;">⚡ Client Component. Recibe el folio vía query param o estado. Muestra el número de pedido + mensaje de espera. Botón de WhatsApp pre-redactado con el folio.</div>
+          <div style="background:#ECFDF5;border-radius:6px;padding:6px 10px;margin-top:6px;font-size:11px;color:#059669;">✅ Folio #1032 · "Tu negocio revisará y te contactará" · Botón WhatsApp</div>
+        </div>
+      </div>
+
+      <!-- Ruta 4 -->
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
+        <div style="background:#6B7280;color:white;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0;">GET /</div>
+        <div>
+          <div style="font-weight:700;color:#1A1A2E;">Landing / redirect</div>
+          <div style="color:#6B7280;font-size:11px;margin-top:2px;">🖥️ RSC. La raíz no tiene slug — muestra una mini landing de PideFacil ("Escanea el QR de tu fonda") o simplemente un 404 amigable.</div>
+        </div>
+      </div>
+
+      <!-- Componentes compartidos -->
+      <div style="background:#F8FAFC;border-radius:10px;padding:12px 14px;margin-top:4px;">
+        <div style="font-weight:700;color:#1A1A2E;font-size:12px;margin-bottom:8px;">Componentes interactivos (Client Components compartidos)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">
+          <div style="background:white;border-radius:8px;padding:8px;border:1px solid #E5E7EB;">
+            <div style="font-weight:600;color:#1A1A2E;">ProductSheet</div>
+            <div style="color:#6B7280;margin-top:2px;">Bottom sheet con variantes, extras, cantidad, notas</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:8px;border:1px solid #E5E7EB;">
+            <div style="font-weight:600;color:#1A1A2E;">CartDrawer</div>
+            <div style="color:#6B7280;margin-top:2px;">Panel que sube desde la barra flotante con resumen y botón checkout</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:8px;border:1px solid #E5E7EB;">
+            <div style="font-weight:600;color:#1A1A2E;">CartBar</div>
+            <div style="color:#6B7280;margin-top:2px;">Barra naranja flotante en la parte baja: "N productos · $XX"</div>
+          </div>
+          <div style="background:white;border-radius:8px;padding:8px;border:1px solid #E5E7EB;">
+            <div style="font-weight:600;color:#1A1A2E;">CategoryPills</div>
+            <div style="color:#6B7280;margin-top:2px;">Pills horizontales con scroll + IntersectionObserver para marcar la activa</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">¿Las pantallas y componentes se ven bien? ¿Falta alguna ruta?</p>

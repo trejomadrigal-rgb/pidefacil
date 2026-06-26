@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatusDto } from './dto/order-status.dto';
 import { OrderListItemDto } from './dto/order-list-item.dto';
@@ -13,7 +14,8 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   UNDER_REVIEW:         [OrderStatus.CONFIRMED, OrderStatus.REJECTED, OrderStatus.CANCELLED],
   CONFIRMED:            [OrderStatus.IN_PREPARATION, OrderStatus.CANCELLED],
   IN_PREPARATION:       [OrderStatus.READY],
-  READY:                [OrderStatus.DELIVERED],
+  READY:                [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED],
+  OUT_FOR_DELIVERY:     [OrderStatus.DELIVERED],
   DELIVERED:            [],
   FINISHED:             [],
   REJECTED:             [],
@@ -25,24 +27,34 @@ const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
-  async findActive(businessId: string): Promise<OrderListItemDto[]> {
+  async findActive(businessId: string, status?: string): Promise<OrderListItemDto[]> {
     // UTC midnight — aceptable para MVP. Pedidos 00:00-06:00 hora México
     // aparecen en el "día siguiente" UTC. Corregir post-piloto con timezone.
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
 
+    const statusFilter: Prisma.OrderWhereInput = status
+      ? { status: status as OrderStatus }
+      : { status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.WAITING_CONFIRMATION] } };
+
     const orders = await this.prisma.order.findMany({
       where: {
         businessId,
         createdAt: { gte: startOfDay },
-        status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.FINISHED, OrderStatus.WAITING_CONFIRMATION] },
+        ...statusFilter,
       },
-      include: { _count: { select: { items: true } } },
+      include: {
+        _count: { select: { items: true } },
+        customer: { select: { trustLevel: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -53,9 +65,14 @@ export class OrdersService {
       customerName: o.customerName,
       customerPhone: o.customerPhone,
       deliveryType: o.deliveryType,
+      deliveryAddress: o.deliveryAddress,
+      paymentMethod: o.paymentMethod,
+      transferConfirmed: o.transferConfirmed,
+      liquidationId: o.liquidationId,
       total: Number(o.total),
       itemCount: o._count.items,
       createdAt: o.createdAt,
+      customerTrustLevel: o.customer?.trustLevel ?? null,
     }));
   }
 
@@ -65,6 +82,7 @@ export class OrdersService {
       include: {
         items: { include: { product: { select: { name: true } } } },
         customer: { select: { id: true, name: true, phone: true, notes: true, trustLevel: true } },
+        customPaymentMethod: { select: { requiresConfirmation: true } },
       },
     });
     if (!order) throw new NotFoundException('Pedido no encontrado');
@@ -81,6 +99,11 @@ export class OrdersService {
       subtotal: Number(order.subtotal),
       total: Number(order.total),
       createdAt: order.createdAt,
+      paymentMethodLabel: order.paymentMethodLabel ?? null,
+      isPaid: order.isPaid,
+      customPaymentMethod: order.customPaymentMethod
+        ? { requiresConfirmation: order.customPaymentMethod.requiresConfirmation }
+        : null,
       items: order.items.map((i) => ({
         name: i.product.name,
         quantity: i.quantity,
@@ -103,8 +126,19 @@ export class OrdersService {
   async updateStatus(id: string, businessId: string, newStatus: OrderStatus): Promise<OrderDetailDto> {
     // Non-atomic check-then-update: two concurrent requests could both pass the transition
     // check and both write. Acceptable for MVP; fix with optimistic locking post-pilot.
-    const order = await this.prisma.order.findFirst({ where: { id, businessId } });
+    const order = await this.prisma.order.findFirst({
+      where: { id, businessId },
+      include: { customPaymentMethod: { select: { requiresConfirmation: true } } },
+    });
     if (!order) throw new NotFoundException('Pedido no encontrado');
+
+    if (newStatus === OrderStatus.OUT_FOR_DELIVERY) {
+      if (order.customPaymentMethod?.requiresConfirmation && !order.isPaid) {
+        throw new BadRequestException(
+          'El pedido requiere confirmación de pago antes de salir a entrega',
+        );
+      }
+    }
 
     const allowed = VALID_TRANSITIONS[order.status] ?? [];
     if (!allowed.includes(newStatus)) {
@@ -142,6 +176,18 @@ export class OrdersService {
       }
     }
 
+    this.whatsappService.sendStatusMessage(
+      {
+        businessId,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+      },
+      newStatus,
+    ).catch((err: unknown) => {
+      this.logger.error(`WhatsApp sendStatusMessage falló para pedido #${order.orderNumber}: ${(err as Error)?.message}`);
+    });
+
     return this.findOne(id, businessId);
   }
 
@@ -162,6 +208,13 @@ export class OrdersService {
     }
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('El pedido debe tener al menos un producto');
+    }
+
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: dto.branchId, businessId: dto.businessId },
+      });
+      if (!branch) throw new NotFoundException('Sucursal no encontrada');
     }
 
     // Validate each item and calculate prices
@@ -230,6 +283,26 @@ export class OrdersService {
     const subtotal = resolvedItems.reduce((sum, i) => sum + i.subtotal, 0);
     const total = subtotal; // No delivery fee or discount at order creation time
 
+    // Validate payment method if business has any active methods
+    const activeMethodsCount = await this.prisma.businessPaymentMethod.count({
+      where: { businessId: dto.businessId, isActive: true },
+    });
+
+    let resolvedPaymentMethod: { id: string; label: string } | null = null;
+
+    if (activeMethodsCount > 0) {
+      if (!dto.paymentMethodId) {
+        throw new BadRequestException('Selecciona una forma de pago para continuar');
+      }
+      resolvedPaymentMethod = await this.prisma.businessPaymentMethod.findFirst({
+        where: { id: dto.paymentMethodId, businessId: dto.businessId, isActive: true },
+        select: { id: true, label: true },
+      });
+      if (!resolvedPaymentMethod) {
+        throw new BadRequestException('Forma de pago no válida');
+      }
+    }
+
     // Generate orderNumber inside transaction (SERIALIZABLE to prevent duplicate orderNumber on concurrent inserts)
     const order = await this.prisma
       .$transaction(
@@ -257,6 +330,10 @@ export class OrdersService {
               customerName: dto.customer.name,
               customerPhone: dto.customer.phone,
               deliveryAddress,
+              branchId: dto.branchId ?? null,
+              paymentMethod: dto.paymentMethod ?? null,
+              paymentMethodId: resolvedPaymentMethod?.id ?? null,
+              paymentMethodLabel: resolvedPaymentMethod?.label ?? null,
               items: {
                 create: resolvedItems.map((item) => ({
                   productId: item.productId,
@@ -305,11 +382,23 @@ export class OrdersService {
       data: { customerId: customer.id },
     });
 
-    await this.notificationsService.notifyNewOrder(dto.businessId, {
+    this.notificationsService.notifyNewOrder(dto.businessId, {
       id: order.id,
       orderNumber: order.orderNumber,
       customerName: dto.customer.name,
       total: Number(order.total),
+    }).catch(() => {});
+
+    this.whatsappService.sendStatusMessage(
+      {
+        businessId: dto.businessId,
+        orderNumber: order.orderNumber,
+        customerName: dto.customer.name,
+        customerPhone: dto.customer.phone,
+      },
+      OrderStatus.NEW,
+    ).catch((err: unknown) => {
+      this.logger.error(`[WA] NEW msg falló para pedido #${order.orderNumber}: ${(err as Error)?.message}`);
     });
 
     return {
@@ -329,9 +418,18 @@ export class OrdersService {
 
     const order = await this.prisma.order.findFirst({
       where: { businessId: business.id, orderNumber },
-      include: {
+      select: {
+        id: true, orderNumber: true, status: true, deliveryType: true,
+        subtotal: true, discount: true, deliveryFee: true, total: true,
+        paymentMethod: true, transferConfirmed: true, assignedToId: true,
+        paymentMethodLabel: true,
+        createdAt: true,
+        customPaymentMethod: { select: { requiresConfirmation: true } },
         items: {
-          include: { product: { select: { name: true } } },
+          select: {
+            quantity: true, subtotal: true,
+            product: { select: { name: true } },
+          },
         },
       },
     });
@@ -340,10 +438,16 @@ export class OrdersService {
     }
 
     return {
+      id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
       total: Number(order.total),
       deliveryType: order.deliveryType,
+      paymentMethod: order.paymentMethod,
+      transferConfirmed: order.transferConfirmed,
+      assignedToId: order.assignedToId,
+      paymentMethodLabel: order.paymentMethodLabel ?? null,
+      requiresConfirmation: order.customPaymentMethod?.requiresConfirmation ?? false,
       items: order.items.map((i) => ({
         name: i.product.name,
         quantity: i.quantity,
@@ -351,5 +455,43 @@ export class OrdersService {
       })),
       createdAt: order.createdAt,
     };
+  }
+
+  async confirmPayment(id: string, businessId: string) {
+    const order = await this.prisma.order.findFirst({ where: { id, businessId } });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (order.isPaid) throw new BadRequestException('El pedido ya está marcado como pagado');
+    await this.prisma.order.update({ where: { id }, data: { isPaid: true } });
+    return this.findOne(id, businessId);
+  }
+
+  async confirmTransfer(orderId: string, businessId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, businessId },
+      include: { customPaymentMethod: { select: { requiresConfirmation: true } } },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+    if (!order.customPaymentMethod?.requiresConfirmation) {
+      throw new BadRequestException('Esta forma de pago no requiere confirmación de pago');
+    }
+    if (order.transferConfirmed) {
+      throw new BadRequestException('La transferencia ya fue confirmada');
+    }
+
+    const allowedStatuses = ['CONFIRMED', 'NEW', 'UNDER_REVIEW'];
+    if (!allowedStatuses.includes(order.status)) {
+      throw new BadRequestException(
+        `No se puede confirmar transferencia en estado ${order.status}`,
+      );
+    }
+
+    return this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        transferConfirmed: true,
+        isPaid: true,
+        status: 'IN_PREPARATION',
+      },
+    });
   }
 }

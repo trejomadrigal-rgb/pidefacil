@@ -11,6 +11,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBusiness, useUpdateBusiness } from '@/hooks/use-business';
 
+const MENU_COLOR_KEYS = ['naranja','verde','rojo','azul','morado','rosa','dorado','turquesa'] as const;
+type MenuColorKey = typeof MENU_COLOR_KEYS[number];
+
+const THEMES: { key: MenuColorKey; name: string; hex: string; emoji: string }[] = [
+  { key: 'naranja',  name: 'Naranja',  hex: '#FF6B35', emoji: '🔥' },
+  { key: 'verde',    name: 'Verde',    hex: '#27AE60', emoji: '🌿' },
+  { key: 'rojo',     name: 'Rojo',     hex: '#E74C3C', emoji: '🌶️' },
+  { key: 'azul',     name: 'Azul',     hex: '#2980B9', emoji: '💙' },
+  { key: 'morado',   name: 'Morado',   hex: '#8E44AD', emoji: '💜' },
+  { key: 'rosa',     name: 'Rosa',     hex: '#E91E8C', emoji: '🌸' },
+  { key: 'dorado',   name: 'Dorado',   hex: '#F39C12', emoji: '✨' },
+  { key: 'turquesa', name: 'Turquesa', hex: '#16A085', emoji: '🌊' },
+];
+
 const businessFormSchema = z.object({
   name: z.string().min(2, 'Mínimo 2 caracteres'),
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/, 'Solo letras minúsculas, números y guiones'),
@@ -19,6 +33,7 @@ const businessFormSchema = z.object({
   logoUrl: z.string().optional(),
   description: z.string().optional(),
   hours: z.string().optional(),
+  menuColor: z.enum(MENU_COLOR_KEYS).optional(),
 });
 type BusinessFormValues = z.infer<typeof businessFormSchema>;
 
@@ -30,6 +45,8 @@ export function BusinessForm() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<BusinessFormValues>({
     resolver: zodResolver(businessFormSchema),
@@ -41,8 +58,11 @@ export function BusinessForm() {
       logoUrl: '',
       description: '',
       hours: '',
+      menuColor: undefined,
     },
   });
+
+  const selectedColor = watch('menuColor');
 
   // Populate form when business data loads
   useEffect(() => {
@@ -55,6 +75,7 @@ export function BusinessForm() {
         logoUrl: business.logoUrl ?? '',
         description: business.description ?? '',
         hours: business.hours ?? '',
+        menuColor: (business.menuColor as MenuColorKey | undefined) ?? undefined,
       });
     }
   }, [business?.id, reset]);
@@ -170,6 +191,41 @@ export function BusinessForm() {
               className="h-11 rounded-xl"
               placeholder="Lun–Vie 8:00–18:00"
             />
+          </div>
+
+          {/* Color del menú */}
+          <div>
+            <Label className="text-xs font-semibold text-gray-600 mb-2 block">
+              Color del menú
+            </Label>
+            <p className="text-[10px] text-gray-400 mb-3">
+              Este color se usa en el acento, precios y botones de tu menú QR.
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {THEMES.map((theme) => {
+                const isSelected = selectedColor === theme.key || (!selectedColor && theme.key === 'naranja');
+                return (
+                  <button
+                    key={theme.key}
+                    type="button"
+                    onClick={() => setValue('menuColor', theme.key, { shouldDirty: true })}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all"
+                    style={{
+                      borderColor: isSelected ? theme.hex : 'transparent',
+                      background: isSelected ? `${theme.hex}10` : '#F9FAFB',
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full"
+                      style={{ background: theme.hex }}
+                    />
+                    <span className="text-[10px] font-semibold text-gray-600 leading-tight text-center">
+                      {theme.emoji} {theme.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <Button

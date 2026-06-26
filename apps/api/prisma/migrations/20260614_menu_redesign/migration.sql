@@ -1,0 +1,3 @@
+ALTER TABLE "Product" ADD COLUMN "noteHints" TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE "Category" ADD COLUMN "emoji" TEXT;
+ALTER TABLE "Business" ADD COLUMN "menuColor" TEXT;

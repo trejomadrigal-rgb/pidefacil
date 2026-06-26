@@ -19,6 +19,7 @@ const PRODUCT_SELECT = {
   sortOrder: true,
   categoryId: true,
   updatedAt: true,
+  noteHints: true,
   variants: { select: { id: true, name: true, price: true } },
   extras: { select: { id: true, name: true, price: true } },
 };
@@ -76,6 +77,7 @@ export class ProductsService {
         ...(dto.isFeatured !== undefined && { isFeatured: dto.isFeatured }),
         ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
+        ...(dto.noteHints !== undefined && { noteHints: dto.noteHints }),
       },
       select: PRODUCT_SELECT,
     });

@@ -5,7 +5,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
+import { api, parseJwtPayload } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,7 @@ export function LoginForm() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -41,7 +44,8 @@ export function LoginForm() {
         businessSlug: data.business.slug,
         userName: data.user.name,
       });
-      router.push('/dashboard');
+      const { role } = parseJwtPayload(data.access_token);
+      router.push(role === 'SUPER_ADMIN' ? '/super/dashboard' : '/dashboard');
     } catch {
       setErrorMsg('Correo o contraseña incorrectos');
     }
@@ -76,16 +80,34 @@ export function LoginForm() {
             <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
               Contraseña
             </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              className="mt-1 h-12 rounded-xl bg-gray-50"
-              {...register('password')}
-            />
+            <div className="relative mt-1">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                className="h-12 rounded-xl bg-gray-50 pr-10"
+                {...register('password')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
             )}
+            <div className="text-right mt-1">
+              <Link
+                href="/forgot-password"
+                className="text-xs text-brand-500 hover:underline font-medium"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </div>
 
           {errorMsg && (

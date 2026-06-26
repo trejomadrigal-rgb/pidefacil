@@ -160,6 +160,12 @@ describe('OrdersModule (integration)', () => {
     await prisma.category.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.menu.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.notification.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
+    await prisma.subscription.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
+    await prisma.liquidation.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
+    await prisma.device.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
+    await prisma.branchProductAvailability.deleteMany({ where: { branch: { businessId: { in: [businessId, otherBusinessId] } } } });
+    await prisma.branchMenuSchedule.deleteMany({ where: { branch: { businessId: { in: [businessId, otherBusinessId] } } } });
+    await prisma.branch.deleteMany({ where: { businessId: { in: [businessId, otherBusinessId] } } });
     await prisma.business.deleteMany({ where: { id: { in: [businessId, otherBusinessId] } } });
 
     // Clean up auth business data
@@ -172,6 +178,12 @@ describe('OrdersModule (integration)', () => {
     await prisma.refreshToken.deleteMany({ where: { user: { businessId: authBusinessId } } });
     await prisma.user.deleteMany({ where: { businessId: authBusinessId } });
     await prisma.notification.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.subscription.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.liquidation.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.device.deleteMany({ where: { businessId: authBusinessId } });
+    await prisma.branchProductAvailability.deleteMany({ where: { branch: { businessId: authBusinessId } } });
+    await prisma.branchMenuSchedule.deleteMany({ where: { branch: { businessId: authBusinessId } } });
+    await prisma.branch.deleteMany({ where: { businessId: authBusinessId } });
     await prisma.business.deleteMany({ where: { id: authBusinessId } });
 
     await app.close();

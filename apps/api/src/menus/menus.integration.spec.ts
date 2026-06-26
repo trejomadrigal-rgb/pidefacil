@@ -33,7 +33,7 @@ describe('Menus (integration)', () => {
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => { await app.close(); }, 15000);
 
   beforeEach(async () => {
     await prisma.orderItem.deleteMany();
@@ -41,12 +41,18 @@ describe('Menus (integration)', () => {
     await prisma.customer.deleteMany();
     await prisma.extra.deleteMany();
     await prisma.variant.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.menu.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.subscription.deleteMany();
+    await prisma.liquidation.deleteMany();
+    await prisma.device.deleteMany();
+    await prisma.branchMenuSchedule.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.business.deleteMany();
 
     const res = await request(app.getHttpServer())

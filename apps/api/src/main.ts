@@ -8,6 +8,14 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
+  const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()) ?? '*';
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
   app.useGlobalFilters(new HttpExceptionFilter());
 
   app.useGlobalPipes(

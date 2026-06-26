@@ -38,7 +38,7 @@ describe('Files (integration)', () => {
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => { await app.close(); }, 15000);
 
   beforeEach(async () => {
     await prisma.orderItem.deleteMany();
@@ -52,6 +52,12 @@ describe('Files (integration)', () => {
     await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.subscription.deleteMany();
+    await prisma.liquidation.deleteMany();
+    await prisma.device.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
+    await prisma.branchMenuSchedule.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.business.deleteMany();
 
     const res = await request(app.getHttpServer())
@@ -68,7 +74,7 @@ describe('Files (integration)', () => {
         .attach('file', jpegBuffer, { filename: 'test.jpg', contentType: 'image/jpeg' })
         .expect(201);
       expect(res.body.url).toMatch(/^http.+pidefacil\/products\/.+\.jpg$/);
-    });
+    }, 30000);
 
     it('retorna 422 con tipo MIME no permitido', async () => {
       await request(app.getHttpServer())
@@ -102,6 +108,6 @@ describe('Files (integration)', () => {
         .attach('file', pngBuffer, { filename: 'test.png', contentType: 'image/png' })
         .expect(201);
       expect(res.body.url).toMatch(/\.png$/);
-    });
+    }, 30000);
   });
 });

@@ -28,6 +28,9 @@ export class OrderDetailDto {
   subtotal!: number;
   total!: number;
   createdAt!: Date;
+  paymentMethodLabel!: string | null;
+  isPaid!: boolean;
+  customPaymentMethod!: { requiresConfirmation: boolean } | null;
   items!: OrderItemDetailDto[];
   customer!: CustomerSnippetDto | null;
 }

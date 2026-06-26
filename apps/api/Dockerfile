@@ -13,6 +13,9 @@ COPY apps/api/ ./apps/api/
 # Install all dependencies (ignore NODE_ENV to always include devDeps in build stage)
 RUN NODE_ENV=development pnpm install --frozen-lockfile
 
+# Generate Prisma client so TypeScript can resolve the generated types
+RUN npx prisma generate --schema=apps/api/prisma/schema.prisma
+
 # Build the api
 RUN pnpm build --filter @pidefacil/api
 
@@ -28,8 +31,14 @@ COPY --from=builder /app/packages/ ./packages/
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist/ ./apps/api/dist/
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/api/prisma.config.ts ./apps/api/
 
 RUN pnpm install --frozen-lockfile --prod
 
+# Regenerate Prisma client for the production runtime (pnpm --prod doesn't preserve builder artifacts)
+RUN cd apps/api && node_modules/.bin/prisma generate
+
 EXPOSE 3000
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=apps/api/prisma/schema.prisma && node apps/api/dist/main"]
+# prisma.config.ts (Prisma v7) reads DATABASE_URL from env and configures the
+# migration datasource. We cd into apps/api so Prisma finds prisma.config.ts.
+CMD ["sh", "-c", "cd apps/api && node_modules/.bin/prisma migrate deploy && cd /app && node apps/api/dist/main"]

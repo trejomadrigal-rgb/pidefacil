@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { BusinessNotFoundPublicException } from '../common/exceptions/business-not-found-public.exception';
@@ -19,7 +19,7 @@ export class PublicService {
 
     const business = await this.prisma.business.findUnique({
       where: { slug },
-      select: { id: true, name: true, slug: true, phone: true, logoUrl: true, address: true },
+      select: { id: true, name: true, slug: true, phone: true, logoUrl: true, address: true, menuColor: true },
     });
     if (!business) throw new BusinessNotFoundPublicException();
 
@@ -27,10 +27,34 @@ export class PublicService {
     return business;
   }
 
-  async getCategories(slug: string) {
+  async getBranches(slug: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!business) throw new NotFoundException('Negocio no encontrado');
+
+    return this.prisma.branch.findMany({
+      where: { businessId: business.id, status: 'ACTIVE' },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        phone: true,
+        latitude: true,
+        longitude: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async getCategories(slug: string, branchId?: string) {
+    // Only use cache when no branchId filter is applied
     const key = `public:categories:${slug}`;
-    const cached = await this.redis.get(key);
-    if (cached) return JSON.parse(cached);
+    if (!branchId) {
+      const cached = await this.redis.get(key);
+      if (cached) return JSON.parse(cached);
+    }
 
     const business = await this.prisma.business.findUnique({
       where: { slug },
@@ -38,13 +62,14 @@ export class PublicService {
     });
     if (!business) throw new BusinessNotFoundPublicException();
 
-    const categories = await this.prisma.category.findMany({
+    let categories = await this.prisma.category.findMany({
       where: { businessId: business.id, status: 'ACTIVE' },
       orderBy: { sortOrder: 'asc' },
       select: {
         id: true,
         name: true,
         sortOrder: true,
+        emoji: true,
         products: {
           where: { isAvailable: true },
           orderBy: { sortOrder: 'asc' },
@@ -55,6 +80,8 @@ export class PublicService {
             price: true,
             imageUrl: true,
             isFeatured: true,
+            isAvailable: true,
+            noteHints: true,
             variants: { select: { id: true, name: true, price: true } },
             extras: { select: { id: true, name: true, price: true } },
           },
@@ -62,8 +89,38 @@ export class PublicService {
       },
     });
 
-    await this.redis.set(key, JSON.stringify(categories), CACHE_TTL);
-    return categories;
+    // Apply branch-level product availability overrides if branchId is provided
+    if (branchId) {
+      const overrides = await this.prisma.branchProductAvailability.findMany({
+        where: { branchId },
+      });
+      const overrideMap = new Map(overrides.map((o) => [o.productId, o.isAvailable]));
+
+      categories = categories.map((cat) => ({
+        ...cat,
+        products: cat.products.filter((p) => {
+          if (overrideMap.has(p.id)) {
+            return overrideMap.get(p.id);
+          }
+          return p.isAvailable ?? true;
+        }),
+      }));
+    }
+
+    const normalized = categories.map((c) => ({
+      ...c,
+      products: c.products.map((p) => ({
+        ...p,
+        price: Number(p.price),
+        variants: p.variants.map((v) => ({ ...v, price: Number(v.price) })),
+        extras: p.extras.map((e) => ({ ...e, price: Number(e.price) })),
+      })),
+    }));
+
+    if (!branchId) {
+      await this.redis.set(key, JSON.stringify(normalized), CACHE_TTL);
+    }
+    return normalized;
   }
 
   async getProducts(slug: string, categoryId?: string, search?: string) {
@@ -102,10 +159,158 @@ export class PublicService {
       },
     });
 
+    const normalizedProducts = products.map((p) => ({
+      ...p,
+      price: Number(p.price),
+      variants: p.variants.map((v) => ({ ...v, price: Number(v.price) })),
+      extras: p.extras.map((e) => ({ ...e, price: Number(e.price) })),
+    }));
+
     if (!hasFilters) {
-      await this.redis.set(key, JSON.stringify(products), CACHE_TTL);
+      await this.redis.set(key, JSON.stringify(normalizedProducts), CACHE_TTL);
     }
-    return products;
+    return normalizedProducts;
+  }
+
+  async getOrdersByPhone(slug: string, phone: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!business) throw new BusinessNotFoundPublicException();
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Normalize to last 10 digits so "9991234567" matches "529991234567" etc.
+    const last10 = phone.replace(/\D/g, '').slice(-10);
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        businessId: business.id,
+        customerPhone: { endsWith: last10 },
+        createdAt: { gte: todayStart },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        total: true,
+        createdAt: true,
+        items: { select: { quantity: true } },
+      },
+    });
+
+    return orders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      status: o.status,
+      total: Number(o.total),
+      createdAt: o.createdAt,
+      itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
+    }));
+  }
+
+  async getFeaturedProduct(slug: string) {
+    const business = await this.prisma.business.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!business) throw new BusinessNotFoundPublicException();
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const top = await this.prisma.orderItem.groupBy({
+      by: ['productId'],
+      where: {
+        order: {
+          businessId: business.id,
+          createdAt: { gte: sevenDaysAgo },
+          status: { not: 'CANCELLED' },
+        },
+      },
+      _count: { productId: true },
+      orderBy: { _count: { productId: 'desc' } },
+      take: 1,
+    });
+
+    if (top.length === 0) return null;
+
+    const product = await this.prisma.product.findFirst({
+      where: { id: top[0].productId, isAvailable: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        isFeatured: true,
+        isAvailable: true,
+        noteHints: true,
+        variants: { select: { id: true, name: true, price: true } },
+        extras: { select: { id: true, name: true, price: true } },
+      },
+    });
+
+    if (!product) return null;
+
+    return {
+      ...product,
+      price: Number(product.price),
+      variants: product.variants.map((v) => ({ ...v, price: Number(v.price) })),
+      extras: product.extras.map((e) => ({ ...e, price: Number(e.price) })),
+    };
+  }
+
+  async getPaymentMethods(slug: string) {
+    const business = await this.prisma.business.findUnique({ where: { slug } });
+    if (!business) return [];
+
+    return this.prisma.businessPaymentMethod.findMany({
+      where: { businessId: business.id, isActive: true },
+      orderBy: { position: 'asc' },
+      select: { id: true, label: true, requiresConfirmation: true },
+    });
+  }
+
+  async getOrderStatus(slug: string, orderNumber: string) {
+    const business = await this.prisma.business.findUnique({ where: { slug } });
+    if (!business) throw new NotFoundException('Negocio no encontrado');
+
+    const order = await this.prisma.order.findFirst({
+      where: { businessId: business.id, orderNumber },
+      select: {
+        id: true, orderNumber: true, status: true, deliveryType: true,
+        total: true, paymentMethod: true, transferConfirmed: true, assignedToId: true,
+        paymentMethodLabel: true, createdAt: true,
+        customPaymentMethod: { select: { requiresConfirmation: true } },
+        items: {
+          select: { quantity: true, subtotal: true, product: { select: { name: true } } },
+        },
+      },
+    });
+    if (!order) throw new NotFoundException('Pedido no encontrado');
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total: Number(order.total),
+      deliveryType: order.deliveryType,
+      paymentMethod: order.paymentMethod,
+      transferConfirmed: order.transferConfirmed,
+      assignedToId: order.assignedToId,
+      paymentMethodLabel: order.paymentMethodLabel ?? null,
+      requiresConfirmation: order.customPaymentMethod?.requiresConfirmation ?? false,
+      createdAt: order.createdAt,
+      items: order.items.map((i) => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        subtotal: Number(i.subtotal),
+      })),
+    };
   }
 
   async invalidateCache(slug: string): Promise<void> {

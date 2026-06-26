@@ -1,6 +1,6 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserStatus } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,9 +11,9 @@ import { DuplicateEmailException } from '../common/exceptions/duplicate-email.ex
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  listUsers(businessId: string) {
+  listUsers(businessId: string, role?: Role) {
     return this.prisma.user.findMany({
-      where: { businessId },
+      where: { businessId, ...(role ? { role } : {}) },
       select: { id: true, name: true, email: true, role: true, status: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -61,6 +61,14 @@ export class UsersService {
       },
       select: { id: true, name: true, email: true, role: true, status: true, updatedAt: true },
     });
+  }
+
+  async resetPassword(businessId: string, userId: string, newPassword: string) {
+    const user = await this.prisma.user.findFirst({ where: { id: userId, businessId } });
+    if (!user) throw new UserNotFoundException();
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   }
 
   async deactivateUser(businessId: string, userId: string, requestingUserId: string) {

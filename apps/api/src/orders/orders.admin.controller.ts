@@ -1,21 +1,22 @@
 // apps/api/src/orders/orders.admin.controller.ts
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { OrdersService } from './orders.service';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
-// TODO(post-pilot): restrict @Patch(':id/status') to OWNER/ADMIN/OPERATOR only —
-// KITCHEN should be read-only (no CANCEL/REJECT). Requires per-method @Roles override.
 @Controller('orders')
 @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR, Role.KITCHEN)
 export class OrdersAdminController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
-  findActive(@CurrentUser() user: CurrentUserPayload) {
-    return this.ordersService.findActive(user.businessId);
+  findActive(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('status') status?: string,
+  ) {
+    return this.ordersService.findActive(user.businessId, status);
   }
 
   @Get(':id')
@@ -24,11 +25,24 @@ export class OrdersAdminController {
   }
 
   @Patch(':id/status')
+  @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
   updateStatus(
     @CurrentUser() user: CurrentUserPayload,
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, user.businessId, dto.status);
+  }
+
+  @Patch(':id/confirm-payment')
+  @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
+  confirmPayment(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
+    return this.ordersService.confirmPayment(id, user.businessId);
+  }
+
+  @Patch(':id/confirm-transfer')
+  @Roles(Role.OWNER, Role.ADMIN, Role.OPERATOR)
+  confirmTransfer(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.ordersService.confirmTransfer(id, user.businessId);
   }
 }

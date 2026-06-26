@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { createHash } from 'crypto';
+import { createHash, randomInt } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
+import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
@@ -14,15 +15,41 @@ import { InvalidCredentialsException } from '../common/exceptions/invalid-creden
 import { TokenExpiredException } from '../common/exceptions/token-expired.exception';
 
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+const RESET_CODE_TTL_SECONDS = 15 * 60;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
     private jwt: JwtService,
     private config: ConfigService,
   ) {}
+
+  private async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    const host = this.config.get<string>('SMTP_HOST');
+    if (!host) {
+      this.logger.warn(`[EMAIL STUB] To: ${to} | Subject: ${subject} | ${html.replace(/<[^>]+>/g, '')}`);
+      return;
+    }
+    const transporter = nodemailer.createTransport({
+      host,
+      port: this.config.get<number>('SMTP_PORT') ?? 587,
+      secure: false,
+      auth: {
+        user: this.config.get<string>('SMTP_USER'),
+        pass: this.config.get<string>('SMTP_PASS'),
+      },
+    });
+    await transporter.sendMail({
+      from: this.config.get<string>('SMTP_FROM') ?? 'PideFacil <noreply@pidefacil.mx>',
+      to,
+      subject,
+      html,
+    });
+  }
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
@@ -136,6 +163,42 @@ export class AuthService {
       data: { isRevoked: true },
     });
     await this.redis.del(`rt:${tokenHash}`);
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // Always return success to avoid revealing whether email exists
+    if (!user) return;
+
+    const code = String(randomInt(100000, 999999));
+    await this.redis.set(`pwd-reset:${email}`, code, RESET_CODE_TTL_SECONDS);
+
+    await this.sendEmail(
+      email,
+      'Código para recuperar tu contraseña — PideFacil',
+      `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+        <h2 style="color:#FF6B35">PideFacil</h2>
+        <p>Tu código de verificación es:</p>
+        <div style="font-size:40px;font-weight:bold;letter-spacing:8px;color:#1A1A2E;text-align:center;padding:24px;background:#f5f5f5;border-radius:12px;margin:24px 0">
+          ${code}
+        </div>
+        <p style="color:#6B7280;font-size:14px">Válido por 15 minutos. Si no solicitaste este código, ignora este correo.</p>
+      </div>`,
+    );
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    const stored = await this.redis.get(`pwd-reset:${email}`);
+    if (!stored || stored !== code) {
+      throw new BadRequestException('Código incorrecto o expirado');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+    await this.redis.del(`pwd-reset:${email}`);
   }
 
   async logoutAll(userId: string) {

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface AuthState {
   accessToken: string | null;
@@ -14,13 +15,18 @@ interface AuthState {
   clearAuth: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
-  businessId: null,
-  businessSlug: null,
-  userName: null,
-  setAuth: ({ accessToken, businessId, businessSlug, userName }) =>
-    set({ accessToken, businessId, businessSlug, userName }),
-  clearAuth: () =>
-    set({ accessToken: null, businessId: null, businessSlug: null, userName: null }),
-}));
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      accessToken: null,
+      businessId: null,
+      businessSlug: null,
+      userName: null,
+      setAuth: ({ accessToken, businessId, businessSlug, userName }) =>
+        set({ accessToken, businessId, businessSlug, userName }),
+      clearAuth: () =>
+        set({ accessToken: null, businessId: null, businessSlug: null, userName: null }),
+    }),
+    { name: 'pidefacil-auth' },
+  ),
+);

@@ -23,7 +23,7 @@ describe('Auth (integration)', () => {
 
   afterAll(async () => {
     await app.close();
-  });
+  }, 15000);
 
   beforeEach(async () => {
     await prisma.orderItem.deleteMany();
@@ -37,6 +37,12 @@ describe('Auth (integration)', () => {
     await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.subscription.deleteMany();
+    await prisma.liquidation.deleteMany();
+    await prisma.device.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
+    await prisma.branchMenuSchedule.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.business.deleteMany();
   });
 

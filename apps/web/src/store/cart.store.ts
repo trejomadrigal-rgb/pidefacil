@@ -20,10 +20,12 @@ export interface CartItem {
 
 interface CartStore {
   slug: string | null;
+  branchId: string | null;
   items: CartItem[];
   isDrawerOpen: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
+  setBranchId: (branchId: string | null) => void;
   addItem: (
     slug: string,
     item: Omit<CartItem, 'quantity'> & { quantity?: number },
@@ -45,11 +47,13 @@ function itemKey(productId: string, variantId?: string): string {
 
 export const useCartStore = create<CartStore>((set, get) => ({
   slug: null,
+  branchId: null,
   items: [],
   isDrawerOpen: false,
 
   openDrawer: () => set({ isDrawerOpen: true }),
   closeDrawer: () => set({ isDrawerOpen: false }),
+  setBranchId: (branchId) => set({ branchId }),
 
   addItem: (slug, item) => {
     const { slug: currentSlug, items } = get();
@@ -102,7 +106,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }));
   },
 
-  clearCart: () => set({ slug: null, items: [], isDrawerOpen: false }),
+  clearCart: () => set({ slug: null, branchId: null, items: [], isDrawerOpen: false }),
 
   total: () =>
     get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),

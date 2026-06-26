@@ -25,9 +25,7 @@ export function CategoryPills({ categories }: CategoryPillsProps) {
 
       const observer = new IntersectionObserver(
         ([entry]) => {
-          if (entry.isIntersecting) {
-            setActiveId(category.id);
-          }
+          if (entry.isIntersecting) setActiveId(category.id);
         },
         { rootMargin: '-50% 0px -50% 0px' },
       );
@@ -40,32 +38,32 @@ export function CategoryPills({ categories }: CategoryPillsProps) {
 
   const scrollToCategory = (id: string) => {
     const section = document.getElementById(`cat-${id}`);
-    if (section) {
-      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setActiveId(id);
   };
 
   if (active.length === 0) return null;
 
   return (
-    <div
-      className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 overflow-x-auto flex gap-2 scrollbar-hide"
-    >
-      {active.map((category) => (
-        <button
-          key={category.id}
-          type="button"
-          onClick={() => scrollToCategory(category.id)}
-          className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-            activeId === category.id
-              ? 'bg-brand-500 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          {category.name}
-        </button>
-      ))}
+    <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-3 py-[10px] overflow-x-auto flex gap-2 scrollbar-hide">
+      {active.map((category) => {
+        const isActive = activeId === category.id;
+        return (
+          <button
+            key={category.id}
+            type="button"
+            onClick={() => scrollToCategory(category.id)}
+            className="flex-shrink-0 px-4 py-[5px] rounded-full text-[11px] font-bold transition-colors"
+            style={
+              isActive
+                ? { background: 'var(--brand)', color: '#fff' }
+                : { background: '#F4F4F6', color: '#666' }
+            }
+          >
+            {category.name}
+          </button>
+        );
+      })}
     </div>
   );
 }

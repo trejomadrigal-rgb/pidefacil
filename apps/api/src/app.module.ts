@@ -16,6 +16,15 @@ import { FilesModule } from './files/files.module';
 import { OrdersModule } from './orders/orders.module';
 import { CustomersModule } from './customers/customers.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ReportsModule } from './reports/reports.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
+import { BranchesModule } from './branches/branches.module';
+import { DevicesModule } from './devices/devices.module';
+import { LiquidationsModule } from './liquidations/liquidations.module';
+import { ShiftsModule } from './shifts/shifts.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { DeliveryModule } from './delivery/delivery.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 
@@ -39,6 +48,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
         MINIO_SECRET_KEY: Joi.string().default('minioadmin'),
         MINIO_BUCKET: Joi.string().default('pidefacil'),
         FIREBASE_SERVICE_ACCOUNT: Joi.string().optional(),
+        EVOLUTION_API_URL: Joi.string().optional().default(''),
+        EVOLUTION_API_KEY: Joi.string().optional().default(''),
       }),
     }),
     PrismaModule,
@@ -54,6 +65,15 @@ import { RolesGuard } from './auth/guards/roles.guard';
     OrdersModule,
     CustomersModule,
     NotificationsModule,
+    ReportsModule,
+    SuperAdminModule,
+    BranchesModule,
+    DevicesModule,
+    LiquidationsModule,
+    ShiftsModule,
+    WhatsappModule,
+    DeliveryModule,
+    PaymentMethodsModule,
   ],
   controllers: [AppController],
   providers: [

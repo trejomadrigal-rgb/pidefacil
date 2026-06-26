@@ -32,9 +32,11 @@ describe('Business (integration)', () => {
     await app.init();
   }, 30000);
 
-  afterAll(async () => { await app.close(); });
+  afterAll(async () => { await app.close(); }, 15000);
 
   beforeEach(async () => {
+    await prisma.subscription.deleteMany();
+    await prisma.notification.deleteMany();
     await prisma.orderItem.deleteMany();
     await prisma.order.deleteMany();
     await prisma.customer.deleteMany();
@@ -43,10 +45,15 @@ describe('Business (integration)', () => {
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.menu.deleteMany();
-    await prisma.notification.deleteMany();
     await prisma.refreshToken.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.liquidation.deleteMany();
+    await prisma.device.deleteMany();
+    await prisma.branchProductAvailability.deleteMany();
+    await prisma.branchMenuSchedule.deleteMany();
+    await prisma.branch.deleteMany();
     await prisma.business.deleteMany();
+    await prisma.plan.deleteMany();
 
     // Create OWNER via register
     const ownerRes = await request(app.getHttpServer()).post('/auth/register').send(ownerRegBody);
@@ -108,10 +115,10 @@ describe('Business (integration)', () => {
     });
   });
 
-  describe('POST /admin/businesses', () => {
+  describe('POST /super-admin/businesses', () => {
     it('SUPER_ADMIN crea negocio con OWNER', async () => {
       const res = await request(app.getHttpServer())
-        .post('/admin/businesses')
+        .post('/super-admin/businesses')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
           businessName: 'Fonda Nueva',
@@ -128,7 +135,7 @@ describe('Business (integration)', () => {
 
     it('OWNER no puede crear negocios → 403', async () => {
       await request(app.getHttpServer())
-        .post('/admin/businesses')
+        .post('/super-admin/businesses')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           businessName: 'Otro',

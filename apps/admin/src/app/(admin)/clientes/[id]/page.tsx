@@ -124,7 +124,7 @@ export default function ClienteDetailPage() {
                     <td className="py-2 font-medium text-brand-500">#{o.orderNumber}</td>
                     <td className="py-2 text-gray-500">{new Date(o.createdAt).toLocaleDateString('es-MX')}</td>
                     <td className="py-2 text-gray-500">{o.status}</td>
-                    <td className="py-2 text-right font-semibold">${o.total.toFixed(2)}</td>
+                    <td className="py-2 text-right font-semibold">${Number(o.total).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

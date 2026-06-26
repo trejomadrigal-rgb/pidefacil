@@ -13,13 +13,9 @@ COPY apps/admin/ ./apps/admin/
 # Install all dependencies (ignore NODE_ENV to always include devDeps in build stage)
 RUN NODE_ENV=development pnpm install --frozen-lockfile
 
-# Accept build-time env var so Next.js embeds it in the bundle
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
-# Build the admin app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm build --filter @pidefacil/admin
+# Inline env var has highest shell precedence and cannot be overridden by Docker build args
+RUN NEXT_PUBLIC_API_URL=http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io pnpm build --filter @pidefacil/admin
 
 # Production stage
 FROM node:20-alpine AS runner

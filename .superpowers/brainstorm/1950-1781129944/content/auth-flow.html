@@ -1,0 +1,67 @@
+<h2>Sección 2 — Auth: ¿Cómo se almacenan los tokens?</h2>
+<p class="subtitle">El API ya devuelve <code>accessToken</code> (15min) + <code>refreshToken</code> (30 días) en el body. La decisión es dónde guardarlos en el cliente.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Cookie + Middleware (Recomendado)</h3>
+      <p>El <code>refreshToken</code> se guarda en una cookie estándar (no httpOnly — el API no la setea, la setea el cliente). El <code>accessToken</code> vive en memoria (Zustand). El middleware de Next.js lee la cookie y redirige a <code>/login</code> si no existe. Al recargar la página → silent refresh automático.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>Protección server-side (middleware)</li><li>Sin flash de contenido protegido</li><li>Refresh automático transparente</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>Cookie legible por JS (no httpOnly) — riesgo XSS menor vs localStorage</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>localStorage + Client Guard</h3>
+      <p>Ambos tokens en <code>localStorage</code>. Un hook <code>useRequireAuth()</code> en cada página protegida redirige si no hay token. Sin middleware. Refresh automático vía interceptor de axios.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>Más simple, sin middleware</li><li>Persiste entre recargas sin código extra</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>Ligero flash de contenido protegido antes del redirect</li><li>localStorage es más vulnerable a XSS</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <h3>Login screen — diseño propuesto</h3>
+  <p class="subtitle">En ambas opciones el login screen es el mismo</p>
+
+  <div class="mockup">
+    <div class="mockup-header">http://localhost:3002/login</div>
+    <div class="mockup-body" style="background:#F5F5F5;min-height:320px;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#fff;border-radius:20px;padding:36px 32px;width:360px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <!-- Logo -->
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="font-size:28px;font-weight:800;color:#1A1A2E;font-family:sans-serif;">Pide<span style="color:#FF6B35;">Fácil</span></div>
+          <div style="font-size:12px;color:#9CA3AF;margin-top:4px;">Panel Administrativo</div>
+        </div>
+        <!-- Form -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;">Correo electrónico</div>
+          <div style="height:48px;border:1.5px solid #E5E7EB;border-radius:12px;background:#F9FAFB;display:flex;align-items:center;padding:0 14px;">
+            <span style="font-size:13px;color:#9CA3AF;">hola@mifonda.com</span>
+          </div>
+        </div>
+        <div style="margin-bottom:24px;">
+          <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;">Contraseña</div>
+          <div style="height:48px;border:1.5px solid #E5E7EB;border-radius:12px;background:#F9FAFB;display:flex;align-items:center;padding:0 14px;">
+            <span style="font-size:13px;color:#9CA3AF;">••••••••</span>
+          </div>
+        </div>
+        <!-- Button -->
+        <div style="height:52px;background:#FF6B35;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+          <span style="color:#fff;font-weight:700;font-size:15px;">Entrar</span>
+        </div>
+        <!-- Error state hint -->
+        <div style="margin-top:12px;text-align:center;font-size:11px;color:#9CA3AF;">¿Problemas para entrar? Contacta soporte</div>
+      </div>
+    </div>
+  </div>
+</div>

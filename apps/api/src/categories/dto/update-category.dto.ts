@@ -9,6 +9,10 @@ export class UpdateCategoryDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  menuId?: string;
+
+  @IsOptional()
   @IsEnum(CategoryStatus)
   status?: CategoryStatus;
 
@@ -16,4 +20,9 @@ export class UpdateCategoryDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  emoji?: string;
 }

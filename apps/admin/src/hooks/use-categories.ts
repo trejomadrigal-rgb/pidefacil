@@ -8,6 +8,7 @@ export interface Category {
   status: 'ACTIVE' | 'INACTIVE';
   menuId?: string;
   sortOrder: number;
+  emoji?: string;
 }
 
 export function useCategories(menuId?: string) {

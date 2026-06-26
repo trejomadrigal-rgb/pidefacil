@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut, BarChart2, MapPin, DollarSign, MessageSquare, Truck, ClipboardList } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
@@ -13,10 +14,16 @@ import { useUnreadCount } from '@/hooks/use-notifications';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/pedidos', icon: ClipboardList, label: 'Pedidos' },
   { href: '/menus', icon: UtensilsCrossed, label: 'Menús' },
+  { href: '/sucursales', icon: MapPin, label: 'Sucursales' },
   { href: '/clientes', icon: Users2, label: 'Clientes' },
+  { href: '/turnos', icon: Truck, label: 'Repartidores' },
+  { href: '/liquidaciones', icon: DollarSign, label: 'Liquidaciones' },
+  { href: '/reportes', icon: BarChart2, label: 'Reportes' },
   { href: '/settings', icon: Settings, label: 'Config.' },
-  { href: '/users', icon: Users, label: 'Usuarios', disabled: true },
+  { href: '/settings/whatsapp', icon: MessageSquare, label: 'WhatsApp' },
+  { href: '/users', icon: Users, label: 'Usuarios' },
 ];
 
 export function Sidebar() {
@@ -46,22 +53,26 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 flex flex-col gap-1 w-full px-1">
-        {navItems.map(({ href, icon: Icon, label, disabled }) => {
+        {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname.startsWith(href);
           return (
             <Link
               key={href}
-              href={disabled ? '#' : href}
+              href={href}
               className={cn(
-                'flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-medium transition-colors',
-                active
-                  ? 'bg-brand-500/15 text-brand-500 border-l-2 border-brand-500'
-                  : 'text-gray-400 hover:text-white',
-                disabled && 'opacity-40 cursor-not-allowed pointer-events-none',
+                'relative flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-medium transition-colors',
+                active ? 'text-brand-500' : 'text-gray-400 hover:text-white',
               )}
             >
-              <Icon size={20} />
-              {label}
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 bg-brand-500/15 rounded-lg border-l-2 border-brand-500"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <Icon size={20} className="relative z-10" />
+              <span className="relative z-10">{label}</span>
             </Link>
           );
         })}

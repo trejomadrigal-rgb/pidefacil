@@ -15,6 +15,7 @@ enum Role {
   OPERATOR
   KITCHEN
   MENU_DESIGNER
+  DELIVERY
 }
 
 enum UserStatus {
@@ -53,6 +54,7 @@ enum OrderStatus {
   CONFIRMED
   IN_PREPARATION
   READY
+  OUT_FOR_DELIVERY
   DELIVERED
   FINISHED
   REJECTED
@@ -68,12 +70,30 @@ enum PaymentMethod {
   CASH
   TRANSFER
   CARD
+  OTHER
 }
 
 enum PaymentStatus {
   PENDING
   PAID
   FAILED
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum DeviceType {
+  RECEPTION
+  KITCHEN
+  DELIVERY
+}
+
+enum DeviceStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
 }
 
 enum TrustLevel {
@@ -84,10 +104,21 @@ enum TrustLevel {
   BLOCKED
 }
 
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum LiquidationStatus {
+  OPEN
+  CLOSED
+}
+
 enum NotificationType {
   NEW_PREORDER
   ORDER_READY
   ORDER_CANCELLED
+  DELIVERY_RETURN
 }
 
 enum AuditAction {
@@ -114,18 +145,22 @@ enum Platform {
 // ─── Modelos activos en Phase 1 ──────────────────────────────────────────────
 
 model Business {
-  id        String         @id @default(cuid())
-  name      String
-  slug      String         @unique
-  phone     String
-  whatsapp  String?
-  logoUrl   String?
-  coverUrl  String?
-  address   String?
-  timezone  String         @default("America/Mexico_City")
-  status    BusinessStatus @default(ACTIVE)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  phone           String
+  whatsapp        String?
+  logoUrl         String?
+  coverUrl        String?
+  address         String?
+  description     String?
+  hours           String?
+  menuColor       String?
+  timezone        String         @default("America/Mexico_City")
+  status          BusinessStatus @default(ACTIVE)
+  whatsappSession String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   users             User[]
   menus             Menu[]
@@ -137,7 +172,11 @@ model Business {
   notifications     Notification[]
   whatsAppTemplates WhatsAppTemplate[]
   auditLogs         AuditLog[]
-
+  branches          Branch[]
+  devices           Device[]
+  liquidations      Liquidation[]
+  shifts            Shift[]
+  paymentMethods    BusinessPaymentMethod[]
 }
 
 model User {
@@ -151,11 +190,17 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  business      Business       @relation(fields: [businessId], references: [id])
-  refreshTokens RefreshToken[]
-  deviceTokens  DeviceToken[]
-  auditLogs     AuditLog[]
-  notifications Notification[]
+  business              Business       @relation(fields: [businessId], references: [id])
+  refreshTokens         RefreshToken[]
+  deviceTokens          DeviceToken[]
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  devices               Device[]
+  confirmedLiquidations Liquidation[]  @relation("LiquidationConfirmedBy")
+  deliveryShifts        Shift[]        @relation("ShiftDeliveryUser")
+  openedShifts          Shift[]        @relation("ShiftOpenedBy")
+  closedShifts          Shift[]        @relation("ShiftClosedBy")
+  assignedOrders        Order[]        @relation("OrdersAssigned")
 
   @@index([businessId])
   @@index([businessId, status])
@@ -191,8 +236,8 @@ model Customer {
   addresses Address[]
   orders    Order[]
 
-  @@index([businessId])
   @@unique([businessId, phone])
+  @@index([businessId])
 }
 
 model Address {
@@ -223,8 +268,9 @@ model Menu {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  business   Business   @relation(fields: [businessId], references: [id])
-  categories Category[]
+  business        Business             @relation(fields: [businessId], references: [id])
+  categories      Category[]
+  branchSchedules BranchMenuSchedule[]
 
   @@index([businessId])
   @@index([businessId, status])
@@ -236,6 +282,7 @@ model Category {
   menuId     String?
   name       String
   sortOrder  Int            @default(0)
+  emoji      String?
   status     CategoryStatus @default(ACTIVE)
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -257,15 +304,17 @@ model Product {
   imageUrl    String?
   isAvailable Boolean  @default(true)
   isFeatured  Boolean  @default(false)
+  noteHints   String[]  @default([])
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  business   Business    @relation(fields: [businessId], references: [id])
-  category   Category    @relation(fields: [categoryId], references: [id])
-  variants   Variant[]
-  extras     Extra[]
-  orderItems OrderItem[]
+  business           Business                    @relation(fields: [businessId], references: [id])
+  category           Category                    @relation(fields: [categoryId], references: [id])
+  variants           Variant[]
+  extras             Extra[]
+  orderItems         OrderItem[]
+  branchAvailability BranchProductAvailability[]
 
   @@index([businessId])
   @@index([businessId, categoryId])
@@ -295,33 +344,48 @@ model Extra {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  businessId  String
-  customerId  String?
-  orderNumber String
-  status      OrderStatus @default(NEW)
-  subtotal    Decimal     @db.Decimal(10, 2)
-  discount    Decimal     @default(0) @db.Decimal(10, 2)
-  deliveryFee Decimal     @default(0) @db.Decimal(10, 2)
-  total       Decimal     @db.Decimal(10, 2)
-  notes           String?
-  deliveryType    DeliveryType @default(PICKUP)
-  customerName    String
-  customerPhone   String
-  deliveryAddress String?
-  scheduledAt     DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                String         @id @default(cuid())
+  businessId        String
+  customerId        String?
+  orderNumber       String
+  status            OrderStatus    @default(NEW)
+  subtotal          Decimal        @db.Decimal(10, 2)
+  discount          Decimal        @default(0) @db.Decimal(10, 2)
+  deliveryFee       Decimal        @default(0) @db.Decimal(10, 2)
+  total             Decimal        @db.Decimal(10, 2)
+  notes             String?
+  deliveryType      DeliveryType   @default(PICKUP)
+  customerName      String
+  customerPhone     String
+  deliveryAddress   String?
+  scheduledAt       DateTime?
+  branchId          String?
+  paymentMethod     PaymentMethod?
+  isPaid            Boolean        @default(false)
+  assignedToId      String?
+  liquidationId      String?
+  paymentMethodId    String?
+  paymentMethodLabel String?
+  transferConfirmed Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
-  business Business    @relation(fields: [businessId], references: [id])
-  customer Customer?   @relation(fields: [customerId], references: [id])
-  items    OrderItem[]
-  payment  Payment?
+  business            Business               @relation(fields: [businessId], references: [id])
+  customer            Customer?              @relation(fields: [customerId], references: [id])
+  branch              Branch?                @relation(fields: [branchId], references: [id])
+  items               OrderItem[]
+  payment             Payment?
+  assignedTo          User?                  @relation("OrdersAssigned", fields: [assignedToId], references: [id])
+  liquidation         Liquidation?           @relation(fields: [liquidationId], references: [id])
+  customPaymentMethod BusinessPaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
 
   @@unique([businessId, orderNumber])
   @@index([businessId])
   @@index([businessId, status])
   @@index([businessId, createdAt])
+  @@index([branchId])
+  @@index([assignedToId])
+  @@index([liquidationId])
 }
 
 model OrderItem {
@@ -361,7 +425,7 @@ model Notification {
   isRead     Boolean          @default(false)
   createdAt  DateTime         @default(now())
 
-  business Business  @relation(fields: [businessId], references: [id])
+  business Business @relation(fields: [businessId], references: [id])
   user     User?    @relation(fields: [userId], references: [id])
 
   @@index([businessId])
@@ -398,13 +462,124 @@ model AuditLog {
   @@index([businessId, entity, entityId])
 }
 
+model Branch {
+  id         String       @id @default(cuid())
+  businessId String
+  name       String
+  address    String
+  phone      String?
+  latitude   Float
+  longitude  Float
+  status     BranchStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  business            Business                    @relation(fields: [businessId], references: [id])
+  productAvailability BranchProductAvailability[]
+  menuSchedules       BranchMenuSchedule[]
+  orders              Order[]
+  devices             Device[]
+  shifts              Shift[]
+
+  @@index([businessId])
+}
+
+model BranchProductAvailability {
+  branchId    String
+  productId   String
+  isAvailable Boolean @default(true)
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@id([branchId, productId])
+}
+
+model BranchMenuSchedule {
+  id         String  @id @default(cuid())
+  branchId   String
+  menuId     String
+  isActive   Boolean @default(true)
+  daysOfWeek Int[]
+
+  branch Branch @relation(fields: [branchId], references: [id])
+  menu   Menu   @relation(fields: [menuId], references: [id])
+
+  @@unique([branchId, menuId])
+}
+
+model Device {
+  id         String       @id @default(cuid())
+  businessId String
+  branchId   String?
+  userId     String?
+  name       String
+  deviceType DeviceType
+  token      String       @unique
+  status     DeviceStatus @default(PENDING)
+  lastSeenAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id])
+  branch   Branch?  @relation(fields: [branchId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
+
+  @@index([businessId])
+}
+
+model Shift {
+  id             String      @id @default(cuid())
+  businessId     String
+  branchId       String?
+  deliveryUserId String
+  openedById     String
+  closedById     String?
+  status         ShiftStatus @default(OPEN)
+  openedAt       DateTime    @default(now())
+  closedAt       DateTime?
+  notes          String?
+
+  business     Business      @relation(fields: [businessId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  deliveryUser User          @relation("ShiftDeliveryUser", fields: [deliveryUserId], references: [id])
+  openedBy     User          @relation("ShiftOpenedBy", fields: [openedById], references: [id])
+  closedBy     User?         @relation("ShiftClosedBy", fields: [closedById], references: [id])
+  liquidations Liquidation[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+}
+
+model Liquidation {
+  id            String            @id @default(cuid())
+  businessId    String
+  shiftId       String
+  status        LiquidationStatus @default(OPEN)
+  createdAt     DateTime          @default(now())
+  closedAt      DateTime?
+  confirmedById String?
+  cashTotal     Decimal           @default(0) @db.Decimal(10, 2)
+  cardTotal     Decimal           @default(0) @db.Decimal(10, 2)
+  transferTotal Decimal           @default(0) @db.Decimal(10, 2)
+  notes         String?
+
+  business    Business @relation(fields: [businessId], references: [id])
+  shift       Shift    @relation(fields: [shiftId], references: [id])
+  confirmedBy User?    @relation("LiquidationConfirmedBy", fields: [confirmedById], references: [id])
+  orders      Order[]
+
+  @@index([businessId])
+  @@index([shiftId])
+}
+
 model Plan {
   id           String  @id @default(cuid())
   name         String  @unique
   monthlyPrice Decimal @db.Decimal(10, 2)
   maxUsers     Int
-  maxProducts  Int
   maxBranches  Int
+  maxDevices   Int     @default(4)
 
   subscriptions Subscription[]
 }
@@ -431,4 +606,19 @@ model DeviceToken {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+}
+
+model BusinessPaymentMethod {
+  id                   String   @id @default(cuid())
+  businessId           String
+  label                String
+  requiresConfirmation Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  position             Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([businessId])
 }

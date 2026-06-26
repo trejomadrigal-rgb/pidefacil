@@ -1,0 +1,177 @@
+<h2>Diseño completo del menú QR</h2>
+<p class="subtitle">Vista de pantalla completa simulando un iPhone. Aprueba o pide ajustes.</p>
+
+<div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap;justify-content:center;padding:8px 0;">
+
+  <!-- Pantalla principal: menú -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="label">Menú principal</div>
+    <div style="width:360px;background:#f0f0f0;border-radius:36px;padding:10px;box-shadow:0 8px 40px rgba(0,0,0,0.18);">
+      <div style="background:#fff;border-radius:28px;overflow:hidden;font-family:'Segoe UI',sans-serif;">
+
+        <!-- Header oscuro -->
+        <div style="background:#1A1A2E;padding:18px 16px 14px;">
+          <!-- Negocio -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:44px;height:44px;background:#FF6B35;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#fff;flex-shrink:0;">R</div>
+            <div style="flex:1;">
+              <div style="font-weight:800;font-size:15px;color:#fff;line-height:1.2;">La Cocina de Doña Rosa</div>
+              <div style="font-size:11px;color:#8899BB;margin-top:2px;">📍 Calle Hidalgo 45</div>
+            </div>
+            <div style="font-size:11px;color:#8899BB;background:rgba(255,255,255,0.08);border-radius:8px;padding:4px 8px;white-space:nowrap;">Mis pedidos</div>
+          </div>
+          <!-- Más pedido hoy -->
+          <div style="background:rgba(255,107,53,0.14);border:1px solid rgba(255,107,53,0.28);border-radius:12px;padding:10px 12px;display:flex;align-items:center;gap:10px;">
+            <div style="font-size:24px;flex-shrink:0;">⭐</div>
+            <div>
+              <div style="font-size:10px;font-weight:800;color:#FF6B35;text-transform:uppercase;letter-spacing:0.07em;">Más pedido hoy</div>
+              <div style="font-size:13px;font-weight:700;color:#fff;margin-top:2px;">Caldo Tlalpeño · $50</div>
+            </div>
+            <div style="margin-left:auto;width:32px;height:32px;background:#FF6B35;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;flex-shrink:0;">+</div>
+          </div>
+        </div>
+
+        <!-- Category pills sticky -->
+        <div style="background:#fff;padding:10px 12px;display:flex;gap:6px;border-bottom:1px solid #f0f0f0;overflow:hidden;">
+          <span style="background:#FF6B35;color:#fff;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;white-space:nowrap;">Sopas</span>
+          <span style="background:#F4F4F6;color:#666;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:600;white-space:nowrap;">Guisados</span>
+          <span style="background:#F4F4F6;color:#666;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:600;white-space:nowrap;">Bebidas</span>
+          <span style="background:#F4F4F6;color:#666;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:600;white-space:nowrap;">Postres</span>
+        </div>
+
+        <!-- Producto list -->
+        <div style="background:#F7F8FA;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:280px;">
+          <!-- Category title -->
+          <div style="display:flex;align-items:center;gap:6px;padding:2px 0 4px;">
+            <span style="font-size:15px;">🍲</span>
+            <span style="font-size:11px;font-weight:800;color:#1A1A2E;letter-spacing:0.07em;text-transform:uppercase;">Sopas</span>
+          </div>
+
+          <!-- Card 1 -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #ECEDF0;display:flex;align-items:center;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+            <div style="width:4px;background:#FF6B35;align-self:stretch;flex-shrink:0;border-radius:2px 0 0 2px;"></div>
+            <div style="flex:1;padding:11px 10px;">
+              <div style="font-size:13px;font-weight:700;color:#1A1A2E;line-height:1.3;">Sopa de Lima</div>
+              <div style="font-size:14px;font-weight:800;color:#FF6B35;margin-top:5px;">$45</div>
+            </div>
+            <div style="padding:10px 12px 10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <div style="width:62px;height:62px;border-radius:10px;background:linear-gradient(135deg,#FF6B35 0%,#1A1A2E 100%);display:flex;align-items:center;justify-content:center;font-size:26px;">🍲</div>
+              <div style="width:28px;height:28px;background:#1A1A2E;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;line-height:1;">+</div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #ECEDF0;display:flex;align-items:center;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+            <div style="width:4px;background:#FF6B35;align-self:stretch;flex-shrink:0;border-radius:2px 0 0 2px;"></div>
+            <div style="flex:1;padding:11px 10px;">
+              <div style="font-size:13px;font-weight:700;color:#1A1A2E;line-height:1.3;">Caldo Tlalpeño</div>
+              <div style="font-size:14px;font-weight:800;color:#FF6B35;margin-top:5px;">$50</div>
+            </div>
+            <div style="padding:10px 12px 10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <div style="width:62px;height:62px;border-radius:10px;background:linear-gradient(135deg,#FF6B35 0%,#1A1A2E 100%);display:flex;align-items:center;justify-content:center;font-size:26px;">🫕</div>
+              <div style="width:28px;height:28px;background:#1A1A2E;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;line-height:1;">+</div>
+            </div>
+          </div>
+
+          <!-- Category title 2 -->
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 0 4px;">
+            <span style="font-size:15px;">🌮</span>
+            <span style="font-size:11px;font-weight:800;color:#1A1A2E;letter-spacing:0.07em;text-transform:uppercase;">Guisados</span>
+          </div>
+
+          <!-- Card 3 -->
+          <div style="background:#fff;border-radius:14px;border:1px solid #ECEDF0;display:flex;align-items:center;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+            <div style="width:4px;background:#FF6B35;align-self:stretch;flex-shrink:0;border-radius:2px 0 0 2px;"></div>
+            <div style="flex:1;padding:11px 10px;">
+              <div style="font-size:13px;font-weight:700;color:#1A1A2E;line-height:1.3;">Pollo en Salsa Verde</div>
+              <div style="font-size:14px;font-weight:800;color:#FF6B35;margin-top:5px;">$70</div>
+            </div>
+            <div style="padding:10px 12px 10px 4px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <div style="width:62px;height:62px;border-radius:10px;background:linear-gradient(135deg,#FF6B35 0%,#1A1A2E 100%);display:flex;align-items:center;justify-content:center;font-size:26px;">🍗</div>
+              <div style="width:28px;height:28px;background:#1A1A2E;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:800;line-height:1;">+</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cart bar -->
+        <div style="background:#1A1A2E;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:16px;">🛒</span>
+            <span style="font-weight:700;font-size:13px;color:#fff;">2 productos</span>
+          </div>
+          <span style="font-weight:800;font-size:14px;color:#FF6B35;">$95 →</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom sheet: detalle de producto -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+    <div class="label">Bottom sheet (toca un producto)</div>
+    <div style="width:360px;background:#f0f0f0;border-radius:36px;padding:10px;box-shadow:0 8px 40px rgba(0,0,0,0.18);">
+      <div style="background:#fff;border-radius:28px;overflow:hidden;font-family:'Segoe UI',sans-serif;position:relative;min-height:460px;">
+
+        <!-- Fondo del menú (difuminado atrás) -->
+        <div style="background:#1A1A2E;padding:18px 16px 14px;opacity:0.3;">
+          <div style="height:60px;"></div>
+        </div>
+        <div style="background:#F7F8FA;padding:10px;opacity:0.3;height:80px;"></div>
+
+        <!-- Overlay oscuro -->
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);border-radius:28px;"></div>
+
+        <!-- Sheet -->
+        <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 28px 28px;padding:0 0 12px 0;">
+          <!-- Handle -->
+          <div style="display:flex;justify-content:center;padding:10px 0 6px;">
+            <div style="width:36px;height:4px;background:#E0E0E0;border-radius:2px;"></div>
+          </div>
+          <!-- Imagen del producto -->
+          <div style="width:100%;height:140px;background:linear-gradient(135deg,#FF6B35 0%,#1A1A2E 100%);display:flex;align-items:center;justify-content:center;font-size:56px;margin-bottom:14px;">🍗</div>
+          <!-- Info -->
+          <div style="padding:0 16px;">
+            <div style="font-size:17px;font-weight:800;color:#1A1A2E;">Pollo en Salsa Verde</div>
+            <div style="font-size:15px;font-weight:700;color:#FF6B35;margin-top:3px;">$70</div>
+            <div style="font-size:12px;color:#888;margin-top:6px;line-height:1.5;">Pechuga de pollo guisada en salsa verde tomatillo con epazote. Incluye arroz rojo y frijoles de olla.</div>
+            <!-- Tamaño -->
+            <div style="margin-top:12px;">
+              <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:6px;">TAMAÑO <span style="color:#FF6B35;">*</span></div>
+              <div style="display:flex;gap:6px;">
+                <div style="border:2px solid #FF6B35;color:#FF6B35;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;background:#FFF3EE;">Chico</div>
+                <div style="border:1.5px solid #E0E0E0;color:#888;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:600;">Grande +$15</div>
+              </div>
+            </div>
+            <!-- Notas -->
+            <div style="margin-top:10px;background:#F7F8FA;border-radius:10px;padding:8px 10px;font-size:12px;color:#aaa;">Notas: sin cebolla, extra salsa...</div>
+            <!-- Botón agregar -->
+            <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+              <div style="display:flex;align-items:center;gap:10px;background:#F7F8FA;border-radius:10px;padding:8px 14px;">
+                <span style="color:#FF6B35;font-weight:800;font-size:18px;">−</span>
+                <span style="font-weight:800;color:#1A1A2E;font-size:15px;">1</span>
+                <span style="color:#FF6B35;font-weight:800;font-size:18px;">+</span>
+              </div>
+              <div style="flex:1;background:#FF6B35;color:#fff;border-radius:12px;padding:12px;text-align:center;font-weight:800;font-size:13px;">Agregar · $70</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;background:#FFF3EE;border:1px solid #FFD5C2;border-radius:12px;padding:14px 18px;max-width:760px;margin-left:auto;margin-right:auto;">
+  <div style="font-weight:700;font-size:13px;color:#FF6B35;margin-bottom:6px;">Resumen del diseño</div>
+  <ul style="font-size:12px;color:#555;line-height:1.8;margin:0;padding-left:16px;">
+    <li>Header oscuro (#1A1A2E) con logo cuadrado naranja y bloque "Más pedido hoy" (auto, últimos 7 días)</li>
+    <li>Fondo de lista #F7F8FA (gris muy suave) en lugar de blanco puro</li>
+    <li>Cards con acento naranja izquierdo (4px), imagen 62×62, botón "+" cuadrado oscuro</li>
+    <li>Sin descripción en la tarjeta — solo nombre y precio</li>
+    <li>Placeholder: gradiente #FF6B35 → #1A1A2E con emoji de categoría</li>
+    <li>Título de categoría: emoji + texto en mayúsculas pequeñas bold</li>
+    <li>Cart bar en #1A1A2E con precio en naranja</li>
+    <li>Bottom sheet: imagen grande, descripción completa, variantes, notas</li>
+  </ul>
+</div>

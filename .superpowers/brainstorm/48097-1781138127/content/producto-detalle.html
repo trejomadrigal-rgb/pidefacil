@@ -1,0 +1,75 @@
+<h2>¿Cómo ve el cliente el detalle de un producto?</h2>
+<p class="subtitle">El cliente toca un producto en el grid — ¿qué pasa? Aplica sobre todo cuando el producto tiene variantes (tamaño) o extras (queso, cebolla, etc.)</p>
+
+<div class="options">
+
+  <div class="option" data-choice="sheet" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Bottom Sheet (Recomendado)</h3>
+      <p>Un panel sube desde abajo cubriendo ~75% de la pantalla. Muestra imagen, descripción, variantes (radio), extras (checkboxes), cantidad y notas. El menú sigue visible detrás en gris.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>No pierde contexto del menú</li><li>Patrón estándar mobile</li><li>Más rápido que navegar a otra página</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>Espacio limitado para productos con muchos extras</li></ul></div>
+      </div>
+      <div style="margin-top:12px;border-radius:16px;overflow:hidden;max-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);background:#F5F5F5;font-size:11px;position:relative;">
+        <!-- Menú de fondo (oscurecido) -->
+        <div style="background:#1A1A2E;color:white;padding:10px 12px;font-weight:700;opacity:0.6;">🍽️ Cocina Lupita</div>
+        <div style="padding:10px 12px;background:#fff;opacity:0.4;border-bottom:1px solid #eee;">
+          <div style="height:10px;background:#eee;border-radius:4px;width:60%;margin-bottom:6px;"></div>
+          <div style="height:8px;background:#eee;border-radius:4px;width:40%;"></div>
+        </div>
+        <!-- Sheet encima -->
+        <div style="background:white;border-radius:16px 16px 0 0;padding:14px;box-shadow:0 -4px 20px rgba(0,0,0,0.15);">
+          <div style="width:32px;height:4px;background:#E5E7EB;border-radius:2px;margin:0 auto 12px;"></div>
+          <div style="width:100%;height:70px;background:#FFF4EF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:10px;">🌮</div>
+          <div style="font-weight:700;font-size:13px;color:#1A1A2E;">Tacos de canasta x3</div>
+          <div style="color:#FF6B35;font-weight:600;margin:4px 0 8px;">$35.00</div>
+          <div style="font-size:10px;color:#6B7280;margin-bottom:8px;">Tamaño:</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <div style="border:1.5px solid #FF6B35;border-radius:8px;padding:4px 8px;color:#FF6B35;font-size:10px;font-weight:600;">3 pzas</div>
+            <div style="border:1.5px solid #E5E7EB;border-radius:8px;padding:4px 8px;color:#6B7280;font-size:10px;">6 pzas</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#FFF4EF;border-radius:10px;padding:8px 12px;">
+            <span style="font-size:16px;color:#FF6B35;font-weight:700;">−</span>
+            <span style="font-weight:700;">1</span>
+            <span style="font-size:16px;color:#FF6B35;font-weight:700;">+</span>
+          </div>
+          <div style="background:#FF6B35;color:white;border-radius:12px;padding:8px;text-align:center;font-weight:700;margin-top:8px;">Agregar · $35.00</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="pagina" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Página /producto/[id]</h3>
+      <p>Tocar el producto navega a una página dedicada con toda la información, variantes, extras, cantidad y notas. El cliente regresa con el botón atrás.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Ventajas</h4><ul><li>Más espacio para productos complejos</li><li>URL compartible</li><li>SEO (aparece en Google)</li></ul></div>
+        <div class="cons"><h4>Desventajas</h4><ul><li>Rompe el flujo de navegación del menú</li><li>Más lento (navegación completa)</li></ul></div>
+      </div>
+      <div style="margin-top:12px;border-radius:16px;overflow:hidden;max-width:220px;box-shadow:0 4px 20px rgba(0,0,0,0.15);background:#F5F5F5;font-size:11px;">
+        <div style="background:#1A1A2E;color:white;padding:10px 12px;font-weight:700;display:flex;align-items:center;gap:8px;">
+          <span>← </span><span>Tacos de canasta</span>
+        </div>
+        <div style="background:white;padding:0 0 12px;">
+          <div style="width:100%;height:90px;background:#FFF4EF;display:flex;align-items:center;justify-content:center;font-size:36px;">🌮</div>
+          <div style="padding:10px 12px;">
+            <div style="font-weight:700;font-size:13px;color:#1A1A2E;">Tacos de canasta x3</div>
+            <div style="color:#FF6B35;font-weight:600;margin:4px 0 6px;">$35.00</div>
+            <div style="color:#6B7280;font-size:10px;margin-bottom:8px;">Deliciosos tacos recién hechos</div>
+            <div style="font-size:10px;font-weight:600;color:#374151;margin-bottom:6px;">Tamaño:</div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+              <div style="border:1.5px solid #FF6B35;border-radius:8px;padding:4px 8px;color:#FF6B35;font-size:10px;font-weight:600;">3 pzas</div>
+              <div style="border:1.5px solid #E5E7EB;border-radius:8px;padding:4px 8px;color:#6B7280;font-size:10px;">6 pzas</div>
+            </div>
+            <div style="background:#FF6B35;color:white;border-radius:12px;padding:8px;text-align:center;font-weight:700;font-size:11px;">Agregar al carrito · $35.00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

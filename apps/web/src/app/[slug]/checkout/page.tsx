@@ -5,21 +5,22 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { CheckoutForm } from '@/components/checkout/checkout-form';
-import { getBusiness, type BusinessPublic } from '@/lib/api';
+import { getBusiness, getPaymentMethods, type BusinessPublic, type PublicPaymentMethod } from '@/lib/api';
 
 export default function CheckoutPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const { items } = useCartStore();
   const router = useRouter();
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (!submitted && items.length === 0) {
       router.replace(`/${slug}`);
     }
-  }, [items.length, slug, router]);
+  }, [submitted, items.length, slug, router]);
 
-  if (items.length === 0) return null;
+  if (!submitted && items.length === 0) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -34,18 +35,22 @@ export default function CheckoutPage() {
         <h1 className="font-bold text-brand-900">Confirmar pedido</h1>
       </header>
       <div className="px-4 pt-4">
-        <CheckoutFormWrapper slug={slug} />
+        <CheckoutFormWrapper slug={slug} onSubmitted={() => setSubmitted(true)} />
       </div>
     </div>
   );
 }
 
-function CheckoutFormWrapper({ slug }: { slug: string }) {
+function CheckoutFormWrapper({ slug, onSubmitted }: { slug: string; onSubmitted: () => void }) {
   const [business, setBusiness] = useState<BusinessPublic | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PublicPaymentMethod[]>([]);
 
   useEffect(() => {
-    getBusiness(slug)
-      .then((data) => setBusiness(data))
+    Promise.all([getBusiness(slug), getPaymentMethods(slug)])
+      .then(([b, pm]) => {
+        setBusiness(b);
+        setPaymentMethods(pm);
+      })
       .catch(() => {});
   }, [slug]);
 
@@ -57,5 +62,5 @@ function CheckoutFormWrapper({ slug }: { slug: string }) {
     );
   }
 
-  return <CheckoutForm slug={slug} businessId={business.id} businessPhone={business.phone} />;
+  return <CheckoutForm slug={slug} businessId={business.id} businessPhone={business.phone} paymentMethods={paymentMethods} onSubmitted={onSubmitted} />;
 }

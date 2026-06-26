@@ -1,0 +1,176 @@
+<h2>Sección 3 — Menu Designer: layout detallado</h2>
+<p class="subtitle">Cómo se organiza la vista árbol + panel de detalle + preview del menú público</p>
+
+<div class="mockup">
+  <div class="mockup-header">admin.pidefacil.mx/menus — Vista árbol (Option B aprobada)</div>
+  <div class="mockup-body" style="background:#F5F5F5;padding:0;overflow:hidden;">
+
+    <div style="display:flex;height:480px;font-size:12px;">
+
+      <!-- SIDEBAR NAV -->
+      <div style="width:100px;background:#1A1A2E;display:flex;flex-direction:column;padding:16px 0;flex-shrink:0;">
+        <div style="color:#FF6B35;font-weight:800;font-size:13px;padding:0 12px 16px;text-align:center;">PF</div>
+        <div style="padding:8px 12px;color:#9CA3AF;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <span style="font-size:16px;">📊</span>
+          <span style="font-size:9px;">Dashboard</span>
+        </div>
+        <div style="padding:8px 12px;background:rgba(255,107,53,0.15);border-left:2px solid #FF6B35;color:#FF6B35;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <span style="font-size:16px;">🍽️</span>
+          <span style="font-size:9px;font-weight:700;">Menús</span>
+        </div>
+        <div style="padding:8px 12px;color:#9CA3AF;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <span style="font-size:16px;">👥</span>
+          <span style="font-size:9px;">Usuarios</span>
+        </div>
+        <div style="padding:8px 12px;color:#9CA3AF;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
+          <span style="font-size:16px;">⚙️</span>
+          <span style="font-size:9px;">Config.</span>
+        </div>
+      </div>
+
+      <!-- TREE PANEL -->
+      <div style="width:220px;background:#fff;border-right:1px solid #E5E7EB;display:flex;flex-direction:column;flex-shrink:0;">
+        <div style="padding:12px 14px;border-bottom:1px solid #E5E7EB;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;color:#1A1A2E;font-size:13px;">Mis Menús</span>
+          <div style="background:#FF6B35;color:#fff;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;">+ Nuevo</div>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:8px 0;">
+
+          <!-- Menu 1: activo/expandido -->
+          <div style="padding:8px 14px;background:#FFF4EF;border-left:3px solid #FF6B35;cursor:pointer;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:700;color:#1A1A2E;font-size:12px;">▾ Menú del Día</span>
+              <span style="background:#10B981;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;">Pub.</span>
+            </div>
+          </div>
+
+          <!-- Categories under Menu 1 -->
+          <div style="padding:6px 14px 6px 28px;display:flex;align-items:center;gap:6px;cursor:pointer;background:#FFF9F7;">
+            <span style="color:#9CA3AF;font-size:10px;cursor:grab;">⠿</span>
+            <span style="color:#374151;font-size:11px;">📁 Antojitos</span>
+            <span style="color:#9CA3AF;font-size:10px;margin-left:auto;">5</span>
+          </div>
+          <div style="padding:6px 14px 6px 28px;display:flex;align-items:center;gap:6px;cursor:pointer;background:#FFF9F7;">
+            <span style="color:#9CA3AF;font-size:10px;cursor:grab;">⠿</span>
+            <span style="color:#374151;font-size:11px;">📁 Bebidas</span>
+            <span style="color:#9CA3AF;font-size:10px;margin-left:auto;">4</span>
+          </div>
+          <div style="padding:6px 14px 6px 28px;display:flex;align-items:center;gap:6px;cursor:pointer;background:#FFF0EB;">
+            <span style="color:#9CA3AF;font-size:10px;cursor:grab;">⠿</span>
+            <span style="color:#FF6B35;font-weight:600;font-size:11px;">📁 Postres</span>
+            <span style="color:#9CA3AF;font-size:10px;margin-left:auto;">3</span>
+          </div>
+          <div style="padding:4px 14px 6px 28px;">
+            <span style="color:#FF6B35;font-size:10px;cursor:pointer;">+ Categoría</span>
+          </div>
+
+          <!-- Menu 2: colapsado -->
+          <div style="padding:8px 14px;cursor:pointer;border-top:1px solid #F3F4F6;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="color:#6B7280;font-size:12px;">▸ Menú Especial</span>
+              <span style="background:#9CA3AF;color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;">Draft</span>
+            </div>
+          </div>
+
+        </div>
+        <!-- Preview button at bottom -->
+        <div style="padding:10px 14px;border-top:1px solid #E5E7EB;">
+          <div style="background:#1A1A2E;color:#fff;border-radius:10px;padding:7px 12px;text-align:center;font-size:11px;font-weight:600;cursor:pointer;">👁️ Ver Preview QR</div>
+        </div>
+      </div>
+
+      <!-- DETAIL PANEL: Product selected -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:12px 18px;border-bottom:1px solid #E5E7EB;background:#fff;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:10px;color:#9CA3AF;">Menú del día / <span style="color:#FF6B35;">Postres</span></div>
+            <div style="font-weight:700;font-size:14px;color:#1A1A2E;margin-top:2px;">Categoría: Postres</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <div style="border:1.5px solid #EF4444;color:#EF4444;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;">Eliminar</div>
+            <div style="background:#FF6B35;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">Guardar</div>
+          </div>
+        </div>
+
+        <!-- Form content -->
+        <div style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;gap:16px;">
+          <!-- Left: form fields -->
+          <div style="flex:1;">
+            <div style="margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Nombre</div>
+              <div style="height:42px;border:1.5px solid #E5E7EB;border-radius:10px;background:#fff;display:flex;align-items:center;padding:0 12px;">
+                <span style="font-size:12px;color:#1A1A2E;">Postres</span>
+              </div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Status</div>
+              <div style="height:42px;border:1.5px solid #10B981;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;padding:0 12px;justify-content:space-between;">
+                <span style="font-size:12px;color:#059669;font-weight:600;">● Activa</span>
+                <span style="font-size:10px;color:#9CA3AF;">▾</span>
+              </div>
+            </div>
+
+            <!-- Products in this category -->
+            <div style="font-size:11px;font-weight:700;color:#1A1A2E;margin-bottom:8px;margin-top:4px;">Productos (3)</div>
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;">
+              <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #F3F4F6;">
+                <span style="color:#9CA3AF;font-size:11px;cursor:grab;">⠿</span>
+                <div style="width:32px;height:32px;background:#FFF4EF;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🍮</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:600;color:#1A1A2E;">Flan napolitano</div>
+                  <div style="font-size:10px;color:#9CA3AF;">$35.00</div>
+                </div>
+                <span style="background:#10B981;color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;">Disp.</span>
+                <span style="color:#FF6B35;font-size:10px;cursor:pointer;">Editar</span>
+              </div>
+              <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #F3F4F6;">
+                <span style="color:#9CA3AF;font-size:11px;cursor:grab;">⠿</span>
+                <div style="width:32px;height:32px;background:#FFF4EF;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🍰</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:600;color:#1A1A2E;">Pay de queso</div>
+                  <div style="font-size:10px;color:#9CA3AF;">$40.00</div>
+                </div>
+                <span style="background:#10B981;color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;">Disp.</span>
+                <span style="color:#FF6B35;font-size:10px;cursor:pointer;">Editar</span>
+              </div>
+              <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;">
+                <span style="color:#9CA3AF;font-size:11px;cursor:grab;">⠿</span>
+                <div style="width:32px;height:32px;background:#F3F4F6;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🍬</div>
+                <div style="flex:1;">
+                  <div style="font-size:11px;font-weight:600;color:#6B7280;">Gelatina</div>
+                  <div style="font-size:10px;color:#9CA3AF;">$20.00</div>
+                </div>
+                <span style="background:#9CA3AF;color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;">No disp.</span>
+                <span style="color:#FF6B35;font-size:10px;cursor:pointer;">Editar</span>
+              </div>
+            </div>
+            <div style="margin-top:10px;color:#FF6B35;font-size:11px;font-weight:600;cursor:pointer;">+ Agregar producto</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px;">
+  <h3>Preview QR — ¿cómo se abre?</h3>
+  <p class="subtitle">El botón "Ver Preview QR" al fondo del árbol — ¿cómo despliega la simulación?</p>
+  <div class="options">
+    <div class="option" data-choice="sheet" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Sheet lateral (Recomendado)</h3>
+        <p>Panel deslizante desde la derecha que muestra una simulación de móvil con el menú público. Ocupa ~380px, el árbol sigue visible. Se cierra con X o clic fuera.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="modal" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Modal / Dialog centrado</h3>
+        <p>Ventana modal con la simulación de móvil. Cubre el contenido principal pero es más simple de implementar.</p>
+      </div>
+    </div>
+  </div>
+</div>

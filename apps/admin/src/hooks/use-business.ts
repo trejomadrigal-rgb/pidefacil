@@ -11,6 +11,7 @@ export interface Business {
   address?: string;
   logoUrl?: string;
   hours?: string;
+  menuColor?: string | null;
 }
 
 export function useBusiness() {

@@ -1,7 +1,7 @@
 import { IsEmail, IsString, IsIn, MinLength, MaxLength } from 'class-validator';
 import { Role } from '@prisma/client';
 
-const ASSIGNABLE_ROLES: Role[] = [Role.ADMIN, Role.OPERATOR, Role.KITCHEN, Role.MENU_DESIGNER, Role.OWNER];
+const ASSIGNABLE_ROLES: Role[] = [Role.DELIVERY, Role.ADMIN, Role.OPERATOR, Role.KITCHEN, Role.MENU_DESIGNER, Role.OWNER];
 
 export class CreateUserDto {
   @IsString()

@@ -1,0 +1,427 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { OrderStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { PdfService } from './pdf.service';
+
+const WHATSAPP_STATUSES = new Set<OrderStatus>([
+  OrderStatus.NEW,
+  OrderStatus.CONFIRMED,
+  OrderStatus.READY,
+  OrderStatus.OUT_FOR_DELIVERY,
+  OrderStatus.DELIVERED,
+  OrderStatus.CANCELLED,
+  OrderStatus.REJECTED,
+]);
+
+const SEP = '━━━━━━━━━━━━━━━━━━━━';
+
+function buildNewOrderMessage(folio: string, _name: string, business: string, _statusUrl: string): string {
+  return (
+    `🧾 *PEDIDO #${folio} recibido*\n` +
+    `${SEP}\n` +
+    `${business}\n\n` +
+    `Se recibió tu pedido, te estaremos contactando para confirmarlo.`
+  );
+}
+
+function buildConfirmedMessage(
+  folio: string,
+  name: string,
+  business: string,
+  items: { name: string; quantity: number; price: number }[],
+  total: number,
+  paymentMethodLabel: string | null,
+  requiresConfirmation: boolean,
+  statusUrl: string,
+): string {
+  const itemLines = items
+    .map((i) => `  • ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`)
+    .join('\n');
+
+  const payLine = paymentMethodLabel ? `💳 *Pago:* ${paymentMethodLabel}\n` : '';
+
+  const closingNote = requiresConfirmation
+    ? '⚠️ *Importante:* Envíanos tu comprobante de pago para iniciar la preparación.'
+    : '🍳 Ya estamos preparando tu pedido.';
+
+  return (
+    `✅ *PEDIDO #${folio} confirmado*\n` +
+    `${SEP}\n` +
+    `${business}\n\n` +
+    `👤 ${name}\n\n` +
+    `🛒 *Tu pedido:*\n${itemLines}\n\n` +
+    `${SEP}\n` +
+    `💰 *Total: $${total.toFixed(2)}*\n` +
+    `${payLine}` +
+    `${SEP}\n\n` +
+    `${closingNote}\n\n` +
+    `👉 Ver estado:\n${statusUrl}`
+  );
+}
+
+const STATUS_MESSAGES: Partial<Record<OrderStatus, (folio: string, name: string, business: string, statusUrl: string) => string>> = {
+  [OrderStatus.OUT_FOR_DELIVERY]: (f, _n, b, u) =>
+    `🚗 *Pedido #${f} en camino*\n\nTu pedido de *${b}* ya va en camino. ¡Prepárate!\n\n👉 ${u}`,
+  [OrderStatus.DELIVERED]: (f, n, b, _u) =>
+    `🎉 *Pedido #${f} entregado*\n\n¡Buen provecho, ${n}! Gracias por pedir en *${b}*.`,
+  [OrderStatus.CANCELLED]: (f, _n, b, _u) =>
+    `❌ *Pedido #${f} cancelado*\n\nLo sentimos, tu pedido en *${b}* fue cancelado. Disculpa el inconveniente.`,
+  [OrderStatus.REJECTED]: (f, _n, b, _u) =>
+    `❌ *Pedido #${f} cancelado*\n\nLo sentimos, tu pedido en *${b}* fue cancelado. Disculpa el inconveniente.`,
+};
+
+const QR_TTL_MS = 60_000;
+
+@Injectable()
+export class WhatsappService {
+  private readonly logger = new Logger(WhatsappService.name);
+  private readonly apiUrl: string;
+  private readonly apiKey: string;
+  private readonly appUrl: string;
+  private readonly webUrl: string;
+
+  // Instance name → { qr base64, expiry }. Evolution API v2 delivers QR via webhook.
+  private readonly qrStore = new Map<string, { qr: string; expiresAt: number }>();
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+    private readonly pdf: PdfService,
+  ) {
+    this.apiUrl = this.config.get<string>('EVOLUTION_API_URL') ?? '';
+    this.apiKey = this.config.get<string>('EVOLUTION_API_KEY') ?? '';
+    this.appUrl = this.config.get<string>('APP_URL') ?? '';
+    this.webUrl = this.config.get<string>('WEB_URL') ?? '';
+  }
+
+  private headers() {
+    return { 'Content-Type': 'application/json', apikey: this.apiKey };
+  }
+
+  private async evo<T>(method: string, path: string, body?: unknown, timeoutMs = 20_000): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${this.apiUrl}${path}`, {
+        method,
+        headers: this.headers(),
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`Evolution API error: ${res.status} ${res.statusText} — ${body}`);
+      }
+      return res.json() as Promise<T>;
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') {
+        throw new Error(`Evolution API timeout: ${this.apiUrl}${path} no respondió en ${timeoutMs / 1000}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Called by the webhook endpoint when Evolution API POSTs a QRCODE_UPDATED event. */
+  storeQrFromWebhook(instanceName: string, qr: string): void {
+    this.qrStore.set(instanceName, { qr, expiresAt: Date.now() + QR_TTL_MS });
+  }
+
+  async connectAndGetQr(businessId: string): Promise<{ status: 'connecting'; qr: string }> {
+    const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
+    if (!biz) throw new NotFoundException('Negocio no encontrado');
+
+    // Prefix to avoid collisions with other tenants on the shared gateway
+    const instanceName = `pf_${biz.slug}`;
+
+    // Remove any existing instance to avoid 409 conflicts on re-connect
+    await this.evo('DELETE', `/instance/delete/${instanceName}`).catch((e: Error) => {
+      this.logger.warn(`[WA] DELETE instance/${instanceName}: ${e.message}`);
+    });
+    this.qrStore.delete(instanceName);
+
+    const payload = { instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
+    this.logger.log(`[WA] POST /instance/create payload: ${JSON.stringify(payload)}`);
+
+    let createData: { qrcode?: { base64?: string } };
+    try {
+      createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
+      this.logger.log(`[WA] POST /instance/create response keys: ${Object.keys(createData).join(',')}`);
+    } catch (err) {
+      this.logger.error(`[WA] POST /instance/create FAILED: ${(err as Error).message}`);
+      throw err;
+    }
+
+    await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: instanceName } });
+
+    // v2: QR may come directly in create response
+    const immediateQr = createData.qrcode?.base64 ?? '';
+    if (immediateQr) return { status: 'connecting', qr: immediateQr };
+
+    // Poll GET /instance/connect/{name} — v2 returns { base64 } once Baileys connects
+    for (let i = 0; i < 6; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+
+      const stored = this.qrStore.get(instanceName);
+      if (stored && stored.expiresAt > Date.now()) {
+        return { status: 'connecting', qr: stored.qr };
+      }
+
+      try {
+        const qrData = await this.evo<{ base64?: string }>('GET', `/instance/connect/${instanceName}`);
+        if (qrData.base64) return { status: 'connecting', qr: qrData.base64 };
+      } catch { /* not ready yet */ }
+    }
+
+    return { status: 'connecting', qr: '' };
+  }
+
+  async getQrByBusinessId(businessId: string): Promise<string | null> {
+    const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
+    if (!biz?.whatsappSession) return null;
+
+    // Check webhook-delivered QR store first (Evolution API v2 primary delivery mechanism)
+    const stored = this.qrStore.get(biz.whatsappSession);
+    if (stored && stored.expiresAt > Date.now()) return stored.qr;
+
+    try {
+      const data = await this.evo<{ base64?: string }>('GET', `/instance/connect/${biz.whatsappSession}`);
+      return data.base64 ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getConnectionState(businessId: string): Promise<'open' | 'connecting' | 'close' | 'not_configured'> {
+    const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
+    if (!biz?.whatsappSession) return 'not_configured';
+    try {
+      const data = await this.evo<{ instance?: { state?: string } }>('GET', `/instance/connectionState/${biz.whatsappSession}`);
+      const state = data.instance?.state;
+      if (state === 'open') return 'open';
+      if (state === 'connecting') return 'connecting';
+      return 'close';
+    } catch {
+      return 'close';
+    }
+  }
+
+  async disconnect(businessId: string): Promise<void> {
+    const biz = await this.prisma.business.findUnique({ where: { id: businessId }, select: { whatsappSession: true } });
+    if (biz?.whatsappSession) {
+      await this.evo('DELETE', `/instance/delete/${biz.whatsappSession}`).catch(() => {});
+      this.qrStore.delete(biz.whatsappSession);
+      await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: null } });
+    }
+  }
+
+  async sendStatusMessage(
+    order: { businessId: string; orderNumber: string; customerName: string; customerPhone: string },
+    newStatus: OrderStatus,
+  ): Promise<void> {
+    if (!WHATSAPP_STATUSES.has(newStatus)) return;
+
+    const biz = await this.prisma.business.findUnique({
+      where: { id: order.businessId },
+      select: { name: true, slug: true, whatsappSession: true },
+    });
+
+    if (!biz?.whatsappSession) {
+      this.logger.warn(`[WA] Pedido #${order.orderNumber}: negocio sin whatsappSession`);
+      return;
+    }
+
+    const state = await this.getConnectionState(order.businessId);
+    if (state !== 'open') {
+      this.logger.warn(`[WA] Pedido #${order.orderNumber}: sesión no abierta (estado=${state})`);
+      return;
+    }
+
+    const digits = order.customerPhone.replace(/\D/g, '');
+    const phone = digits.length === 10 ? `52${digits}` : digits;
+    const statusUrl = this.webUrl ? `${this.webUrl}/${biz.slug}/pedido/${order.orderNumber}` : '';
+
+    let pdfBuffer: Buffer | null = null;
+    let caption = '';
+    let fallbackText = '';
+
+    // ── NEW ───────────────────────────────────────────────────────────────────────────
+    if (newStatus === OrderStatus.NEW) {
+      caption = `Tu pedido #${order.orderNumber} fue recibido en ${biz.name}.`;
+      fallbackText = buildNewOrderMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#1A1A2E',
+        statusLabel: 'PEDIDO RECIBIDO',
+        mainMessage: 'Tu pedido fue recibido. Te contactaremos para confirmarlo antes de iniciar la preparacion.',
+        statusUrl,
+      }).catch(() => null);
+
+    // ── CONFIRMED ─────────────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.CONFIRMED) {
+      const fullOrder = await this.prisma.order.findFirst({
+        where: { businessId: order.businessId, orderNumber: order.orderNumber },
+        select: {
+          total: true,
+          paymentMethodLabel: true,
+          notes: true,
+          customPaymentMethod: { select: { requiresConfirmation: true } },
+          items: { select: { quantity: true, price: true, product: { select: { name: true } } } },
+        },
+      });
+
+      const items = (fullOrder?.items ?? []).map((i) => ({
+        name: i.product.name,
+        quantity: i.quantity,
+        price: Number(i.price),
+      }));
+      const requiresConfirmation = fullOrder?.customPaymentMethod?.requiresConfirmation ?? false;
+
+      caption = requiresConfirmation
+        ? `Pedido #${order.orderNumber} confirmado. Envia tu comprobante de pago para iniciar la preparacion.`
+        : `Pedido #${order.orderNumber} confirmado. Ya estamos preparando tu pedido.`;
+      fallbackText = buildConfirmedMessage(
+        order.orderNumber, order.customerName, biz.name, items,
+        Number(fullOrder?.total ?? 0), fullOrder?.paymentMethodLabel ?? null,
+        requiresConfirmation, statusUrl,
+      );
+      pdfBuffer = await this.pdf.generateConfirmedTicket({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        items,
+        total: Number(fullOrder?.total ?? 0),
+        paymentMethodLabel: fullOrder?.paymentMethodLabel ?? null,
+        requiresConfirmation,
+        notes: fullOrder?.notes ?? null,
+        statusUrl,
+      }).catch(() => null);
+
+    // ── READY ─────────────────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.READY) {
+      const readyOrder = await this.prisma.order.findFirst({
+        where: { businessId: order.businessId, orderNumber: order.orderNumber },
+        select: { deliveryType: true },
+      });
+      const isDelivery = readyOrder?.deliveryType === 'DELIVERY';
+
+      caption = isDelivery
+        ? `Pedido #${order.orderNumber} listo y pronto sale a entrega. Preparate!`
+        : `Pedido #${order.orderNumber} listo para recoger en ${biz.name}.`;
+      fallbackText = isDelivery
+        ? `📦 *Pedido #${order.orderNumber} listo*\n\nTu pedido de *${biz.name}* está listo y pronto saldrá a entrega. 🛵\n\n👉 ${statusUrl}`
+        : `🛍️ *Pedido #${order.orderNumber} listo para recoger*\n\n¡Tu pedido en *${biz.name}* está listo! Pasa cuando quieras. 🙌\n\n👉 ${statusUrl}`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#1B5E20',
+        statusLabel: isDelivery ? 'LISTO — SALIENDO A ENTREGA' : 'LISTO PARA RECOGER',
+        mainMessage: isDelivery
+          ? 'Tu pedido esta listo y pronto saldra a entrega. Preparate!'
+          : 'Tu pedido esta listo. Pasa a recogerlo cuando quieras.',
+        statusUrl,
+      }).catch(() => null);
+
+    // ── OUT FOR DELIVERY ──────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.OUT_FOR_DELIVERY) {
+      caption = `Tu pedido #${order.orderNumber} ya va en camino.`;
+      fallbackText = `🚗 *Pedido #${order.orderNumber} en camino*\n\nTu pedido de *${biz.name}* ya va en camino. ¡Prepárate!\n\n👉 ${statusUrl}`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#0D47A1',
+        statusLabel: 'EN CAMINO',
+        mainMessage: 'Tu pedido ya va en camino. Estaremos llegando pronto.',
+        statusUrl,
+      }).catch(() => null);
+
+    // ── DELIVERED ─────────────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.DELIVERED) {
+      caption = `Pedido #${order.orderNumber} entregado. Buen provecho!`;
+      fallbackText = `🎉 *Pedido #${order.orderNumber} entregado*\n\n¡Buen provecho, ${order.customerName}! Gracias por pedir en *${biz.name}*.`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#1B5E20',
+        statusLabel: 'ENTREGADO',
+        mainMessage: '¡Pedido entregado! Gracias por tu confianza.',
+        subMessage: 'Buen provecho. Esperamos verte pronto.',
+      }).catch(() => null);
+
+    // ── CANCELLED / REJECTED ──────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.CANCELLED || newStatus === OrderStatus.REJECTED) {
+      caption = `Pedido #${order.orderNumber} cancelado. Disculpa el inconveniente.`;
+      fallbackText = `❌ *Pedido #${order.orderNumber} cancelado*\n\nLo sentimos, tu pedido en *${biz.name}* fue cancelado. Disculpa el inconveniente.`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#B71C1C',
+        statusLabel: 'PEDIDO CANCELADO',
+        mainMessage: 'Lo sentimos, tu pedido fue cancelado.',
+        subMessage: 'Disculpa el inconveniente. Si tienes dudas, contactanos directamente.',
+      }).catch(() => null);
+
+    } else {
+      return;
+    }
+
+    try {
+      if (pdfBuffer) {
+        await this.evo('POST', `/message/sendMedia/${biz.whatsappSession}`, {
+          number: phone,
+          mediatype: 'document',
+          mimetype: 'application/pdf',
+          media: pdfBuffer.toString('base64'),
+          fileName: `Pedido-${order.orderNumber}.pdf`,
+          caption,
+        });
+      } else {
+        await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text: fallbackText });
+      }
+      this.logger.log(`[WA] ✅ Pedido #${order.orderNumber} → ${newStatus} enviado a ${phone}`);
+    } catch (err) {
+      this.logger.error(`[WA] ❌ Pedido #${order.orderNumber} → ${newStatus} FALLÓ para ${phone}: ${(err as Error)?.message}`);
+      throw err;
+    }
+  }
+
+  async sendTestMessage(businessId: string, phone: string): Promise<{ ok: boolean; error?: string }> {
+    const biz = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { name: true, whatsappSession: true },
+    });
+
+    if (!biz?.whatsappSession) {
+      return { ok: false, error: 'WhatsApp no configurado. Conecta primero tu cuenta.' };
+    }
+
+    const state = await this.getConnectionState(businessId);
+    if (state !== 'open') {
+      return { ok: false, error: `Sesión no activa (estado: ${state}). Vuelve a conectar WhatsApp.` };
+    }
+
+    const digits = phone.replace(/\D/g, '');
+    const normalized = digits.length === 10 ? `52${digits}` : digits;
+
+    try {
+      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, {
+        number: normalized,
+        text: `✅ *PideFacil — mensaje de prueba*\n\nHola, este es un mensaje de prueba de *${biz.name}*. Si lo recibiste, WhatsApp está funcionando correctamente.`,
+      });
+      this.logger.log(`[WA] Mensaje de prueba enviado a ${normalized}`);
+      return { ok: true };
+    } catch (err) {
+      const msg = (err as Error)?.message ?? 'Error desconocido';
+      this.logger.error(`[WA] Mensaje de prueba FALLÓ para ${normalized}: ${msg}`);
+      return { ok: false, error: msg };
+    }
+  }
+}

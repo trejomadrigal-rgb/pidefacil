@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Minus, Plus, X } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { motion } from 'framer-motion';
 import { Product, ProductExtra, ProductVariant } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useCartStore } from '@/store/cart.store';
@@ -28,7 +29,14 @@ export function ProductSheet({
   const [selectedExtras, setSelectedExtras] = useState<ProductExtra[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [activeHints, setActiveHints] = useState<string[]>([]);
   const { addItem } = useCartStore();
+
+  const toggleHint = (hint: string) => {
+    setActiveHints((prev) =>
+      prev.includes(hint) ? prev.filter((h) => h !== hint) : [...prev, hint],
+    );
+  };
 
   const toggleExtra = (extra: ProductExtra) => {
     setSelectedExtras((prev) =>
@@ -46,6 +54,9 @@ export function ProductSheet({
   const handleAdd = () => {
     if (product.variants.length > 0 && !selectedVariant) return;
 
+    const hintText = activeHints.join(', ');
+    const fullNotes = [hintText, notes.trim()].filter(Boolean).join('. ');
+
     addItem(slug, {
       productId: product.id,
       variantId: selectedVariant?.id,
@@ -54,17 +65,28 @@ export function ProductSheet({
       imageUrl: product.imageUrl,
       price: unitPrice,
       extras: selectedExtras,
-      notes: notes.trim() || undefined,
+      notes: fullNotes || undefined,
       quantity,
     });
+    setActiveHints([]);
+    setNotes('');
+    setQuantity(1);
+    setSelectedExtras([]);
+    setSelectedVariant(product.variants.length > 0 ? product.variants[0] : null);
     onClose();
   };
 
   return (
     <Dialog.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
-        <Dialog.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[90vh] overflow-y-auto focus:outline-none">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200" />
+        <Dialog.Content asChild>
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 380 }}
+          className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl max-h-[90vh] overflow-y-auto focus:outline-none"
+        >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1">
             <div className="w-10 h-1 bg-gray-200 rounded-full" />
@@ -156,6 +178,35 @@ export function ProductSheet({
               </div>
             )}
 
+            {/* Note hints */}
+            {product.noteHints.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-2">
+                  Personalizar
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {product.noteHints.map((hint) => {
+                    const isActive = activeHints.includes(hint);
+                    return (
+                      <button
+                        key={hint}
+                        type="button"
+                        onClick={() => toggleHint(hint)}
+                        className="px-3 py-1 rounded-full text-xs font-bold transition-colors border-2"
+                        style={
+                          isActive
+                            ? { borderColor: 'var(--brand)', color: 'var(--brand)', background: '#FFF3EE' }
+                            : { borderColor: '#E5E7EB', color: '#6B7280', background: '#F9FAFB' }
+                        }
+                      >
+                        {isActive ? `✓ ${hint}` : hint}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             <div className="mt-4">
               <textarea
@@ -198,6 +249,7 @@ export function ProductSheet({
               </button>
             </div>
           </div>
+        </motion.div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

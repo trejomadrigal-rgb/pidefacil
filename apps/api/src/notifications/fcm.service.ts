@@ -15,6 +15,7 @@ export class FcmService implements OnModuleInit {
     try {
       initializeApp({
         credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+        ...(process.env.FIREBASE_DATABASE_URL && { databaseURL: process.env.FIREBASE_DATABASE_URL }),
       });
       this.initialized = true;
     } catch (err) {
