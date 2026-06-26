@@ -13,12 +13,14 @@ const WHATSAPP_STATUSES = new Set<OrderStatus>([
   OrderStatus.REJECTED,
 ]);
 
-function buildNewOrderMessage(folio: string, name: string, business: string, statusUrl: string): string {
+const SEP = '━━━━━━━━━━━━━━━━━━━━';
+
+function buildNewOrderMessage(folio: string, _name: string, business: string, _statusUrl: string): string {
   return (
-    `📩 *Pedido #${folio} recibido*\n\n` +
-    `¡Hola ${name}! Recibimos tu pedido en *${business}*.\n` +
-    `Pronto te llamaremos para confirmarlo. 📞\n\n` +
-    `👉 Ver tu pedido:\n${statusUrl}`
+    `🧾 *PEDIDO #${folio} recibido*\n` +
+    `${SEP}\n` +
+    `${business}\n\n` +
+    `Se recibió tu pedido, te estaremos contactando para confirmarlo.`
   );
 }
 
@@ -33,22 +35,27 @@ function buildConfirmedMessage(
   statusUrl: string,
 ): string {
   const itemLines = items
-    .map((i) => `• ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`)
+    .map((i) => `  • ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`)
     .join('\n');
 
-  const payLine = paymentMethodLabel ? `\n💳 *Pago:* ${paymentMethodLabel}` : '';
+  const payLine = paymentMethodLabel ? `💳 *Pago:* ${paymentMethodLabel}\n` : '';
 
-  const transferNote = requiresConfirmation
-    ? '\n\n⚠️ *Importante:* Tu pedido pasará a preparación una vez que nos envíes el comprobante de pago. Sin comprobante no iniciaremos la preparación.'
-    : '\n\nYa lo estamos preparando. 🍳';
+  const closingNote = requiresConfirmation
+    ? '⚠️ *Importante:* Envíanos tu comprobante de pago para iniciar la preparación.'
+    : '🍳 Ya estamos preparando tu pedido.';
 
   return (
-    `✅ *Pedido #${folio} confirmado*\n\n` +
-    `¡Hola ${name}! Tu pedido en *${business}* fue confirmado.\n\n` +
+    `✅ *PEDIDO #${folio} confirmado*\n` +
+    `${SEP}\n` +
+    `${business}\n\n` +
+    `👤 ${name}\n\n` +
     `🛒 *Tu pedido:*\n${itemLines}\n\n` +
-    `💰 *Total: $${total.toFixed(2)}*${payLine}` +
-    transferNote +
-    `\n\n👉 Ver estado de tu pedido:\n${statusUrl}`
+    `${SEP}\n` +
+    `💰 *Total: $${total.toFixed(2)}*\n` +
+    `${payLine}` +
+    `${SEP}\n\n` +
+    `${closingNote}\n\n` +
+    `👉 Ver estado:\n${statusUrl}`
   );
 }
 
