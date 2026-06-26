@@ -540,15 +540,29 @@ jobs:
 
           echo ""
           echo "=== Test: instancias existentes en Evolution v2 ==="
-          if [ -n "$EVO_CONTAINER" ]; then
-            # Try via API container first (internal network)
-            if [ -n "$API_CONTAINER" ]; then
+          if [ -n "$EVO_CONTAINER" ] && [ -n "$API_CONTAINER" ]; then
+            INSTANCES_RAW=$(sudo docker exec "$API_CONTAINER" \
+              wget -qO- --timeout=8 \
+              --header="apikey: ${EVOLUTION_API_KEY}" \
+              http://evolution-v2-evolution-api-1:8080/instance/fetchInstances 2>&1)
+            echo "fetchInstances raw: $INSTANCES_RAW"
+            INST_NAME=$(echo "$INSTANCES_RAW" | python3 -c "import sys,json; d=json.load(sys.stdin); items=d if isinstance(d,list) else d.get('data',[]); print(items[0].get('instance',{}).get('instanceName','') if items else '')" 2>/dev/null || true)
+            echo "Primera instancia: $INST_NAME"
+
+            if [ -n "$INST_NAME" ]; then
+              echo ""
+              echo "=== GET /instance/connect/${INST_NAME} (respuesta raw) ==="
+              sudo docker exec "$API_CONTAINER" \
+                wget -qO- --timeout=10 \
+                --header="apikey: ${EVOLUTION_API_KEY}" \
+                "http://evolution-v2-evolution-api-1:8080/instance/connect/${INST_NAME}" 2>&1 | head -3
+
+              echo ""
+              echo "=== GET /instance/connectionState/${INST_NAME} ==="
               sudo docker exec "$API_CONTAINER" \
                 wget -qO- --timeout=8 \
                 --header="apikey: ${EVOLUTION_API_KEY}" \
-                http://evolution-v2-evolution-api-1:8080/instance/fetchInstances 2>&1 \
-                | python3 -c "import sys,json; d=json.load(sys.stdin); items=d if isinstance(d,list) else d.get('data',[]); [print('INSTANCE:',i.get('instance',{}).get('instanceName','?'),'state:',i.get('instance',{}).get('state','?')) for i in (items or [])] or print('(sin instancias)')" 2>/dev/null \
-                || echo "(error al consultar instancias)"
+                "http://evolution-v2-evolution-api-1:8080/instance/connectionState/${INST_NAME}" 2>&1
             fi
           fi
 
