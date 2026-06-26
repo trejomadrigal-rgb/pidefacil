@@ -274,6 +274,13 @@ jobs:
             echo "Status después de start: $EVO_STATUS"
           fi
 
+          # Si el contenedor existe pero está en restarting (configuración incorrecta), eliminarlo
+          if [ "$EVO_STATUS" = "restarting" ]; then
+            echo "Container en restarting — eliminando para recrear con configuración correcta..."
+            sudo docker rm -f evolution-v2-evolution-api-1 2>/dev/null || true
+            EVO_STATUS="not_found"
+          fi
+
           # Si el contenedor no existe, buscar en Coolify y en directorios de datos
           if [ "$EVO_STATUS" = "not_found" ]; then
             echo "Container no existe — búsqueda completa..."
