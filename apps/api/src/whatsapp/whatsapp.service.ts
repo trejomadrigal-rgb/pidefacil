@@ -101,7 +101,8 @@ export class WhatsappService {
         signal: controller.signal,
       });
       if (!res.ok) {
-        throw new Error(`Evolution API error: ${res.status} ${res.statusText}`);
+        const body = await res.text().catch(() => '');
+        throw new Error(`Evolution API error: ${res.status} ${res.statusText} — ${body}`);
       }
       return res.json() as Promise<T>;
     } catch (err) {
