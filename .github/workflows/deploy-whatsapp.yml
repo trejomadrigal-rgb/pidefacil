@@ -81,3 +81,53 @@ jobs:
               wget -qO- --timeout=5 http://evolution-v2-evolution-api-1:8080/ 2>&1 | head -3 \
               || echo "(wget no disponible en container)"
           fi
+
+  diagnose:
+    name: Diagnosticar Evolution API v2
+    runs-on: [self-hosted, linux, deploy]
+
+    steps:
+      - name: Estado de contenedores y conectividad
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          echo "=== Contenedores evolution ==="
+          sudo docker ps --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+          echo ""
+          echo "=== Logs recientes evolution-v2 (30 líneas) ==="
+          sudo docker logs evolution-v2-evolution-api-1 --tail=30 2>&1 || echo "(container no encontrado)"
+
+          echo ""
+          echo "=== Test: localhost → Evolution v2 desde VPS ==="
+          EVO_PORT=$(sudo docker inspect evolution-v2-evolution-api-1 \
+            --format '{{range $k,$v := .NetworkSettings.Ports}}{{$k}}={{range $v}}{{.HostPort}}{{end}} {{end}}' 2>/dev/null | tr ' ' '\n' | grep "8080" | head -1)
+          echo "Port mapping: $EVO_PORT"
+          curl -sf -H "apikey: ${EVOLUTION_API_KEY}" \
+            http://localhost:$(echo $EVO_PORT | cut -d: -f2 | cut -d= -f2 | tr -d ' ')/instance/fetchInstances 2>/dev/null \
+            && echo "✅ Evolution v2 accesible desde VPS host" \
+            || echo "❌ No accesible desde VPS host"
+
+          echo ""
+          echo "=== Redes del contenedor evolution-v2 ==="
+          sudo docker inspect evolution-v2-evolution-api-1 \
+            --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}' 2>/dev/null
+
+          echo ""
+          echo "=== Redes del contenedor API (NestJS) ==="
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          echo "API container: $API_CONTAINER"
+          sudo docker inspect "$API_CONTAINER" \
+            --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}' 2>/dev/null
+
+          echo ""
+          echo "=== Test: API container → evolution-v2-evolution-api-1 ==="
+          sudo docker exec "$API_CONTAINER" \
+            wget -qO- --timeout=5 http://evolution-v2-evolution-api-1:8080/instance/fetchInstances 2>&1 \
+            || echo "❌ No hay conectividad API → Evolution v2"
+
+          echo ""
+          echo "=== Env vars EVOLUTION_API_URL en API container ==="
+          sudo docker inspect "$API_CONTAINER" \
+            --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+            | grep -i "EVOLUTION" || echo "(no encontradas)"
