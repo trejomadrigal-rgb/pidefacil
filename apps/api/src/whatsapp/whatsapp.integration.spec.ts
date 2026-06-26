@@ -95,15 +95,15 @@ describe('WhatsappModule (integration)', () => {
     expect(res.body.status).toBe('connecting');
 
     const updated = await prisma.business.findUnique({ where: { id: businessId } });
-    expect(updated?.whatsappSession).toBe(`fonda-wa-${suffix}`);
+    expect(updated?.whatsappSession).toBe(`pf_fonda-wa-${suffix}`);
   });
 
   it('GET /admin/whatsapp/status → open cuando Evolution responde open', async () => {
-    await prisma.business.update({ where: { id: businessId }, data: { whatsappSession: `fonda-wa-${suffix}` } });
+    await prisma.business.update({ where: { id: businessId }, data: { whatsappSession: `pf_fonda-wa-${suffix}` } });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ instance: { instanceName: `fonda-wa-${suffix}`, state: 'open' } }),
+      json: async () => ({ instance: { instanceName: `pf_fonda-wa-${suffix}`, state: 'open' } }),
     } as any);
 
     const res = await request(app.getHttpServer())
@@ -115,7 +115,7 @@ describe('WhatsappModule (integration)', () => {
   });
 
   it('DELETE /admin/whatsapp/disconnect → elimina sesión y limpia BD', async () => {
-    await prisma.business.update({ where: { id: businessId }, data: { whatsappSession: `fonda-wa-${suffix}` } });
+    await prisma.business.update({ where: { id: businessId }, data: { whatsappSession: `pf_fonda-wa-${suffix}` } });
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
