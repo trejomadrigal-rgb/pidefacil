@@ -871,39 +871,4 @@ jobs:
             sudo docker exec "$WEB_CONTAINER" find /app/apps/web/.next/server/app -name "*.html" 2>/dev/null | head -10 || echo "  (no hay archivos .html)"
           fi
 
-  restart-evolution:
-    name: Reiniciar Evolution API v2 (WhatsApp)
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'restart-evolution'
-    runs-on: [self-hosted, linux, deploy]
-    steps:
-      - name: Reiniciar contenedor Evolution v2
-        run: |
-          EVO_CONTAINER=$(sudo docker ps -a --filter "name=evolution-v2-evolution-api-1" -q | head -1)
-          if [ -z "$EVO_CONTAINER" ]; then
-            echo "❌ Contenedor evolution-v2-evolution-api-1 no encontrado"
-            sudo docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i evol || echo "(ningún contenedor evolution)"
-            exit 1
-          fi
-
-          echo "Reiniciando $EVO_CONTAINER..."
-          sudo docker restart "$EVO_CONTAINER"
-          echo "Esperando 20s para que Evolution v2 arranque..."
-          sleep 20
-
-          echo "=== Estado después del restart ==="
-          sudo docker ps --filter "name=evolution-v2" --format "table {{.Names}}\t{{.Status}}"
-
-          echo ""
-          echo "=== Últimos logs de Evolution v2 ==="
-          sudo docker logs "$EVO_CONTAINER" --tail 30 2>&1
-
-          echo ""
-          echo "=== Test HTTP desde API container ==="
-          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
-          if [ -n "$API_CONTAINER" ]; then
-            sudo docker exec "$API_CONTAINER" \
-              wget -qO- --timeout=5 http://evolution-v2-evolution-api-1:8080/ 2>&1 | head -3 \
-              && echo "✅ Evolution v2 accesible desde API" \
-              || echo "❌ Evolution v2 no responde"
-          fi
 
