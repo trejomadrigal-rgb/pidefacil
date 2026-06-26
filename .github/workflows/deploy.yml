@@ -560,6 +560,26 @@ jobs:
               2>&1 || echo "Node exec falló"
           fi
 
+          echo ""
+          echo "=== Todos los containers con 'evolution' (todos los proyectos) ==="
+          sudo docker ps -a --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Networks}}"
+
+          echo ""
+          echo "=== Env vars EVOLUTION/REDIS/CACHE de todos los containers evolution ==="
+          for cid in $(sudo docker ps -a --filter "name=evolution" -q 2>/dev/null); do
+            NAME=$(sudo docker inspect "$cid" --format '{{.Name}}' 2>/dev/null)
+            echo "--- Container: $NAME ---"
+            sudo docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+              | grep -iE "EVOLUTION|REDIS|CACHE|DATABASE|AUTH|QRCODE|WEBHOOK|LOG" \
+              | grep -iv "API_KEY\|PASSWORD\|SECRET\|TOKEN\|PASS" || echo "(sin vars relevantes)"
+          done
+
+          echo ""
+          echo "=== Buscar compose files con 'evolution' en el VPS ==="
+          find /data/coolify /root /home /var/lib /artifacts 2>/dev/null \
+            -maxdepth 8 \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) \
+            -exec grep -lE "evolution.api|evolution-api|atendai" {} \; 2>/dev/null | head -5
+
   diagnose-web:
     name: Diagnosticar conectividad web → API
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'diagnose-web'
