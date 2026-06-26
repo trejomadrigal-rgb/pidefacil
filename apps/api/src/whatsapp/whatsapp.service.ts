@@ -241,15 +241,27 @@ export class WhatsappService {
 
     const digits = order.customerPhone.replace(/\D/g, '');
     const phone = digits.length === 10 ? `52${digits}` : digits;
+    const statusUrl = this.webUrl ? `${this.webUrl}/${biz.slug}/pedido/${order.orderNumber}` : '';
 
-    const statusUrl = this.webUrl
-      ? `${this.webUrl}/${biz.slug}/pedido/${order.orderNumber}`
-      : '';
+    let pdfBuffer: Buffer | null = null;
+    let caption = '';
+    let fallbackText = '';
 
-    let text: string;
-
+    // ── NEW ───────────────────────────────────────────────────────────────────────────
     if (newStatus === OrderStatus.NEW) {
-      text = buildNewOrderMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
+      caption = `Tu pedido #${order.orderNumber} fue recibido en ${biz.name}.`;
+      fallbackText = buildNewOrderMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#1A1A2E',
+        statusLabel: 'PEDIDO RECIBIDO',
+        mainMessage: 'Tu pedido fue recibido. Te contactaremos para confirmarlo antes de iniciar la preparacion.',
+        statusUrl,
+      }).catch(() => null);
+
+    // ── CONFIRMED ─────────────────────────────────────────────────────────────────────
     } else if (newStatus === OrderStatus.CONFIRMED) {
       const fullOrder = await this.prisma.order.findFirst({
         where: { businessId: order.businessId, orderNumber: order.orderNumber },
@@ -267,27 +279,102 @@ export class WhatsappService {
         quantity: i.quantity,
         price: Number(i.price),
       }));
-
       const requiresConfirmation = fullOrder?.customPaymentMethod?.requiresConfirmation ?? false;
 
-      // Send PDF ticket
-      try {
-        const pdfBuffer = await this.pdf.generateConfirmedTicket({
-          folio: order.orderNumber,
-          businessName: biz.name,
-          customerName: order.customerName,
-          items,
-          total: Number(fullOrder?.total ?? 0),
-          paymentMethodLabel: fullOrder?.paymentMethodLabel ?? null,
-          requiresConfirmation,
-          notes: fullOrder?.notes ?? null,
-          statusUrl,
-        });
+      caption = requiresConfirmation
+        ? `Pedido #${order.orderNumber} confirmado. Envia tu comprobante de pago para iniciar la preparacion.`
+        : `Pedido #${order.orderNumber} confirmado. Ya estamos preparando tu pedido.`;
+      fallbackText = buildConfirmedMessage(
+        order.orderNumber, order.customerName, biz.name, items,
+        Number(fullOrder?.total ?? 0), fullOrder?.paymentMethodLabel ?? null,
+        requiresConfirmation, statusUrl,
+      );
+      pdfBuffer = await this.pdf.generateConfirmedTicket({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        items,
+        total: Number(fullOrder?.total ?? 0),
+        paymentMethodLabel: fullOrder?.paymentMethodLabel ?? null,
+        requiresConfirmation,
+        notes: fullOrder?.notes ?? null,
+        statusUrl,
+      }).catch(() => null);
 
-        const caption = requiresConfirmation
-          ? `✅ Pedido #${order.orderNumber} confirmado — envía tu comprobante de pago para iniciar la preparación.`
-          : `✅ Pedido #${order.orderNumber} confirmado — ya estamos preparando tu pedido.`;
+    // ── READY ─────────────────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.READY) {
+      const readyOrder = await this.prisma.order.findFirst({
+        where: { businessId: order.businessId, orderNumber: order.orderNumber },
+        select: { deliveryType: true },
+      });
+      const isDelivery = readyOrder?.deliveryType === 'DELIVERY';
 
+      caption = isDelivery
+        ? `Pedido #${order.orderNumber} listo y pronto sale a entrega. Preparate!`
+        : `Pedido #${order.orderNumber} listo para recoger en ${biz.name}.`;
+      fallbackText = isDelivery
+        ? `📦 *Pedido #${order.orderNumber} listo*\n\nTu pedido de *${biz.name}* está listo y pronto saldrá a entrega. 🛵\n\n👉 ${statusUrl}`
+        : `🛍️ *Pedido #${order.orderNumber} listo para recoger*\n\n¡Tu pedido en *${biz.name}* está listo! Pasa cuando quieras. 🙌\n\n👉 ${statusUrl}`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#1B5E20',
+        statusLabel: isDelivery ? 'LISTO — SALIENDO A ENTREGA' : 'LISTO PARA RECOGER',
+        mainMessage: isDelivery
+          ? 'Tu pedido esta listo y pronto saldra a entrega. Preparate!'
+          : 'Tu pedido esta listo. Pasa a recogerlo cuando quieras.',
+        statusUrl,
+      }).catch(() => null);
+
+    // ── OUT FOR DELIVERY ──────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.OUT_FOR_DELIVERY) {
+      caption = `Tu pedido #${order.orderNumber} ya va en camino.`;
+      fallbackText = `🚗 *Pedido #${order.orderNumber} en camino*\n\nTu pedido de *${biz.name}* ya va en camino. ¡Prepárate!\n\n👉 ${statusUrl}`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#0D47A1',
+        statusLabel: 'EN CAMINO',
+        mainMessage: 'Tu pedido ya va en camino. Estaremos llegando pronto.',
+        statusUrl,
+      }).catch(() => null);
+
+    // ── DELIVERED ─────────────────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.DELIVERED) {
+      caption = `Pedido #${order.orderNumber} entregado. Buen provecho!`;
+      fallbackText = `🎉 *Pedido #${order.orderNumber} entregado*\n\n¡Buen provecho, ${order.customerName}! Gracias por pedir en *${biz.name}*.`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#1B5E20',
+        statusLabel: 'ENTREGADO',
+        mainMessage: '¡Pedido entregado! Gracias por tu confianza.',
+        subMessage: 'Buen provecho. Esperamos verte pronto.',
+      }).catch(() => null);
+
+    // ── CANCELLED / REJECTED ──────────────────────────────────────────────────────────
+    } else if (newStatus === OrderStatus.CANCELLED || newStatus === OrderStatus.REJECTED) {
+      caption = `Pedido #${order.orderNumber} cancelado. Disculpa el inconveniente.`;
+      fallbackText = `❌ *Pedido #${order.orderNumber} cancelado*\n\nLo sentimos, tu pedido en *${biz.name}* fue cancelado. Disculpa el inconveniente.`;
+      pdfBuffer = await this.pdf.generateStatusCard({
+        folio: order.orderNumber,
+        businessName: biz.name,
+        customerName: order.customerName,
+        headerColor: '#B71C1C',
+        statusLabel: 'PEDIDO CANCELADO',
+        mainMessage: 'Lo sentimos, tu pedido fue cancelado.',
+        subMessage: 'Disculpa el inconveniente. Si tienes dudas, contactanos directamente.',
+      }).catch(() => null);
+
+    } else {
+      return;
+    }
+
+    try {
+      if (pdfBuffer) {
         await this.evo('POST', `/message/sendMedia/${biz.whatsappSession}`, {
           number: phone,
           mediatype: 'document',
@@ -296,40 +383,9 @@ export class WhatsappService {
           fileName: `Pedido-${order.orderNumber}.pdf`,
           caption,
         });
-        this.logger.log(`[WA] ✅ PDF ticket Pedido #${order.orderNumber} → CONFIRMED enviado a ${phone}`);
-        return;
-      } catch (pdfErr) {
-        this.logger.warn(`[WA] PDF fallback a texto: ${(pdfErr as Error).message}`);
-        // Fall through to text fallback
+      } else {
+        await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text: fallbackText });
       }
-
-      text = buildConfirmedMessage(
-        order.orderNumber,
-        order.customerName,
-        biz.name,
-        items,
-        Number(fullOrder?.total ?? 0),
-        fullOrder?.paymentMethodLabel ?? null,
-        requiresConfirmation,
-        statusUrl,
-      );
-    } else if (newStatus === OrderStatus.READY) {
-      const readyOrder = await this.prisma.order.findFirst({
-        where: { businessId: order.businessId, orderNumber: order.orderNumber },
-        select: { deliveryType: true },
-      });
-      const isDelivery = readyOrder?.deliveryType === 'DELIVERY';
-      text = isDelivery
-        ? `📦 *Pedido #${order.orderNumber} listo*\n\nTu pedido de *${biz.name}* está listo y pronto saldrá a entrega. 🛵\n\n👉 Ver tu pedido:\n${statusUrl}`
-        : `🛍️ *Pedido #${order.orderNumber} listo para recoger*\n\n¡Tu pedido en *${biz.name}* está listo! Pasa a recogerlo cuando quieras. 🙌\n\n👉 Ver tu pedido:\n${statusUrl}`;
-    } else {
-      const buildMessage = STATUS_MESSAGES[newStatus];
-      if (!buildMessage) return;
-      text = buildMessage(order.orderNumber, order.customerName, biz.name, statusUrl);
-    }
-
-    try {
-      await this.evo('POST', `/message/sendText/${biz.whatsappSession}`, { number: phone, text });
       this.logger.log(`[WA] ✅ Pedido #${order.orderNumber} → ${newStatus} enviado a ${phone}`);
     } catch (err) {
       this.logger.error(`[WA] ❌ Pedido #${order.orderNumber} → ${newStatus} FALLÓ para ${phone}: ${(err as Error)?.message}`);
