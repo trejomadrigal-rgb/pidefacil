@@ -13,7 +13,7 @@ export interface Shift {
     cashTotal: number;
     cardTotal: number;
     transferTotal: number;
-    orders: Array<{ id: string; orderNumber: string; status: string; total: number; paymentMethod: string }>;
+    orders: Array<{ id: string; orderNumber: string; status: string; total: number; paymentMethod: string | null; customerName: string; deliveryAddress: string | null }>;
   }>;
 }
 
