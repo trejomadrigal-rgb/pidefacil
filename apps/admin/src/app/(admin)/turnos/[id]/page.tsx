@@ -55,16 +55,25 @@ function LiquidarDialog({
   onConfirm: () => void;
   isPending: boolean;
 }) {
-  const delivered = trip.orders.filter((o) => o.status === 'DELIVERED');
+  // Todos los pedidos de efectivo (sin importar si ya marcaron DELIVERED en la app)
+  const cashOrders  = trip.orders.filter((o) => o.paymentMethod === 'CASH');
+  const cardOrders  = trip.orders.filter((o) => o.paymentMethod === 'CARD');
+  const transOrders = trip.orders.filter((o) => o.paymentMethod === 'TRANSFER');
+
+  const expectedCash = cashOrders.reduce((s, o) => s + Number(o.total), 0);
+  const cardAmount   = cardOrders.reduce((s, o) => s + Number(o.total), 0);
+  const transAmount  = transOrders.reduce((s, o) => s + Number(o.total), 0);
+
   const undelivered = trip.orders.filter((o) => o.status !== 'DELIVERED');
 
-  const cashOrders   = delivered.filter((o) => o.paymentMethod === 'CASH');
-  const cardOrders   = delivered.filter((o) => o.paymentMethod === 'CARD');
-  const transOrders  = delivered.filter((o) => o.paymentMethod === 'TRANSFER');
+  const [cashInput, setCashInput] = useState(
+    expectedCash > 0 ? String(expectedCash) : '',
+  );
 
-  const cashAmount  = cashOrders.reduce((s, o) => s + Number(o.total), 0);
-  const cardAmount  = cardOrders.reduce((s, o) => s + Number(o.total), 0);
-  const transAmount = transOrders.reduce((s, o) => s + Number(o.total), 0);
+  const actualCash = parseFloat(cashInput.replace(',', '.')) || 0;
+  const diff = actualCash - expectedCash;
+  const hasCashDiscrepancy = expectedCash > 0 && Math.abs(diff) > 0.01;
+  const canConfirm = expectedCash === 0 || cashInput.trim() !== '';
 
   return (
     <motion.div
@@ -84,18 +93,50 @@ function LiquidarDialog({
       >
         <h2 className="font-black text-gray-900 text-xl mb-1">Liquidar salida</h2>
         <p className="text-sm text-gray-500 mb-5">
-          Verifica el efectivo y confirma el cierre de esta salida.
+          Verifica el efectivo recibido y confirma el cierre.
         </p>
 
-        {/* Efectivo a recibir — destaque principal */}
-        {cashAmount > 0 && (
+        {/* Campo de efectivo — siempre visible si hay pedidos en efectivo */}
+        {expectedCash > 0 ? (
           <div className="bg-brand-500/8 border border-brand-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-3">
               <Banknote className="w-4 h-4 text-brand-500" />
-              <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide">Efectivo a recibir</p>
+              <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide">
+                Efectivo a recibir
+              </p>
             </div>
-            <p className="text-3xl font-black text-brand-600">{formatPrice(cashAmount)}</p>
-            <p className="text-xs text-gray-500 mt-1">{cashOrders.length} pedido(s) en efectivo</p>
+            <p className="text-xs text-gray-500 mb-1">
+              Esperado: <span className="font-semibold text-gray-700">{formatPrice(expectedCash)}</span>
+              {' '}· {cashOrders.length} pedido(s)
+            </p>
+            <label className="block text-xs font-semibold text-gray-600 mb-1 mt-3">
+              Monto real recibido <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={cashInput}
+                onChange={(e) => setCashInput(e.target.value)}
+                className="w-full pl-7 pr-4 py-2.5 border border-brand-300 rounded-xl text-sm font-bold text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400 bg-white"
+                placeholder={String(expectedCash)}
+                autoFocus
+              />
+            </div>
+            {hasCashDiscrepancy && (
+              <p className={`text-xs mt-2 font-medium ${diff < 0 ? 'text-red-600' : 'text-amber-600'}`}>
+                {diff < 0
+                  ? `Faltante de ${formatPrice(Math.abs(diff))}`
+                  : `Sobrante de ${formatPrice(diff)}`}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 flex items-center gap-2">
+            <Banknote className="w-4 h-4 text-gray-400" />
+            <p className="text-xs text-gray-500">Sin pedidos en efectivo en esta salida</p>
           </div>
         )}
 
@@ -129,7 +170,7 @@ function LiquidarDialog({
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-orange-600" />
               <p className="text-xs font-semibold text-orange-800">
-                {undelivered.length} pedido(s) sin entregar
+                {undelivered.length} pedido(s) sin marcar como entregados
               </p>
             </div>
             <div className="space-y-1">
@@ -139,33 +180,28 @@ function LiquidarDialog({
                 </p>
               ))}
             </div>
-            <p className="text-xs text-orange-600 mt-2">
-              Se liquidarán como no entregados. El efectivo sólo incluye los entregados.
-            </p>
           </div>
         )}
 
-        {/* Lista de pedidos entregados */}
-        {delivered.length > 0 && (
-          <div className="mb-5">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Pedidos entregados ({delivered.length})
-            </p>
-            <div className="space-y-1">
-              {delivered.map((o) => (
-                <div key={o.id} className="flex justify-between items-center text-sm py-1">
-                  <span className="text-gray-700">
-                    #{o.orderNumber} — {o.customerName}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{o.paymentMethod ?? '—'}</span>
-                    <span className="font-semibold">{formatPrice(Number(o.total))}</span>
-                  </div>
+        {/* Lista completa de pedidos */}
+        <div className="mb-5">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Pedidos en esta salida ({trip.orders.length})
+          </p>
+          <div className="space-y-1">
+            {trip.orders.map((o) => (
+              <div key={o.id} className="flex justify-between items-center text-sm py-1">
+                <span className={o.status === 'DELIVERED' ? 'text-gray-600' : 'text-orange-600 font-medium'}>
+                  #{o.orderNumber} — {o.customerName}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">{o.paymentMethod ?? '—'}</span>
+                  <span className="font-semibold">{formatPrice(Number(o.total))}</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
         {/* Acciones */}
         <div className="flex gap-3">
@@ -177,14 +213,10 @@ function LiquidarDialog({
           </button>
           <button
             onClick={onConfirm}
-            disabled={isPending}
+            disabled={isPending || !canConfirm}
             className="flex-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50 transition-colors"
           >
-            {isPending
-              ? 'Liquidando...'
-              : cashAmount > 0
-              ? `Confirmé recibir ${formatPrice(cashAmount)}`
-              : 'Confirmar liquidación'}
+            {isPending ? 'Liquidando...' : 'Confirmar liquidación'}
           </button>
         </div>
       </motion.div>
