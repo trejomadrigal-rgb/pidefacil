@@ -55,16 +55,19 @@ function LiquidarDialog({
   onConfirm: () => void;
   isPending: boolean;
 }) {
-  // Todos los pedidos de efectivo (sin importar si ya marcaron DELIVERED en la app)
-  const cashOrders  = trip.orders.filter((o) => o.paymentMethod === 'CASH');
-  const cardOrders  = trip.orders.filter((o) => o.paymentMethod === 'CARD');
-  const transOrders = trip.orders.filter((o) => o.paymentMethod === 'TRANSFER');
+  const delivered   = trip.orders.filter((o) => o.status === 'DELIVERED');
+  const undelivered = trip.orders.filter((o) => o.status !== 'DELIVERED');
+
+  const cashOrders  = delivered.filter((o) => o.paymentMethod === 'CASH');
+  const cardOrders  = delivered.filter((o) => o.paymentMethod === 'CARD');
+  const transOrders = delivered.filter((o) => o.paymentMethod === 'TRANSFER');
 
   const expectedCash = cashOrders.reduce((s, o) => s + Number(o.total), 0);
   const cardAmount   = cardOrders.reduce((s, o) => s + Number(o.total), 0);
   const transAmount  = transOrders.reduce((s, o) => s + Number(o.total), 0);
 
-  const undelivered = trip.orders.filter((o) => o.status !== 'DELIVERED');
+  // Pedidos con efectivo aún no entregados (no cuentan en el monto esperado)
+  const pendingCashOrders = undelivered.filter((o) => o.paymentMethod === 'CASH');
 
   const [cashInput, setCashInput] = useState(
     expectedCash > 0 ? String(expectedCash) : '',
@@ -132,11 +135,16 @@ function LiquidarDialog({
                   : `Sobrante de ${formatPrice(diff)}`}
               </p>
             )}
+            {pendingCashOrders.length > 0 && (
+              <p className="text-xs mt-2 text-orange-600">
+                +{pendingCashOrders.length} pedido(s) en efectivo sin marcar como entregados — no incluidos.
+              </p>
+            )}
           </div>
         ) : (
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-4 flex items-center gap-2">
             <Banknote className="w-4 h-4 text-gray-400" />
-            <p className="text-xs text-gray-500">Sin pedidos en efectivo en esta salida</p>
+            <p className="text-xs text-gray-500">Sin pedidos en efectivo entregados en esta salida</p>
           </div>
         )}
 
