@@ -320,12 +320,23 @@ jobs:
               sudo docker compose up -d 2>&1
               sleep 30
             else
-              echo "❌ evolution-v2 no encontrado en Coolify ni en el sistema de archivos."
-              echo "   Todos los contenedores con 'evol' en el nombre:"
-              sudo docker ps -a --filter "name=evol" --format "table {{.Names}}\t{{.Status}}" || true
-              echo ""
-              echo "   → Inicia Evolution v2 manualmente en Coolify UI, después ejecuta este job de nuevo."
-              exit 1
+              echo "Container no encontrado en Coolify ni compose. Iniciando fresh con docker run..."
+              sudo docker run -d \
+                --name evolution-v2-evolution-api-1 \
+                --network coolify \
+                --restart unless-stopped \
+                -e AUTHENTICATION_API_KEY="${EVOLUTION_API_KEY}" \
+                -e AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true \
+                -e AUTHENTICATION_TYPE=apikey \
+                -e DEL_INSTANCE=false \
+                -e QRCODE_LIMIT=30 \
+                -e TELEMETRY_ENABLED=false \
+                -e LOG_LEVEL=ERROR \
+                atendai/evolution-api:v2.2.3 \
+                && echo "✅ Evolution v2 container iniciado" \
+                || (echo "❌ docker run falló" && exit 1)
+              echo "Esperando 30s para que arranque..."
+              sleep 30
             fi
 
             EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$EVO_STATUS" ] && EVO_STATUS="not_found"
