@@ -18,6 +18,7 @@ on:
           - fix-admin-url
           - check-webhook-logs
           - diagnose-web
+          - test-evolution-api
 
 jobs:
   test:
@@ -741,6 +742,69 @@ jobs:
           find /data/coolify /root /home /var/lib /artifacts 2>/dev/null \
             -maxdepth 8 \( -name "docker-compose.yml" -o -name "docker-compose.yaml" \) \
             -exec grep -lE "evolution.api|evolution-api|atendai" {} \; 2>/dev/null | head -5
+
+  test-evolution-api:
+    name: Probar Evolution API directamente (DELETE + CREATE + QR)
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'test-evolution-api'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: DELETE + CREATE + polling QR desde API container
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          API_C=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_C" ]; then
+            API_C=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          echo "API container: $(sudo docker inspect $API_C --format '{{.Name}}' 2>/dev/null)"
+
+          EVO_URL="http://evolution-v2-evolution-api-1:8080"
+
+          echo ""
+          echo "=== 1. DELETE /instance/delete/dona-rosa ==="
+          sudo docker exec "$API_C" wget -qO- --server-response \
+            --method=DELETE \
+            --header="apikey: ${EVOLUTION_API_KEY}" \
+            "${EVO_URL}/instance/delete/dona-rosa" 2>&1 || true
+
+          sleep 2
+
+          echo ""
+          echo "=== 2. POST /instance/create ==="
+          sudo docker exec "$API_C" wget -qO- --server-response \
+            --method=POST \
+            --header="Content-Type: application/json" \
+            --header="apikey: ${EVOLUTION_API_KEY}" \
+            --body-data='{"instanceName":"dona-rosa","qrcode":true,"integration":"WHATSAPP-BAILEYS"}' \
+            "${EVO_URL}/instance/create" 2>&1
+
+          echo ""
+          echo "=== 3. Esperar 8s y probar GET /instance/connect/dona-rosa ==="
+          sleep 8
+          sudo docker exec "$API_C" wget -qO- --server-response \
+            --header="apikey: ${EVOLUTION_API_KEY}" \
+            "${EVO_URL}/instance/connect/dona-rosa" 2>&1
+
+          echo ""
+          echo "=== 4. Esperar 8s más y probar GET /instance/connect/dona-rosa otra vez ==="
+          sleep 8
+          sudo docker exec "$API_C" wget -qO- --server-response \
+            --header="apikey: ${EVOLUTION_API_KEY}" \
+            "${EVO_URL}/instance/connect/dona-rosa" 2>&1
+
+          echo ""
+          echo "=== 5. GET /instance/connectionState/dona-rosa ==="
+          sudo docker exec "$API_C" wget -qO- \
+            --header="apikey: ${EVOLUTION_API_KEY}" \
+            "${EVO_URL}/instance/connectionState/dona-rosa" 2>&1
+
+          echo ""
+          echo "=== 6. Logs Evolution v2 (últimas 50 líneas) ==="
+          sudo docker logs evolution-v2-evolution-api-1 --tail=50 2>&1
+
+          echo ""
+          echo "=== 7. Logs NestJS (últimas 50 líneas, sin filtro) ==="
+          sudo docker logs "$API_C" --tail=50 2>&1
 
   diagnose-web:
     name: Diagnosticar conectividad web → API

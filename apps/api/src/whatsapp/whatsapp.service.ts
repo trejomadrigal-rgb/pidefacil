@@ -125,12 +125,25 @@ export class WhatsappService {
     if (!biz) throw new NotFoundException('Negocio no encontrado');
 
     // Remove any existing instance to avoid 409 conflicts on re-connect
-    await this.evo('DELETE', `/instance/delete/${biz.slug}`).catch(() => {});
+    const delResult = await this.evo('DELETE', `/instance/delete/${biz.slug}`).catch((e: Error) => {
+      this.logger.warn(`[WA] DELETE instance/${biz.slug}: ${e.message}`);
+      return null;
+    });
+    this.logger.log(`[WA] DELETE instance/${biz.slug}: ${JSON.stringify(delResult)}`);
     this.qrStore.delete(biz.slug);
 
     const payload = { instanceName: biz.slug, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
+    this.logger.log(`[WA] POST /instance/create payload: ${JSON.stringify(payload)}`);
 
-    const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
+    let createData: { qrcode?: { base64?: string } };
+    try {
+      createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
+      this.logger.log(`[WA] POST /instance/create response: ${JSON.stringify(createData)}`);
+    } catch (err) {
+      this.logger.error(`[WA] POST /instance/create FAILED: ${(err as Error).message}`);
+      throw err;
+    }
+
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
 
     // Some Evolution API versions return QR directly in the create response
