@@ -128,7 +128,7 @@ export class WhatsappService {
     await this.evo('DELETE', `/instance/delete/${biz.slug}`).catch(() => {});
     this.qrStore.delete(biz.slug);
 
-    const payload = { instanceName: biz.slug, qrcode: true };
+    const payload = { instanceName: biz.slug, qrcode: true, integration: 'WHATSAPP-BAILEYS' };
 
     const createData = await this.evo<{ qrcode?: { base64?: string } }>('POST', '/instance/create', payload, 30_000);
     await this.prisma.business.update({ where: { id: businessId }, data: { whatsappSession: biz.slug } });
