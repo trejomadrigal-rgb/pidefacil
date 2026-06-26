@@ -43,9 +43,13 @@ function DeliveryCard({ item, index, onPress }: { item: DeliveryOrder; index: nu
 
 export default function MisPedidosScreen() {
   const router = useRouter();
-  const { data: orders, isLoading, isError, refetch } = useDeliveryOrders();
+  const { data, isLoading, isError, refetch } = useDeliveryOrders();
 
-  if (isLoading && !orders) {
+  const tripId = data?.tripId ?? null;
+  const totalOrdersInTrip = data?.totalOrdersInTrip ?? 0;
+  const orders = data?.orders ?? [];
+
+  if (isLoading && !data) {
     return (
       <View className="flex-1 items-center justify-center bg-gray-50">
         <ActivityIndicator size="large" color="#FF6B35" />
@@ -62,22 +66,42 @@ export default function MisPedidosScreen() {
     );
   }
 
+  const allDelivered = tripId !== null && orders.length === 0;
+
   return (
     <View className="flex-1 bg-gray-50">
       <View className="bg-[#1A1A2E] pt-14 pb-4 px-5">
         <Text className="text-white text-xl font-black">Mis pedidos</Text>
-        <Text className="text-gray-400 text-xs mt-1">{orders?.length ?? 0} pedido(s) activo(s)</Text>
+        {tripId ? (
+          <Text className="text-gray-400 text-xs mt-1">
+            Salida activa · {orders.length} de {totalOrdersInTrip} pedido(s)
+          </Text>
+        ) : (
+          <Text className="text-gray-400 text-xs mt-1">Sin salida activa</Text>
+        )}
       </View>
 
       <FlatList
-        data={orders ?? []}
+        data={orders}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, gap: 12 }}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#FF6B35" />}
         ListEmptyComponent={
           <View className="items-center py-20">
-            <Text className="text-4xl mb-3">🛵</Text>
-            <Text className="text-gray-500 text-sm">Sin pedidos asignados</Text>
+            {allDelivered ? (
+              <>
+                <Text className="text-4xl mb-3">✅</Text>
+                <Text className="text-gray-700 text-base font-bold text-center">Todos entregados</Text>
+                <Text className="text-gray-500 text-sm text-center mt-1">
+                  Espera a que el administrador liquide la salida.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="text-4xl mb-3">🛵</Text>
+                <Text className="text-gray-500 text-sm">Sin pedidos asignados</Text>
+              </>
+            )}
           </View>
         }
         renderItem={({ item, index }) => (

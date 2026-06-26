@@ -10,19 +10,33 @@ export class DeliveryService {
   ) {}
 
   async getMyOrders(userId: string, businessId: string) {
-    return this.prisma.order.findMany({
+    // Only expose orders from the current active (OPEN) trip.
+    // If the repartidor has multiple queued trips, they only see the oldest OPEN one
+    // until the admin liquidates it.
+    const activeTrip = await this.prisma.liquidation.findFirst({
       where: {
         businessId,
-        assignedToId: userId,
-        status: { in: ['READY', 'OUT_FOR_DELIVERY'] },
-      },
-      include: {
-        items: {
-          include: { product: { select: { name: true } } },
-        },
+        status: 'OPEN',
+        shift: { deliveryUserId: userId, status: 'OPEN' },
       },
       orderBy: { createdAt: 'asc' },
+      include: {
+        _count: { select: { orders: true } },
+        orders: {
+          where: { status: { in: ['READY', 'OUT_FOR_DELIVERY'] } },
+          include: {
+            items: { include: { product: { select: { name: true } } } },
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
+
+    return {
+      tripId: activeTrip?.id ?? null,
+      totalOrdersInTrip: activeTrip?._count?.orders ?? 0,
+      orders: activeTrip?.orders ?? [],
+    };
   }
 
   async markOutForDelivery(orderId: string, userId: string, businessId: string) {

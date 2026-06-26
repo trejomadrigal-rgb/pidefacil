@@ -18,8 +18,14 @@ export interface DeliveryOrder {
   }>;
 }
 
+export interface DeliveryOrdersResponse {
+  tripId: string | null;
+  totalOrdersInTrip: number;
+  orders: DeliveryOrder[];
+}
+
 export const getMyDeliveryOrders = () =>
-  apiClient.get<DeliveryOrder[]>('/delivery/orders').then((r) => r.data);
+  apiClient.get<DeliveryOrdersResponse>('/delivery/orders').then((r) => r.data);
 
 export const markOutForDelivery = (orderId: string) =>
   apiClient.patch<DeliveryOrder>(`/delivery/orders/${orderId}/out-for-delivery`).then((r) => r.data);
