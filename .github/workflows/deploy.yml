@@ -251,256 +251,165 @@ jobs:
           echo "✅ Demo seed OK"
 
   setup-whatsapp:
-    name: Setup Evolution API (WhatsApp)
+    name: Configurar Evolution API v2 (WhatsApp)
     if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'setup-whatsapp' || github.event.inputs.job == '')
     runs-on: [self-hosted, linux, deploy]
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Start Evolution API
+      - name: Verificar Evolution v2 + actualizar env vars del API
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
-          # Step 1: Get DATABASE_URL from Coolify to extract the internal PG hostname
-          COOLIFY_RESPONSE=$(curl -sf 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs' \
-            -H "Authorization: Bearer ${COOLIFY_TOKEN}" || echo "[]")
-          echo "Coolify API response (first 300 chars): ${COOLIFY_RESPONSE:0:300}"
+          echo "=== Estado de Evolution v2 ==="
+          EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
+          echo "Status: $EVO_STATUS"
+          sudo docker ps --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
-          DB_URL=$(echo "$COOLIFY_RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin) if sys.stdin else []; items=data if isinstance(data,list) else data.get('data',[]); [print(e.get('value','')) for e in items if e.get('key')=='DATABASE_URL']" 2>/dev/null || true)
-          echo "DB_URL from Coolify (first 60 chars): ${DB_URL:0:60}"
-
-          DB_HOSTNAME=$(echo "$DB_URL" | python3 -c "import sys,re; m=re.search(r'@([^:/]+)', sys.stdin.read().strip()); print(m.group(1) if m else '')" 2>/dev/null || true)
-          echo "PG hostname from Coolify URL: ${DB_HOSTNAME}"
-
-          # Step 2: Find PG container — prefer hostname match from Coolify URL
-          PG_CONTAINER=""
-          if [ -n "${DB_HOSTNAME}" ]; then
-            PG_CONTAINER=$(sudo docker ps -q | while read cid; do
-              h=$(sudo docker inspect "$cid" --format '{{.Config.Hostname}}' 2>/dev/null)
-              if [ "$h" = "$DB_HOSTNAME" ]; then
-                sudo docker inspect "$cid" --format '{{.Name}}' | tr -d '/'
-                break
-              fi
-            done)
-          fi
-
-          # Fallback: find PG container with POSTGRES_DB=pidefacil in its env
-          if [ -z "${PG_CONTAINER}" ]; then
-            PG_CONTAINER=$(sudo docker ps -q | while read cid; do
-              env=$(sudo docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null)
-              if echo "$env" | grep -q 'POSTGRES_DB=pidefacil'; then
-                sudo docker inspect "$cid" --format '{{.Name}}' | tr -d '/'
-                break
-              fi
-            done)
-          fi
-
-          echo "PostgreSQL container: ${PG_CONTAINER}"
-
-          if [ -z "${PG_CONTAINER}" ]; then
-            echo "❌ Could not find pidefacil PostgreSQL container. Running containers:"
-            sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+          if [ "$EVO_STATUS" != "running" ]; then
+            echo "❌ evolution-v2-evolution-api-1 no está corriendo. Inícialo en Coolify primero."
             exit 1
           fi
 
-          # Step 3: Get credentials from the container's environment
-          PG_ENV=$(sudo docker inspect "${PG_CONTAINER}" --format '{{range .Config.Env}}{{println .}}{{end}}')
-          PG_USER=$(echo "$PG_ENV" | grep -E '^POSTGRES_USER=' | cut -d= -f2-)
-          PG_PASS=$(echo "$PG_ENV" | grep -E '^POSTGRES_PASSWORD=' | cut -d= -f2-)
-          [ -z "$PG_USER" ] && PG_USER=$(echo "$PG_ENV" | grep -E '^POSTGRESQL_USERNAME=' | cut -d= -f2-)
-          [ -z "$PG_PASS" ] && PG_PASS=$(echo "$PG_ENV" | grep -E '^POSTGRESQL_PASSWORD=' | cut -d= -f2-)
-          PG_USER="${PG_USER:-postgres}"
+          echo ""
+          echo "=== Redes de Evolution v2 ==="
+          sudo docker inspect evolution-v2-evolution-api-1 \
+            --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}'
 
-          # Use Coolify hostname (the DNS name that resolves inside Coolify's network)
-          # If Coolify hostname is unknown, fall back to the container's Config.Hostname
-          if [ -n "${DB_HOSTNAME}" ]; then
-            PG_HOST="${DB_HOSTNAME}"
-          else
-            PG_HOST=$(sudo docker inspect "${PG_CONTAINER}" --format '{{.Config.Hostname}}')
-          fi
-
-          # Prefer the non-bridge Coolify internal network
-          PG_NETWORK=$(sudo docker inspect "${PG_CONTAINER}" \
-            --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
-            | tr ' ' '\n' | grep -v '^$' | grep -v '^bridge$' | head -1)
-          [ -z "${PG_NETWORK}" ] && PG_NETWORK=$(sudo docker inspect "${PG_CONTAINER}" \
-            --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
-            | tr ' ' '\n' | grep -v '^$' | head -1)
-
-          echo "PG host: ${PG_HOST}, network: ${PG_NETWORK}, user: ${PG_USER}"
-
-          if [ -z "${PG_HOST}" ]; then
-            echo "❌ Could not determine PostgreSQL hostname"
-            exit 1
-          fi
-
-          # Step 4: Build Evolution API DB URL
-          EVO_DB_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:5432/evolution_api"
-          echo "EVO_DB_URL target: evolution_api on ${PG_HOST}"
-
-          # Step 5: Drop + recreate evolution_api database (limpia tokens huérfanos)
-          sudo docker exec "${PG_CONTAINER}" \
-            psql -U "${PG_USER}" -c "DROP DATABASE IF EXISTS evolution_api;" 2>&1 || true
-          sudo docker exec "${PG_CONTAINER}" \
-            psql -U "${PG_USER}" -c "CREATE DATABASE evolution_api;" 2>&1 || true
-          echo "--- evolution_api DB recreated ---"
-
-          cd apps/api
-
-          # Clean up previous evolution containers + volumes (token registry contaminado)
-          printf "EVOLUTION_API_KEY=x\nDATABASE_CONNECTION_URI=x\n" > .env.whatsapp.tmp
-          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp.tmp down --volumes --remove-orphans 2>/dev/null || true
-          rm -f .env.whatsapp.tmp
-          sudo docker ps -a --filter "name=evolution" -q | xargs -r sudo docker rm -f 2>/dev/null || true
-          sudo docker volume rm api_evolution_instances api_evolution_store 2>/dev/null || true
-          echo "--- Containers + volumes cleaned ---"
-
-          # v1.4.8: almacenamiento en archivos (DATABASE_ENABLED=false), sin conflictos de token.
-          # v1.8.x: RepositoryBroker inicia "without db" aunque DATABASE_ENABLED=true, falla con TypeError.
-          # v2.x: Baileys roto (/instance/create devuelve 404).
-          LATEST_TAG="v1.4.8"
-          echo "Evolution API tag a usar: ${LATEST_TAG}"
-
-          # Start Redis + Evolution API (bridge mode, port 18080→8080)
-          printf "EVOLUTION_API_KEY=%s\nDATABASE_CONNECTION_URI=%s\nEVOLUTION_API_TAG=%s\n" \
-            "${EVOLUTION_API_KEY}" "${EVO_DB_URL}" "${LATEST_TAG}" > .env.whatsapp
-          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp pull
-          sudo docker compose -f docker-compose.whatsapp.yml --env-file .env.whatsapp up -d --wait --wait-timeout 60
-          rm -f .env.whatsapp
-
-          # Connect evolution-api to Coolify's internal network so it can resolve the PG hostname
-          if [ -n "${PG_NETWORK}" ]; then
-            sudo docker network connect "${PG_NETWORK}" api-evolution-api-1 2>/dev/null || true
-            echo "Connected to Coolify network: ${PG_NETWORK}"
-          fi
-
-          # Ensure the compose network has internet access (masquerade for Docker bridge)
-          # The compose network may not have NAT masquerade on this VPS — add it explicitly
-          COMPOSE_NET_ID=$(sudo docker inspect api-evolution-api-1 \
-            --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' \
-            | tr ' ' '\n' | grep -v '^$' | grep -v "${PG_NETWORK}" | head -1)
-          COMPOSE_SUBNET=$(sudo docker network inspect "${COMPOSE_NET_ID}" \
-            --format '{{range .IPAM.Config}}{{.Subnet}}{{end}}' 2>/dev/null || true)
-          echo "Compose network: ${COMPOSE_NET_ID}, subnet: ${COMPOSE_SUBNET}"
-          if [ -n "${COMPOSE_SUBNET}" ]; then
-            sudo iptables -t nat -I POSTROUTING 1 -s "${COMPOSE_SUBNET}" ! -d "${COMPOSE_SUBNET}" -j MASQUERADE 2>/dev/null || true
-            echo "Added iptables masquerade for ${COMPOSE_SUBNET}"
-          fi
-          # Blanket Docker masquerade (covers 172.16–31, 192.168.x)
-          sudo iptables -t nat -I POSTROUTING 1 -s 172.16.0.0/12 ! -d 172.16.0.0/12 -j MASQUERADE 2>/dev/null || true
-
-          sudo docker restart api-evolution-api-1
-          echo "Waiting for restart after network + iptables fix..."
-          sleep 25
-
-          curl -sf -H "apikey: ${EVOLUTION_API_KEY}" \
-            http://localhost:18080/instance/fetchInstances \
-            && echo "✅ Evolution API is up" \
-            || (echo "❌ Evolution API failed to start" && sudo docker compose -f docker-compose.whatsapp.yml logs && exit 1)
-
-      - name: Update API env vars in Coolify
-        run: |
+          echo ""
+          echo "=== Actualizando env vars del NestJS API en Coolify ==="
           curl -sf -X PATCH 'http://localhost:8000/api/v1/applications/h81lvlzrwjd7jf8bp0tkg1wa/envs/bulk' \
-            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
             -H 'Content-Type: application/json' \
-            -d '{
-              "data": [
-                {"key": "EVOLUTION_API_URL", "value": "http://api-evolution-api-1:8080", "is_preview": false},
-                {"key": "EVOLUTION_API_KEY", "value": "${{ secrets.EVOLUTION_API_KEY }}", "is_preview": false},
-                {"key": "APP_URL", "value": "http://h81lvlzrwjd7jf8bp0tkg1wa.2.24.201.108.sslip.io", "is_preview": false},
-                {"key": "WEB_URL", "value": "http://b10i6rz52rphphtcnxll73np.2.24.201.108.sslip.io", "is_preview": false}
+            -d "{
+              \"data\": [
+                {\"key\": \"EVOLUTION_API_URL\", \"value\": \"http://evolution-v2-evolution-api-1:8080\", \"is_preview\": false},
+                {\"key\": \"EVOLUTION_API_KEY\",  \"value\": \"${EVOLUTION_API_KEY}\",                   \"is_preview\": false}
               ]
-            }' && echo "✅ Env vars updated"
-
-      - name: Redeploy API
-        run: |
-          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
-            -H 'Authorization: Bearer ${{ secrets.COOLIFY_API_KEY }}' \
-            -H 'Content-Type: application/json' \
-            -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
-            && echo "✅ API redeploy triggered"
-
-  check-webhook-logs:
-    name: Ver logs de webhook WhatsApp
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'check-webhook-logs'
-    runs-on: [self-hosted, linux, deploy]
-    steps:
-      - name: Logs NestJS [WH] + Evolution API
-        env:
-          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
-        run: |
-          echo "=== Tags disponibles en DockerHub (atendai/evolution-api) ==="
-          curl -sf "https://hub.docker.com/v2/repositories/atendai/evolution-api/tags?page_size=25&ordering=-name" | \
-            python3 -c "import sys,json; [print(t['name']) for t in json.load(sys.stdin).get('results',[])]" 2>/dev/null || echo "(no se pudo consultar DockerHub)"
+            }" && echo "✅ Env vars actualizadas (URL=http://evolution-v2-evolution-api-1:8080)"
 
           echo ""
-          echo "=== Versión de Baileys en el contenedor actual ==="
-          EVO_CONTAINER=$(sudo docker ps --filter "name=api-evolution-api-1" -q | head -1)
-          if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker exec "$EVO_CONTAINER" node -e "try{const p=require('/evolution/node_modules/baileys/package.json');console.log('baileys:',p.name,'v'+p.version)}catch(e){try{const p=require('/evolution/node_modules/@whiskeysockets/baileys/package.json');console.log('@whiskeysockets/baileys v'+p.version)}catch(e2){console.log('no encontrado')}}" 2>&1 || echo "(no se pudo leer)"
-            echo "Imagen del contenedor:"
-            sudo docker inspect "$EVO_CONTAINER" --format '{{.Config.Image}}'
-          fi
-
-          echo ""
-          echo "=== Logs NestJS — líneas [WH] (webhook recibido) ==="
+          echo "=== Asegurar que el API container está en la red coolify ==="
           API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           if [ -z "$API_CONTAINER" ]; then
             API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
           fi
-          echo "NestJS container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}' 2>/dev/null)"
-          sudo docker logs "$API_CONTAINER" --since 30m 2>&1 | grep '\[WH\]' || echo "(sin líneas [WH] — webhook no ha recibido eventos)"
+          if [ -n "$API_CONTAINER" ]; then
+            echo "API container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+            sudo docker network connect coolify "$API_CONTAINER" 2>/dev/null \
+              && echo "✅ API conectada a red coolify" \
+              || echo "ℹ️  Ya estaba en red coolify"
+          else
+            echo "⚠️  API container no encontrado — redeploy la aplicará cuando inicie"
+          fi
+
+      - name: Redeploy NestJS API
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
+        run: |
+          curl -sf -X POST 'http://localhost:8000/api/v1/deploy' \
+            -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            -d '{"uuid":"h81lvlzrwjd7jf8bp0tkg1wa","force":false}' \
+            && echo "✅ API redeploy disparado"
+
+  check-webhook-logs:
+    name: Diagnosticar WhatsApp + Evolution v2
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'check-webhook-logs'
+    runs-on: [self-hosted, linux, deploy]
+    steps:
+      - name: Estado de contenedores + logs NestJS/Evolution v2
+        env:
+          EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
+        run: |
+          echo "=== Contenedores evolution en ejecución ==="
+          sudo docker ps --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
 
           echo ""
-          echo "=== Logs Evolution API (últimos 5 min) ==="
-          EVO_CONTAINER=$(sudo docker ps --filter "name=api-evolution-api-1" -q | head -1)
+          echo "=== Evolution v2 — redes e imagen ==="
+          EVO_CONTAINER=$(sudo docker ps --filter "name=evolution-v2-evolution-api-1" -q | head -1)
           if [ -n "$EVO_CONTAINER" ]; then
-            sudo docker logs "$EVO_CONTAINER" --since 5m 2>&1 | tail -60
+            echo "Imagen: $(sudo docker inspect $EVO_CONTAINER --format '{{.Config.Image}}')"
+            sudo docker inspect "$EVO_CONTAINER" \
+              --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}'
+            # Detect host port if exposed
+            HOST_PORT=$(sudo docker inspect "$EVO_CONTAINER" \
+              --format '{{range $p,$v := .NetworkSettings.Ports}}{{if $v}}{{$p}} → {{range $v}}{{.HostPort}}{{end}}{{println}}{{end}}{{end}}' \
+              | grep "8080" | grep -o '[0-9]*$' | head -1)
+            echo "Host port para 8080: ${HOST_PORT:-no expuesto}"
           else
-            echo "(api-evolution-api-1 no encontrado)"
+            echo "❌ evolution-v2-evolution-api-1 no encontrado"
           fi
 
           echo ""
-          echo "=== Env vars del contenedor Evolution API ==="
-          sudo docker inspect "$EVO_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -E 'AUTHENTICATION|DATABASE|WEBHOOK|SERVER_URL' | sed 's/=.*/=***/' || echo "(no se pudo inspeccionar)"
+          echo "=== NestJS API — env vars EVOLUTION ==="
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --filter "name=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          fi
+          if [ -n "$API_CONTAINER" ]; then
+            echo "API container: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}')"
+            echo "EVOLUTION vars en API:"
+            sudo docker inspect "$API_CONTAINER" \
+              --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+              | grep -i "EVOLUTION" || echo "(EVOLUTION vars no encontradas — redeploy pendiente?)"
+            echo ""
+            echo "Redes del API container:"
+            sudo docker inspect "$API_CONTAINER" \
+              --format '{{range $k,$v := .NetworkSettings.Networks}}  {{$k}} → {{$v.IPAddress}}{{println}}{{end}}'
+          else
+            echo "❌ API container no encontrado"
+          fi
 
           echo ""
-          echo "=== Env vars críticos del contenedor (sin masking) ==="
-          sudo docker inspect "$EVO_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -E '^(AUTHENTICATION_INSTANCE_MODE|AUTHENTICATION_TYPE|DATABASE_ENABLED|DATABASE_PROVIDER|DEL_INSTANCE|QRCODE_LIMIT)=' || echo "(no encontrados)"
+          echo "=== Logs NestJS — líneas [WH] (últimos 30 min) ==="
+          if [ -n "$API_CONTAINER" ]; then
+            sudo docker logs "$API_CONTAINER" --since 30m 2>&1 | grep '\[WH\]\|WhatsApp\|Evolution\|\[WA\]' | tail -20 \
+              || echo "(sin líneas WhatsApp recientes)"
+          fi
 
           echo ""
-          echo "=== Conectividad internet desde contenedor (Node.js TCP) ==="
-          sudo docker exec "$EVO_CONTAINER" node -e "const net=require('net');const s=net.createConnection(443,'web.whatsapp.com');s.setTimeout(8000);s.on('connect',()=>{console.log('TCP OK: web.whatsapp.com:443 accesible');s.destroy()});s.on('error',e=>console.error('TCP ERROR:',e.code,e.message));s.on('timeout',()=>{console.log('TCP TIMEOUT after 8s');s.destroy()});" 2>&1 || echo "Node exec fallo"
-          echo "DNS g.whatsapp.net:"
-          sudo docker exec "$EVO_CONTAINER" nslookup g.whatsapp.net 2>&1 | grep -E "Address|Name|error" | head -5
+          echo "=== Logs NestJS — errores recientes (últimos 10 min) ==="
+          if [ -n "$API_CONTAINER" ]; then
+            sudo docker logs "$API_CONTAINER" --since 10m 2>&1 | grep -i "error\|timeout\|ECONNREFUSED\|exception" | tail -20 \
+              || echo "(sin errores recientes)"
+          fi
 
           echo ""
-          echo "=== Estado actual: instancias existentes ==="
-          curl -s --max-time 5 "http://localhost:18080/instance/fetchInstances" -H "apikey: ${EVOLUTION_API_KEY}" | python3 -c "import sys,json; d=json.load(sys.stdin); items=d if isinstance(d,list) else []; [print('INSTANCE:',i.get('instance',{}).get('instanceName','?'),'state:',i.get('instance',{}).get('state','?')) for i in items] if items else print('(sin instancias)')" 2>/dev/null || echo "(error/timeout)"
+          echo "=== Logs Evolution v2 (últimos 5 min) ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker logs "$EVO_CONTAINER" --since 5m 2>&1 | tail -40
+          fi
 
           echo ""
-          echo "=== Limpieza: DELETE dona-rosa con deleteFiles:true ==="
-          curl -s -w "\nHTTP:%{http_code}" -X DELETE "http://localhost:18080/instance/delete/dona-rosa" -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" -d '{"deleteFiles":true}' 2>/dev/null || true
-          echo ""
+          echo "=== Test: conectividad API → Evolution v2 ==="
+          if [ -n "$API_CONTAINER" ] && [ -n "$EVO_CONTAINER" ]; then
+            echo "Desde API container → evolution-v2-evolution-api-1:8080:"
+            sudo docker exec "$API_CONTAINER" \
+              wget -qO- --timeout=8 http://evolution-v2-evolution-api-1:8080/ 2>&1 | head -3 \
+              || echo "❌ No hay conectividad API → Evolution v2"
+          fi
 
           echo ""
-          echo "=== Test CREATE: sin campo token ==="
-          TS=$(date +%s)
-          echo "Creando whtest${TS} SIN token:"
-          RESP=$(curl -s -w "\nHTTP:%{http_code}" --max-time 35 -X POST "http://localhost:18080/instance/create" -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" -d "{\"instanceName\":\"whtest${TS}\",\"qrcode\":true}" 2>&1)
-          echo "$RESP"
-          echo ""
+          echo "=== Test: instancias existentes en Evolution v2 ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            # Try via API container first (internal network)
+            if [ -n "$API_CONTAINER" ]; then
+              sudo docker exec "$API_CONTAINER" \
+                wget -qO- --timeout=8 \
+                --header="apikey: ${EVOLUTION_API_KEY}" \
+                http://evolution-v2-evolution-api-1:8080/instance/fetchInstances 2>&1 \
+                | python3 -c "import sys,json; d=json.load(sys.stdin); items=d if isinstance(d,list) else d.get('data',[]); [print('INSTANCE:',i.get('instance',{}).get('instanceName','?'),'state:',i.get('instance',{}).get('state','?')) for i in (items or [])] or print('(sin instancias)')" 2>/dev/null \
+                || echo "(error al consultar instancias)"
+            fi
+          fi
 
           echo ""
-          echo "=== Logs Evolution API completos ==="
-          sudo docker logs "$EVO_CONTAINER" 2>&1 | grep -v "^$" | tail -50
-
-          echo ""
-          echo "--- Logs NestJS [WH] ---"
-          sudo docker logs "$API_CONTAINER" --since 2m 2>&1 | grep '\[WH\]' || echo "(sin eventos webhook)"
-
-          curl -s -X DELETE "http://localhost:18080/instance/delete/whtest${TS}" -H "apikey: ${EVOLUTION_API_KEY}" -H "Content-Type: application/json" -d '{"deleteFiles":true}' 2>/dev/null || true
+          echo "=== Conectividad internet desde Evolution v2 (TCP WhatsApp) ==="
+          if [ -n "$EVO_CONTAINER" ]; then
+            sudo docker exec "$EVO_CONTAINER" node -e \
+              "const net=require('net');const s=net.createConnection(443,'web.whatsapp.com');s.setTimeout(8000);s.on('connect',()=>{console.log('TCP OK: web.whatsapp.com:443');s.destroy()});s.on('error',e=>console.error('TCP ERROR:',e.code,e.message));s.on('timeout',()=>{console.log('TCP TIMEOUT');s.destroy()});" \
+              2>&1 || echo "Node exec falló"
+          fi
 
   diagnose-web:
     name: Diagnosticar conectividad web → API
@@ -632,32 +541,38 @@ jobs:
           fi
 
   restart-evolution:
-    name: Reiniciar Evolution API (WhatsApp)
+    name: Reiniciar Evolution API v2 (WhatsApp)
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'restart-evolution'
     runs-on: [self-hosted, linux, deploy]
     steps:
-      - name: Reiniciar contenedor Evolution API
+      - name: Reiniciar contenedor Evolution v2
         run: |
-          EVO_CONTAINER=$(sudo docker ps -a --filter "name=api-evolution-api-1" -q | head -1)
+          EVO_CONTAINER=$(sudo docker ps -a --filter "name=evolution-v2-evolution-api-1" -q | head -1)
           if [ -z "$EVO_CONTAINER" ]; then
-            echo "❌ Contenedor api-evolution-api-1 no encontrado"
-            sudo docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i evol || echo "(ningún contenedor evolution encontrado)"
+            echo "❌ Contenedor evolution-v2-evolution-api-1 no encontrado"
+            sudo docker ps -a --format "table {{.Names}}\t{{.Status}}" | grep -i evol || echo "(ningún contenedor evolution)"
             exit 1
           fi
 
           echo "Reiniciando $EVO_CONTAINER..."
           sudo docker restart "$EVO_CONTAINER"
-          echo "Esperando 15s para que Evolution API arranque..."
-          sleep 15
+          echo "Esperando 20s para que Evolution v2 arranque..."
+          sleep 20
 
           echo "=== Estado después del restart ==="
-          sudo docker ps --filter "name=api-evolution-api-1" --format "table {{.Names}}\t{{.Status}}"
+          sudo docker ps --filter "name=evolution-v2" --format "table {{.Names}}\t{{.Status}}"
 
           echo ""
-          echo "=== Últimos logs de Evolution API ==="
+          echo "=== Últimos logs de Evolution v2 ==="
           sudo docker logs "$EVO_CONTAINER" --tail 30 2>&1
 
           echo ""
-          echo "=== Test HTTP a Evolution API ==="
-          curl -sf --max-time 5 http://localhost:18080/ && echo "✅ Evolution API responde" || echo "❌ Evolution API no responde en puerto 18080"
+          echo "=== Test HTTP desde API container ==="
+          API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
+          if [ -n "$API_CONTAINER" ]; then
+            sudo docker exec "$API_CONTAINER" \
+              wget -qO- --timeout=5 http://evolution-v2-evolution-api-1:8080/ 2>&1 | head -3 \
+              && echo "✅ Evolution v2 accesible desde API" \
+              || echo "❌ Evolution v2 no responde"
+          fi
 
