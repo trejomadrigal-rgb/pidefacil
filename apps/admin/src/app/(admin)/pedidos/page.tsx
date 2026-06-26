@@ -8,6 +8,7 @@ import { Package, ChevronRight, Plus } from 'lucide-react';
 import { CreateOrderSheet } from '@/components/orders/create-order-sheet';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   NEW:              { label: 'Nuevo',          color: 'bg-blue-100 text-blue-700' },
@@ -20,7 +21,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   CANCELLED:        { label: 'Cancelado',      color: 'bg-red-100 text-red-600' },
 };
 
-// Primary next action for each status
 function getQuickAction(order: ReadyOrder): { label: string; nextStatus: string; color: string } | null {
   switch (order.status) {
     case 'NEW':
@@ -53,10 +53,12 @@ const TABS = [
 
 function OrderCard({
   order,
+  index,
   loadingId,
   onAdvance,
 }: {
   order: ReadyOrder;
+  index: number;
   loadingId: string | null;
   onAdvance: (id: string, nextStatus: string) => void;
 }) {
@@ -66,7 +68,13 @@ function OrderCard({
   const isLoading = loadingId === order.id;
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, delay: Math.min(index * 0.05, 0.3), ease: 'easeOut' }}
+      whileHover={{ y: -1, transition: { duration: 0.15 } }}
+      className="bg-white rounded-2xl p-4 shadow-sm"
+    >
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center flex-shrink-0">
           <Package size={18} className="text-brand-500" />
@@ -90,7 +98,6 @@ function OrderCard({
         </div>
       </div>
 
-      {/* Actions row */}
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
         <Link
           href={`/pedidos/${order.id}`}
@@ -101,20 +108,22 @@ function OrderCard({
 
         <div className="ml-auto">
           {action && (
-            <button
+            <motion.button
               disabled={isLoading}
               onClick={() => onAdvance(order.id, action.nextStatus)}
               className={cn(
                 'px-4 py-1.5 rounded-xl text-xs font-bold transition-opacity disabled:opacity-50',
                 action.color,
               )}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.1 }}
             >
               {isLoading ? '…' : action.label}
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -150,30 +159,41 @@ export default function PedidosPage() {
     <div className="p-6 md:p-8 h-full overflow-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-jakarta text-2xl font-extrabold text-brand-900">Pedidos de hoy</h1>
-        <button
+        <motion.button
           onClick={() => setCreateOpen(true)}
           className="flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-colors"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ duration: 0.15 }}
         >
           <Plus size={16} />
           Nuevo pedido
-        </button>
+        </motion.button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {TABS.map((tab) => (
-          <button
+          <motion.button
             key={tab.label}
             onClick={() => setActiveTab(tab.status)}
             className={cn(
-              'px-4 py-1.5 rounded-full text-xs font-bold transition-colors',
+              'relative px-4 py-1.5 rounded-full text-xs font-bold transition-colors',
               activeTab === tab.status
-                ? 'bg-brand-500 text-white'
+                ? 'text-white'
                 : 'bg-white text-gray-500 hover:bg-gray-100 shadow-sm',
             )}
+            whileTap={{ scale: 0.95 }}
           >
-            {tab.label}
-          </button>
+            {activeTab === tab.status && (
+              <motion.div
+                layoutId="tab-bg"
+                className="absolute inset-0 bg-brand-500 rounded-full"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">{tab.label}</span>
+          </motion.button>
         ))}
       </div>
 
@@ -182,24 +202,38 @@ export default function PedidosPage() {
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-          <Package size={40} className="mb-3 opacity-30" />
-          <p className="text-sm font-medium">Sin pedidos</p>
-          <p className="text-xs mt-1">Los pedidos nuevos aparecerán aquí</p>
-        </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {orders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              loadingId={loadingId}
-              onAdvance={handleAdvance}
-            />
-          ))}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab ?? 'all'}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+          >
+            {orders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <Package size={40} className="mb-3 opacity-30" />
+                <p className="text-sm font-medium">Sin pedidos</p>
+                <p className="text-xs mt-1">Los pedidos nuevos aparecerán aquí</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {orders.map((order, index) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    index={index}
+                    loadingId={loadingId}
+                    onAdvance={handleAdvance}
+                  />
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
+
       <CreateOrderSheet open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );

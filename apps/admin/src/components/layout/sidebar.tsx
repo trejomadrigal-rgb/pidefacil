@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, UtensilsCrossed, Settings, Users, Users2, LogOut, BarChart2, MapPin, DollarSign, MessageSquare, Truck, ClipboardList } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
@@ -59,14 +60,19 @@ export function Sidebar() {
               key={href}
               href={href}
               className={cn(
-                'flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-medium transition-colors',
-                active
-                  ? 'bg-brand-500/15 text-brand-500 border-l-2 border-brand-500'
-                  : 'text-gray-400 hover:text-white',
+                'relative flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-medium transition-colors',
+                active ? 'text-brand-500' : 'text-gray-400 hover:text-white',
               )}
             >
-              <Icon size={20} />
-              {label}
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 bg-brand-500/15 rounded-lg border-l-2 border-brand-500"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <Icon size={20} className="relative z-10" />
+              <span className="relative z-10">{label}</span>
             </Link>
           );
         })}

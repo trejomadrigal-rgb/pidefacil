@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, KeyRound, UserX, UserCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   getUsers,
   createUser,
@@ -32,6 +33,31 @@ const ASSIGNABLE_ROLES: { value: UserRole; label: string }[] = [
   { value: 'ADMIN',         label: 'Admin' },
   { value: 'MENU_DESIGNER', label: 'Diseño de menú' },
 ];
+
+// ─── Modal Shell ──────────────────────────────────────────────────────────────
+
+function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <motion.div
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+        initial={{ scale: 0.94, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.94, opacity: 0, y: 10 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+      >
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+}
 
 // ─── Create User Modal ────────────────────────────────────────────────────────
 
@@ -63,77 +89,75 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="font-bold text-brand-900 text-lg mb-1">Nuevo usuario</h2>
-        <p className="text-sm text-gray-500 mb-5">Crea acceso para un miembro de tu equipo.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre completo</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Juan García"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Correo electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="correo@ejemplo.com"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Contraseña temporal</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-              autoComplete="new-password"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Rol</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 bg-white"
-            >
-              {ASSIGNABLE_ROLES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-          {error && <p className="text-red-500 text-xs">{error}</p>}
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 font-semibold text-sm"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="flex-1 bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50"
-            >
-              {isPending ? 'Creando...' : 'Crear usuario'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <ModalShell onClose={onClose}>
+      <h2 className="font-bold text-brand-900 text-lg mb-1">Nuevo usuario</h2>
+      <p className="text-sm text-gray-500 mb-5">Crea acceso para un miembro de tu equipo.</p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre completo</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ej. Juan García"
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Correo electrónico</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="correo@ejemplo.com"
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Contraseña temporal</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mínimo 8 caracteres"
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
+            autoComplete="new-password"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Rol</label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as UserRole)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 bg-white"
+          >
+            {ASSIGNABLE_ROLES.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+        {error && <p className="text-red-500 text-xs">{error}</p>}
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 font-semibold text-sm"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="flex-1 bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50"
+          >
+            {isPending ? 'Creando...' : 'Crear usuario'}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 
@@ -162,58 +186,56 @@ function EditUserModal({ user, onClose }: { user: BusinessUser; onClose: () => v
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        {success ? (
-          <div className="text-center py-4">
-            <div className="text-4xl mb-3">✅</div>
-            <h2 className="font-bold text-brand-900 text-lg mb-1">Usuario actualizado</h2>
-            <p className="text-sm text-gray-500 mb-5">Los datos de <span className="font-semibold">{name}</span> fueron actualizados.</p>
-            <button onClick={onClose} className="w-full bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm">Cerrar</button>
-          </div>
-        ) : (
-          <>
-            <h2 className="font-bold text-brand-900 text-lg mb-1">Editar usuario</h2>
-            <p className="text-sm text-gray-500 mb-5">{user.email}</p>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Rol</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  disabled={user.role === 'OWNER'}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 bg-white disabled:opacity-60"
-                >
-                  {ASSIGNABLE_ROLES.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-                {user.role === 'OWNER' && (
-                  <p className="text-xs text-gray-400 mt-1">El rol de dueño no se puede cambiar.</p>
-                )}
-              </div>
-              {error && <p className="text-red-500 text-xs">{error}</p>}
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 font-semibold text-sm">Cancelar</button>
-                <button type="submit" disabled={isPending} className="flex-1 bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50">
-                  {isPending ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
+    <ModalShell onClose={onClose}>
+      {success ? (
+        <div className="text-center py-4">
+          <div className="text-4xl mb-3">✅</div>
+          <h2 className="font-bold text-brand-900 text-lg mb-1">Usuario actualizado</h2>
+          <p className="text-sm text-gray-500 mb-5">Los datos de <span className="font-semibold">{name}</span> fueron actualizados.</p>
+          <button onClick={onClose} className="w-full bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm">Cerrar</button>
+        </div>
+      ) : (
+        <>
+          <h2 className="font-bold text-brand-900 text-lg mb-1">Editar usuario</h2>
+          <p className="text-sm text-gray-500 mb-5">{user.email}</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Rol</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as UserRole)}
+                disabled={user.role === 'OWNER'}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500 bg-white disabled:opacity-60"
+              >
+                {ASSIGNABLE_ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              {user.role === 'OWNER' && (
+                <p className="text-xs text-gray-400 mt-1">El rol de dueño no se puede cambiar.</p>
+              )}
+            </div>
+            {error && <p className="text-red-500 text-xs">{error}</p>}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 font-semibold text-sm">Cancelar</button>
+              <button type="submit" disabled={isPending} className="flex-1 bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50">
+                {isPending ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </ModalShell>
   );
 }
 
@@ -241,50 +263,42 @@ function ResetPasswordModal({ user, onClose }: { user: BusinessUser; onClose: ()
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        {success ? (
-          <div className="text-center py-4">
-            <div className="text-4xl mb-3">✅</div>
-            <h2 className="font-bold text-brand-900 text-lg mb-1">Contraseña actualizada</h2>
-            <p className="text-sm text-gray-500 mb-5">La contraseña de <span className="font-semibold">{user.name}</span> fue cambiada.</p>
-            <button onClick={onClose} className="w-full bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm">Cerrar</button>
-          </div>
-        ) : (
-          <>
-            <h2 className="font-bold text-brand-900 text-lg mb-1">Cambiar contraseña</h2>
-            <p className="text-sm text-gray-500 mb-5">Usuario: <span className="font-semibold text-gray-700">{user.name}</span></p>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Nueva contraseña</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500" autoComplete="new-password" required />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Confirmar contraseña</label>
-                <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Repite la contraseña" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500" autoComplete="new-password" required />
-              </div>
-              {error && <p className="text-red-500 text-xs">{error}</p>}
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 font-semibold text-sm">Cancelar</button>
-                <button type="submit" disabled={isPending} className="flex-1 bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50">{isPending ? 'Guardando...' : 'Guardar'}</button>
-              </div>
-            </form>
-          </>
-        )}
-      </div>
-    </div>
+    <ModalShell onClose={onClose}>
+      {success ? (
+        <div className="text-center py-4">
+          <div className="text-4xl mb-3">✅</div>
+          <h2 className="font-bold text-brand-900 text-lg mb-1">Contraseña actualizada</h2>
+          <p className="text-sm text-gray-500 mb-5">La contraseña de <span className="font-semibold">{user.name}</span> fue cambiada.</p>
+          <button onClick={onClose} className="w-full bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm">Cerrar</button>
+        </div>
+      ) : (
+        <>
+          <h2 className="font-bold text-brand-900 text-lg mb-1">Cambiar contraseña</h2>
+          <p className="text-sm text-gray-500 mb-5">Usuario: <span className="font-semibold text-gray-700">{user.name}</span></p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Nueva contraseña</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 8 caracteres" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500" autoComplete="new-password" required />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Confirmar contraseña</label>
+              <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Repite la contraseña" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-500" autoComplete="new-password" required />
+            </div>
+            {error && <p className="text-red-500 text-xs">{error}</p>}
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose} className="flex-1 border border-gray-200 text-gray-600 rounded-xl py-2.5 font-semibold text-sm">Cancelar</button>
+              <button type="submit" disabled={isPending} className="flex-1 bg-brand-500 text-white rounded-xl py-2.5 font-semibold text-sm disabled:opacity-50">{isPending ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </form>
+        </>
+      )}
+    </ModalShell>
   );
 }
 
-// ─── Confirm Deactivate Modal ─────────────────────────────────────────────────
+// ─── Confirm Status Modal ─────────────────────────────────────────────────────
 
-function ConfirmStatusModal({
-  user,
-  onClose,
-}: {
-  user: BusinessUser;
-  onClose: () => void;
-}) {
+function ConfirmStatusModal({ user, onClose }: { user: BusinessUser; onClose: () => void }) {
   const queryClient = useQueryClient();
   const isActive = user.status === 'ACTIVE';
 
@@ -297,8 +311,8 @@ function ConfirmStatusModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+    <ModalShell onClose={onClose}>
+      <div className="text-center">
         <div className="text-4xl mb-3">{isActive ? '⛔' : '✅'}</div>
         <h2 className="font-bold text-gray-900 text-lg mb-2">
           {isActive ? 'Desactivar usuario' : 'Reactivar usuario'}
@@ -321,7 +335,7 @@ function ConfirmStatusModal({
           </button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -345,13 +359,16 @@ export default function UsersPage() {
     <div className="p-8 h-full overflow-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-jakarta text-2xl font-bold text-brand-900">Usuarios</h1>
-        <button
+        <motion.button
           onClick={() => setModal({ type: 'create' })}
           className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ duration: 0.15 }}
         >
           <Plus className="w-4 h-4" />
           Nuevo usuario
-        </button>
+        </motion.button>
       </div>
 
       {isLoading ? (
@@ -360,7 +377,6 @@ export default function UsersPage() {
         <p className="text-gray-400 text-sm">No hay usuarios registrados.</p>
       ) : (
         <div className="space-y-8">
-          {/* Repartidores */}
           {deliveryUsers.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -370,7 +386,6 @@ export default function UsersPage() {
             </section>
           )}
 
-          {/* Equipo */}
           {otherUsers.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -382,11 +397,12 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Modals */}
-      {modal?.type === 'create' && <CreateUserModal onClose={() => setModal(null)} />}
-      {modal?.type === 'edit' && <EditUserModal user={modal.user} onClose={() => setModal(null)} />}
-      {modal?.type === 'password' && <ResetPasswordModal user={modal.user} onClose={() => setModal(null)} />}
-      {modal?.type === 'status' && <ConfirmStatusModal user={modal.user} onClose={() => setModal(null)} />}
+      <AnimatePresence>
+        {modal?.type === 'create' && <CreateUserModal key="create" onClose={() => setModal(null)} />}
+        {modal?.type === 'edit' && <EditUserModal key="edit" user={modal.user} onClose={() => setModal(null)} />}
+        {modal?.type === 'password' && <ResetPasswordModal key="password" user={modal.user} onClose={() => setModal(null)} />}
+        {modal?.type === 'status' && <ConfirmStatusModal key="status" user={modal.user} onClose={() => setModal(null)} />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -413,11 +429,17 @@ function UserTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
-          {users.map((u) => {
+          {users.map((u, index) => {
             const roleCfg = ROLE_CONFIG[u.role];
             const isInactive = u.status === 'INACTIVE';
             return (
-              <tr key={u.id} className={`transition-colors ${isInactive ? 'opacity-50' : 'hover:bg-gray-50'}`}>
+              <motion.tr
+                key={u.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.2, delay: Math.min(index * 0.04, 0.2) }}
+                className={`transition-colors ${isInactive ? 'opacity-50' : 'hover:bg-gray-50'}`}
+              >
                 <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
                 <td className="px-4 py-3 text-gray-500">{u.email}</td>
                 <td className="px-4 py-3">
@@ -432,7 +454,6 @@ function UserTable({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
-                    {/* Editar */}
                     <button
                       onClick={() => onAction({ type: 'edit', user: u })}
                       title="Editar"
@@ -440,7 +461,6 @@ function UserTable({
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    {/* Contraseña */}
                     <button
                       onClick={() => onAction({ type: 'password', user: u })}
                       title="Cambiar contraseña"
@@ -448,7 +468,6 @@ function UserTable({
                     >
                       <KeyRound className="w-3.5 h-3.5" />
                     </button>
-                    {/* Desactivar / Activar (no aplica para OWNER) */}
                     {u.role !== 'OWNER' && (
                       <button
                         onClick={() => onAction({ type: 'status', user: u })}
@@ -464,7 +483,7 @@ function UserTable({
                     )}
                   </div>
                 </td>
-              </tr>
+              </motion.tr>
             );
           })}
         </tbody>
