@@ -274,35 +274,62 @@ jobs:
             echo "Status después de start: $EVO_STATUS"
           fi
 
-          # Si el contenedor no existe en absoluto, buscar el servicio en Coolify y redesplegar
+          # Si el contenedor no existe, buscar en Coolify y en directorios de datos
           if [ "$EVO_STATUS" = "not_found" ]; then
-            echo "Container no existe — buscando servicio en Coolify..."
+            echo "Container no existe — búsqueda completa..."
+
+            # 1. Lista completa de servicios Coolify (buscar "evolution" en nombre o compose)
             ALL_SERVICES=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
               'http://localhost:8000/api/v1/services' 2>/dev/null || echo "[]")
-            echo "Coolify services (primeros 500 chars): ${ALL_SERVICES:0:500}"
+            echo "Total servicios Coolify: $(echo "$ALL_SERVICES" | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d if isinstance(d,list) else d.get('data',[])))" 2>/dev/null)"
+            echo "Nombres: $(echo "$ALL_SERVICES" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d if isinstance(d,list) else d.get('data',[]);[print(i.get('name','?'), i.get('uuid','?')) for i in items]" 2>/dev/null)"
 
-            EVO_UUID=$(echo "$ALL_SERVICES" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d if isinstance(d,list) else d.get('data',[]);[print(i.get('uuid','')) for i in items if 'evolution' in i.get('name','').lower() and 'v2' in i.get('name','').lower()]" 2>/dev/null | head -1 || true)
+            EVO_UUID=$(echo "$ALL_SERVICES" | python3 -c "import sys,json;d=json.load(sys.stdin);items=d if isinstance(d,list) else d.get('data',[]);[print(i.get('uuid','')) for i in items if 'evolution' in i.get('name','').lower() or 'evolution' in i.get('docker_compose_raw','').lower()]" 2>/dev/null | head -1 || true)
+
+            # 2. Si no en services, buscar en docker compose ls
+            if [ -z "$EVO_UUID" ]; then
+              echo "Proyectos docker compose en el VPS:"
+              sudo docker compose ls 2>/dev/null || sudo docker compose ls -a 2>/dev/null || true
+            fi
+
+            # 3. Buscar compose file con "evolution" en directorios de Coolify
+            EVO_COMPOSE=""
+            if [ -z "$EVO_UUID" ]; then
+              EVO_COMPOSE=$(find /data/coolify /var/lib/coolify /root/.config/coolify /home -maxdepth 8 \
+                -name "docker-compose.yml" -o -name "docker-compose.yaml" 2>/dev/null | \
+                while IFS= read -r f; do
+                  grep -ql "evolution.api\|evolution-api\|evolution_api" "$f" 2>/dev/null && echo "$f" && break
+                done)
+              echo "Compose file con evolution: ${EVO_COMPOSE:-no encontrado}"
+            fi
 
             if [ -n "$EVO_UUID" ]; then
-              echo "Encontrado en Coolify con UUID=${EVO_UUID} — redesploy..."
+              echo "Encontrado en Coolify con UUID=${EVO_UUID} — restart..."
               curl -sf -X GET "http://localhost:8000/api/v1/services/${EVO_UUID}/start" \
                 -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
-                && echo "✅ Evolution v2 start triggered" \
+                && echo "✅ Start triggered" \
                 || curl -sf -X POST "http://localhost:8000/api/v1/deploy" \
                      -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
                      -H 'Content-Type: application/json' \
                      -d "{\"uuid\":\"${EVO_UUID}\",\"force\":true}" \
-                     && echo "✅ Evolution v2 redeploy triggered"
-              echo "Esperando 60s para que arranque..."
+                     && echo "✅ Redeploy triggered"
               sleep 60
+            elif [ -n "$EVO_COMPOSE" ]; then
+              echo "Reiniciando con compose file: $EVO_COMPOSE"
+              cd "$(dirname "$EVO_COMPOSE")"
+              sudo docker compose up -d 2>&1
+              sleep 30
             else
-              echo "❌ No se encontró evolution-v2 en Coolify services."
-              echo "   Inícialo manualmente en Coolify UI y vuelve a correr este job."
+              echo "❌ evolution-v2 no encontrado en Coolify ni en el sistema de archivos."
+              echo "   Todos los contenedores con 'evol' en el nombre:"
+              sudo docker ps -a --filter "name=evol" --format "table {{.Names}}\t{{.Status}}" || true
+              echo ""
+              echo "   → Inicia Evolution v2 manualmente en Coolify UI, después ejecuta este job de nuevo."
               exit 1
             fi
 
             EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null | tr -d '[:space:]'); [ -z "$EVO_STATUS" ] && EVO_STATUS="not_found"
-            echo "Status final: $EVO_STATUS"
+            echo "Status tras búsqueda: $EVO_STATUS"
           fi
 
           if [ "$EVO_STATUS" != "running" ]; then
