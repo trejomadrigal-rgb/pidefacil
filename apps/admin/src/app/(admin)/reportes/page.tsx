@@ -6,6 +6,8 @@ import { DateFilter, type Preset } from './components/date-filter';
 import { KpiCards } from './components/kpi-cards';
 import { TopProductsChart } from './components/top-products-chart';
 import { PeakHoursChart } from './components/peak-hours-chart';
+import { DailyTrendChart } from './components/daily-trend-chart';
+import { PaymentBreakdown } from './components/payment-breakdown';
 
 function toDateStr(d: Date) {
   return d.toISOString().split('T')[0];
@@ -33,9 +35,11 @@ function getDateRange(preset: Preset, customStart: string, customEnd: string) {
 const EMPTY_SUMMARY = {
   totalRevenue: 0, totalOrders: 0, deliveredOrders: 0,
   cancelledOrders: 0, confirmedOrders: 0, frequentCustomers: 0,
+  avgOrderValue: 0, deliveryRate: 0,
 };
 
 const EMPTY_PEAK_HOURS = Array.from({ length: 24 }, (_, hour) => ({ hour, orderCount: 0 }));
+const EMPTY_PAYMENT = { cash: 0, card: 0, transfer: 0 };
 
 export default function ReportesPage() {
   const [preset, setPreset] = useState<Preset>('today');
@@ -52,6 +56,10 @@ export default function ReportesPage() {
   const summary = data?.summary ?? EMPTY_SUMMARY;
   const topProducts = data?.topProducts ?? [];
   const peakHours = data?.peakHours ?? EMPTY_PEAK_HOURS;
+  const dailyTrend = data?.dailyTrend ?? [];
+  const revenueByPayment = data?.revenueByPayment ?? EMPTY_PAYMENT;
+
+  const showTrend = dailyTrend.length > 1;
 
   return (
     <div className="p-8 h-full overflow-auto">
@@ -75,11 +83,12 @@ export default function ReportesPage() {
 
       {isLoading ? (
         <div className="space-y-6 animate-pulse">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-24 bg-gray-100 rounded-2xl" />
             ))}
           </div>
+          <div className="h-40 bg-gray-100 rounded-2xl" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="h-48 bg-gray-100 rounded-2xl" />
             <div className="h-48 bg-gray-100 rounded-2xl" />
@@ -87,19 +96,33 @@ export default function ReportesPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* KPIs */}
           <KpiCards summary={summary} />
+
+          {/* Tendencia diaria — solo si hay más de 1 día */}
+          {showTrend && (
+            <div className="grid grid-cols-1">
+              <DailyTrendChart trend={dailyTrend} />
+            </div>
+          )}
+
+          {/* Gráficas secundarias */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <TopProductsChart products={topProducts} />
             <PeakHoursChart peakHours={peakHours} />
           </div>
-          {summary.frequentCustomers > 0 && (
-            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm inline-flex items-center gap-2">
-              <span className="text-2xl font-black text-brand-500">{summary.frequentCustomers}</span>
-              <span className="text-sm text-gray-500">
-                cliente{summary.frequentCustomers !== 1 ? 's' : ''} frecuente{summary.frequentCustomers !== 1 ? 's' : ''} en este período
-              </span>
-            </div>
-          )}
+
+          {/* Formas de pago */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <PaymentBreakdown data={revenueByPayment} />
+            {summary.frequentCustomers > 0 && (
+              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-center">
+                <p className="text-5xl font-black text-brand-500 mb-2">{summary.frequentCustomers}</p>
+                <p className="text-sm font-semibold text-gray-700">Cliente{summary.frequentCustomers !== 1 ? 's' : ''} frecuente{summary.frequentCustomers !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-gray-400 mt-1">Con 2 o más pedidos en el período seleccionado</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

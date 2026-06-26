@@ -12,6 +12,8 @@ export interface ReportsSummary {
   cancelledOrders: number;
   confirmedOrders: number;
   frequentCustomers: number;
+  avgOrderValue: number;
+  deliveryRate: number;
 }
 
 export interface TopProduct {
@@ -25,11 +27,25 @@ export interface PeakHour {
   orderCount: number;
 }
 
+export interface DailyTrend {
+  date: string;
+  orders: number;
+  revenue: number;
+}
+
+export interface RevenueByPayment {
+  cash: number;
+  card: number;
+  transfer: number;
+}
+
 export interface ReportsDashboard {
   period: ReportsPeriod;
   summary: ReportsSummary;
   topProducts: TopProduct[];
   peakHours: PeakHour[];
+  dailyTrend: DailyTrend[];
+  revenueByPayment: RevenueByPayment;
 }
 
 export async function getReportsDashboard(

@@ -1,3 +1,6 @@
+'use client';
+
+import { motion } from 'framer-motion';
 import type { TopProduct } from '@/api/reports';
 
 interface TopProductsChartProps {
@@ -23,21 +26,29 @@ export function TopProductsChart({ products }: TopProductsChartProps) {
         {products.map((p, i) => {
           const pct = maxQty > 0 ? (p.totalQuantity / maxQty) * 100 : 0;
           return (
-            <div key={p.productId} className="flex items-center gap-3">
+            <motion.div
+              key={p.productId}
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.22, delay: i * 0.06, ease: 'easeOut' }}
+            >
               <span className="text-brand-500 font-black text-sm w-5">{i + 1}</span>
               <span className="text-sm text-gray-700 w-36 truncate" title={p.productName}>
                 {p.productName}
               </span>
               <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-brand-500 rounded-full transition-all"
-                  style={{ width: `${pct}%` }}
+                <motion.div
+                  className="h-full bg-brand-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 0.5, delay: i * 0.06 + 0.1, ease: 'easeOut' }}
                 />
               </div>
               <span className="text-sm font-bold text-gray-800 w-8 text-right">
                 {p.totalQuantity}
               </span>
-            </div>
+            </motion.div>
           );
         })}
       </div>
