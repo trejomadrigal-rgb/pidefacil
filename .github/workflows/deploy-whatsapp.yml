@@ -114,20 +114,54 @@ jobs:
             --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}' 2>/dev/null
 
           echo ""
-          echo "=== Redes del contenedor API (NestJS) ==="
+          echo "=== Todos los contenedores en red coolify ==="
+          sudo docker network inspect coolify \
+            --format '{{range .Containers}}{{.Name}} → {{.IPv4Address}}{{println}}{{end}}' 2>/dev/null | grep -v "^$" | sort
+
+          echo ""
+          echo "=== Buscar API container (varios métodos) ==="
           API_CONTAINER=$(sudo docker ps --filter "label=coolify.applicationId=h81lvlzrwjd7jf8bp0tkg1wa" -q | head -1)
-          echo "API container: $API_CONTAINER"
-          sudo docker inspect "$API_CONTAINER" \
-            --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}' 2>/dev/null
+          echo "Por label: $API_CONTAINER"
+          if [ -z "$API_CONTAINER" ]; then
+            API_CONTAINER=$(sudo docker ps --format "{{.Names}}" | grep -i "h81lvlzrwjd7jf8bp0tkg1wa\|pidefacil.*api\|nestjs" | head -1)
+            echo "Por nombre: $API_CONTAINER"
+          fi
+          if [ -z "$API_CONTAINER" ]; then
+            # Buscar el que tenga EVOLUTION_API_URL en sus env vars
+            API_CONTAINER=$(sudo docker ps -q | while read cid; do
+              if sudo docker inspect "$cid" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep -q "EVOLUTION_API_URL"; then
+                echo "$cid"
+                break
+              fi
+            done)
+            echo "Por env var: $API_CONTAINER"
+          fi
 
-          echo ""
-          echo "=== Test: API container → evolution-v2-evolution-api-1 ==="
-          sudo docker exec "$API_CONTAINER" \
-            wget -qO- --timeout=5 http://evolution-v2-evolution-api-1:8080/instance/fetchInstances 2>&1 \
-            || echo "❌ No hay conectividad API → Evolution v2"
+          if [ -n "$API_CONTAINER" ]; then
+            echo "API container name: $(sudo docker inspect $API_CONTAINER --format '{{.Name}}' 2>/dev/null)"
+            echo ""
+            echo "=== Redes del API container ==="
+            sudo docker inspect "$API_CONTAINER" \
+              --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}' 2>/dev/null
 
-          echo ""
-          echo "=== Env vars EVOLUTION_API_URL en API container ==="
-          sudo docker inspect "$API_CONTAINER" \
-            --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
-            | grep -i "EVOLUTION" || echo "(no encontradas)"
+            echo ""
+            echo "=== Env vars EVOLUTION en API container ==="
+            sudo docker inspect "$API_CONTAINER" \
+              --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+              | grep -i "EVOLUTION" || echo "(no encontradas)"
+
+            echo ""
+            echo "=== Test conectividad API → evolution-v2-evolution-api-1 ==="
+            sudo docker exec "$API_CONTAINER" \
+              wget -qO- --timeout=5 http://evolution-v2-evolution-api-1:8080/ 2>&1 | head -5 \
+              || echo "❌ No hay conectividad"
+
+            echo ""
+            echo "=== Conectar API a red coolify si no está ==="
+            sudo docker network connect coolify "$API_CONTAINER" 2>/dev/null \
+              && echo "✅ Conectado a red coolify" \
+              || echo "ℹ️  Ya estaba en red coolify"
+          else
+            echo "⚠️  API container no encontrado — listando todos los containers:"
+            sudo docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" | head -20
+          fi
