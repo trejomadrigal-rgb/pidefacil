@@ -308,7 +308,7 @@ jobs:
             -e WEBHOOK_GLOBAL_URL="${WEBHOOK_URL}" \
             -e WEBHOOK_GLOBAL_EVENTS_QRCODE_UPDATED=true \
             -e WEBHOOK_GLOBAL_EVENTS_CONNECTION_UPDATE=true \
-            atendai/evolution-api:1.4.8 \
+            atendai/evolution-api:v1.4.8 \
             && echo "✅ Evolution v1.4.8 iniciado" \
             || (echo "❌ docker run falló" && exit 1)
 
@@ -436,7 +436,7 @@ jobs:
             -e WEBHOOK_GLOBAL_URL="${WEBHOOK_URL}" \
             -e WEBHOOK_GLOBAL_EVENTS_QRCODE_UPDATED=true \
             -e WEBHOOK_GLOBAL_EVENTS_CONNECTION_UPDATE=true \
-            atendai/evolution-api:1.4.8 \
+            atendai/evolution-api:v1.4.8 \
             && echo "✅ Evolution v1.4.8 iniciado" || (echo "❌ docker run falló" && exit 1)
 
           echo "Esperando 30s para que arranque..."
