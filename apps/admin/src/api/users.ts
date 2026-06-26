@@ -20,3 +20,15 @@ export const getDeliveryUsers = () =>
 
 export const resetUserPassword = (userId: string, newPassword: string) =>
   api.patch(`/business/me/users/${userId}/reset-password`, { newPassword });
+
+export const createUser = (data: { name: string; email: string; password: string; role: UserRole }) =>
+  api.post<BusinessUser>('/business/me/users', data).then((r) => r.data);
+
+export const updateUser = (userId: string, data: { name?: string; role?: UserRole }) =>
+  api.patch<BusinessUser>(`/business/me/users/${userId}`, data).then((r) => r.data);
+
+export const deactivateUser = (userId: string) =>
+  api.delete(`/business/me/users/${userId}`);
+
+export const reactivateUser = (userId: string) =>
+  api.patch(`/business/me/users/${userId}`, { status: 'ACTIVE' });

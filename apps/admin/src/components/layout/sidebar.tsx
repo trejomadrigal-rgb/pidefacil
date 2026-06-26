@@ -22,7 +22,7 @@ const navItems = [
   { href: '/reportes', icon: BarChart2, label: 'Reportes' },
   { href: '/settings', icon: Settings, label: 'Config.' },
   { href: '/settings/whatsapp', icon: MessageSquare, label: 'WhatsApp' },
-  { href: '/users', icon: Users, label: 'Usuarios', disabled: true },
+  { href: '/users', icon: Users, label: 'Usuarios' },
 ];
 
 export function Sidebar() {
@@ -52,18 +52,17 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 flex flex-col gap-1 w-full px-1">
-        {navItems.map(({ href, icon: Icon, label, disabled }) => {
+        {navItems.map(({ href, icon: Icon, label }) => {
           const active = pathname.startsWith(href);
           return (
             <Link
               key={href}
-              href={disabled ? '#' : href}
+              href={href}
               className={cn(
                 'flex flex-col items-center gap-1 py-3 rounded-lg text-[10px] font-medium transition-colors',
                 active
                   ? 'bg-brand-500/15 text-brand-500 border-l-2 border-brand-500'
                   : 'text-gray-400 hover:text-white',
-                disabled && 'opacity-40 cursor-not-allowed pointer-events-none',
               )}
             >
               <Icon size={20} />
