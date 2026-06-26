@@ -255,18 +255,72 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && (github.event.inputs.job == 'setup-whatsapp' || github.event.inputs.job == '')
     runs-on: [self-hosted, linux, deploy]
     steps:
-      - name: Verificar Evolution v2 + actualizar env vars del API
+      - name: Verificar/iniciar Evolution v2 + actualizar env vars del API
         env:
           EVOLUTION_API_KEY: ${{ secrets.EVOLUTION_API_KEY }}
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_KEY }}
         run: |
           echo "=== Estado de Evolution v2 ==="
           EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
-          echo "Status: $EVO_STATUS"
-          sudo docker ps --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+          echo "Container status: $EVO_STATUS"
+          sudo docker ps -a --filter "name=evolution" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+
+          # Si el contenedor existe pero está parado, reiniciarlo
+          if [ "$EVO_STATUS" = "exited" ] || [ "$EVO_STATUS" = "created" ]; then
+            echo "Container parado — iniciando..."
+            sudo docker start evolution-v2-evolution-api-1
+            sleep 15
+            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
+            echo "Status después de start: $EVO_STATUS"
+          fi
+
+          # Si el contenedor no existe en absoluto, buscar el servicio en Coolify y redesplegar
+          if [ "$EVO_STATUS" = "not_found" ]; then
+            echo "Container no existe — buscando servicio en Coolify..."
+            ALL_SERVICES=$(curl -sf -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+              'http://localhost:8000/api/v1/services' 2>/dev/null || echo "[]")
+            echo "Coolify services (primeros 500 chars): ${ALL_SERVICES:0:500}"
+
+            EVO_UUID=$(echo "$ALL_SERVICES" | python3 -c "
+import sys, json
+try:
+  d = json.load(sys.stdin)
+  items = d if isinstance(d, list) else d.get('data', [])
+  for item in items:
+    name = item.get('name', '').lower()
+    uuid = item.get('uuid', '')
+    if 'evolution' in name and 'v2' in name:
+      print(uuid)
+      break
+except:
+  pass
+" 2>/dev/null || true)
+
+            if [ -n "$EVO_UUID" ]; then
+              echo "Encontrado en Coolify con UUID=${EVO_UUID} — redesploy..."
+              curl -sf -X GET "http://localhost:8000/api/v1/services/${EVO_UUID}/start" \
+                -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+                && echo "✅ Evolution v2 start triggered" \
+                || curl -sf -X POST "http://localhost:8000/api/v1/deploy" \
+                     -H "Authorization: Bearer ${COOLIFY_TOKEN}" \
+                     -H 'Content-Type: application/json' \
+                     -d "{\"uuid\":\"${EVO_UUID}\",\"force\":true}" \
+                     && echo "✅ Evolution v2 redeploy triggered"
+              echo "Esperando 60s para que arranque..."
+              sleep 60
+            else
+              echo "❌ No se encontró evolution-v2 en Coolify services."
+              echo "   Inícialo manualmente en Coolify UI y vuelve a correr este job."
+              exit 1
+            fi
+
+            EVO_STATUS=$(sudo docker inspect evolution-v2-evolution-api-1 --format '{{.State.Status}}' 2>/dev/null || echo "not_found")
+            echo "Status final: $EVO_STATUS"
+          fi
 
           if [ "$EVO_STATUS" != "running" ]; then
-            echo "❌ evolution-v2-evolution-api-1 no está corriendo. Inícialo en Coolify primero."
+            echo "❌ Evolution v2 no está running (status=$EVO_STATUS)"
+            sudo docker logs evolution-v2-evolution-api-1 --tail 20 2>&1 || true
             exit 1
           fi
 
@@ -274,6 +328,12 @@ jobs:
           echo "=== Redes de Evolution v2 ==="
           sudo docker inspect evolution-v2-evolution-api-1 \
             --format '{{range $k,$v := .NetworkSettings.Networks}}NETWORK: {{$k}} IP: {{$v.IPAddress}}{{println}}{{end}}'
+
+          echo ""
+          echo "=== Asegurar que Evolution v2 está en la red coolify ==="
+          sudo docker network connect coolify evolution-v2-evolution-api-1 2>/dev/null \
+            && echo "✅ Evolution v2 conectado a red coolify" \
+            || echo "ℹ️  Ya estaba en red coolify"
 
           echo ""
           echo "=== Actualizando env vars del NestJS API en Coolify ==="
