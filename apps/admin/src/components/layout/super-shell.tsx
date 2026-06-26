@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { parseJwtPayload } from '@/lib/api';
 import { SuperSidebar } from './super-sidebar';
+import { AnimatedMain } from './animated-main';
 
 function decodeRole(token: string | null): string | null {
   if (!token) return null;
@@ -31,7 +32,7 @@ export function SuperShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       <SuperSidebar />
-      <main className="flex-1 overflow-auto bg-[#F5F5F5] h-full">{children}</main>
+      <AnimatedMain>{children}</AnimatedMain>
     </div>
   );
 }

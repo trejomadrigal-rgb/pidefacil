@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Building2, CreditCard } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth.store';
 import { api } from '@/lib/api';
 
@@ -41,14 +42,19 @@ export function SuperSidebar() {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-[#FF6B35]/15 text-[#FF6B35] border-r-2 border-[#FF6B35]'
-                  : 'text-white/55 hover:text-white/80'
+              className={`relative flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                active ? 'text-[#FF6B35]' : 'text-white/55 hover:text-white/80'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              {active && (
+                <motion.div
+                  layoutId="super-sidebar-active"
+                  className="absolute inset-0 bg-[#FF6B35]/15 border-r-2 border-[#FF6B35]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <Icon className="w-4 h-4 relative z-10" />
+              <span className="relative z-10">{label}</span>
             </Link>
           );
         })}

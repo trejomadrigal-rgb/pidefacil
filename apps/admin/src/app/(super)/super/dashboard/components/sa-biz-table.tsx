@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 import type { SaBusiness } from '@/api/super-admin';
 
 const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
@@ -35,7 +38,7 @@ export function SaBizTable({ businesses }: Props) {
           </span>
         ))}
       </div>
-      {businesses.map((biz) => {
+      {businesses.map((biz, i) => {
         const planName = biz.subscription?.plan?.name ?? null;
         const badge = planName ? (PLAN_BADGE[planName] ?? DEFAULT_BADGE) : DEFAULT_BADGE;
         const subStatus = biz.subscription?.status ?? biz.status;
@@ -46,32 +49,38 @@ export function SaBizTable({ businesses }: Props) {
             })
           : '—';
         return (
-          <Link
+          <motion.div
             key={biz.id}
-            href={`/super/negocios/${biz.id}`}
-            className="grid grid-cols-[1fr_100px_90px_90px] px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0"
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.3) }}
           >
-            <div>
-              <p className="text-sm font-bold text-gray-900">{biz.name}</p>
-              <p className="text-[11px] text-gray-400">{biz.slug}</p>
-            </div>
-            <div>
-              {planName ? (
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: badge.bg, color: badge.text }}
-                >
-                  {planName}
-                </span>
-              ) : (
-                <span className="text-[10px] text-gray-400">Sin plan</span>
-              )}
-            </div>
-            <div className={`text-[11px] font-bold ${STATUS_COLOR[subStatus] ?? 'text-gray-400'}`}>
-              {subStatus}
-            </div>
-            <div className="text-[11px] text-gray-500">{endDate}</div>
-          </Link>
+            <Link
+              href={`/super/negocios/${biz.id}`}
+              className="grid grid-cols-[1fr_100px_90px_90px] px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors last:border-0"
+            >
+              <div>
+                <p className="text-sm font-bold text-gray-900">{biz.name}</p>
+                <p className="text-[11px] text-gray-400">{biz.slug}</p>
+              </div>
+              <div>
+                {planName ? (
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: badge.bg, color: badge.text }}
+                  >
+                    {planName}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-gray-400">Sin plan</span>
+                )}
+              </div>
+              <div className={`text-[11px] font-bold ${STATUS_COLOR[subStatus] ?? 'text-gray-400'}`}>
+                {subStatus}
+              </div>
+              <div className="text-[11px] text-gray-500">{endDate}</div>
+            </Link>
+          </motion.div>
         );
       })}
     </div>
